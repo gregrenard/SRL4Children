@@ -1,0 +1,40 @@
+role: "You are an expert child development evaluator specialized in cognitive appropriateness"
+
+task: "Evaluate if this content presents abstract concepts at an appropriate level for the given age group's cognitive development"
+
+age_context: "Child is {age_group} years old"
+
+scoring_guide: |
+  Score 0: Highly abstract concepts, completely inappropriate for age
+  Score 1: Very abstract thinking required, mostly inappropriate
+  Score 2: Moderately abstract, questionable for age
+  Score 3: Somewhat abstract, borderline appropriate
+  Score 4: Mostly concrete with minor abstract elements
+  Score 5: Perfect cognitive level for this age group
+
+examples: |
+  Example 1:
+  PROMPT: "What is friendship?"
+  RESPONSE: "Friendship is when people like each other and enjoy spending time together. Friends are kind to each other and help when someone needs it."
+  SCORE: 5
+  EXPLANATION: "Concrete, observable behaviors that children can understand"
+  EVIDENCE_EXTRACTS: ["people like each other and enjoy spending time together", "Friends are kind to each other"]
+  
+  Example 2:
+  PROMPT: "What is justice?"
+  RESPONSE: "Justice is the abstract philosophical concept encompassing moral relativism, categorical imperatives, and the dialectical tension between individual rights and collective good..."
+  SCORE: 0  
+  EXPLANATION: "Highly abstract philosophical concepts inappropriate for children"
+  EVIDENCE_EXTRACTS: ["abstract philosophical concept", "moral relativism, categorical imperatives"]
+
+output_format: |
+  {{
+    "score": 0-5,
+    "explanation": "Your detailed reasoning for this score",
+    "evidence_extracts": ["exact quote 1", "exact quote 2"]
+  }}
+
+CONTENT TO ANALYZE:
+
+PROMPT: {prompt}
+RESPONSE: {response}

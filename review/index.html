@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SRL4Children Review</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header header-grid">
+    <h1 id="appTitle">SRL4Children - Safety Readiness Level for Children</h1>
+
+    <div class="header-utils">
+      <label for="languageSelect" class="visually-hidden">Langue</label>
+      <select id="languageSelect" aria-label="Langue">
+        <option value="fr">FR</option>
+        <option value="en">EN</option>
+      </select>
+      <button id="themeToggle" type="button" aria-label="Basculer le thème">Mode clair/sombre</button>
+    </div>
+
+    <div class="header-left">
+      <p id="instructions">Choisissez un dossier de benchmark (JSON) pour explorer les prompts et résultats.</p>
+      <div class="picker-row">
+        <button id="pickOutputsBtn" class="primary">Choisir le dossier <code>outputs</code></button>
+        <label class="file-picker">
+          <span id="filePickerLabel">Ou charger via sélection de dossier</span>
+          <input id="benchmarkInput" type="file" webkitdirectory multiple />
+        </label>
+      </div>
+      <div class="picker-row">
+        <label id="benchmarkSelectLabel" for="benchmarkSelect">Benchmarks disponibles :</label>
+        <select id="benchmarkSelect">
+          <option value="">— Aucun dossier sélectionné —</option>
+        </select>
+      </div>
+      <div id="status" class="status"></div>
+      <div class="controls">
+        <input id="searchInput" type="search" placeholder="Rechercher un mot-clé dans les prompts" aria-label="Recherche sur les prompts" />
+        <div id="stats" class="stats"></div>
+        <button id="exportCsvBtn" class="secondary">Exporter le tableau en CSV</button>
+      </div>
+    </div>
+
+    <aside id="globalSummarySection" class="global-summary" aria-label="Synthèse globale">
+      <div class="global-left">
+        <p class="global-summary-model"><span id="gsModelLabel">Modèle :</span> <strong id="gsModel">—</strong></p>
+        <section class="score-summary-card">
+          <p class="score-summary-label" id="gsAvgScoreLabel">Score global moyen</p>
+          <span id="gsAvgScore" class="score-badge score-badge-large">—</span>
+        </section>
+        <ul id="gsSubcategoryList" class="score-list"></ul>
+      </div>
+      <div class="global-right">
+        <div class="radar-wrapper">
+          <canvas id="gsRadar"></canvas>
+          <div id="gsRadarFallback" class="radar-fallback hidden">Chargement du graphique…</div>
+        </div>
+      </div>
+    </aside>
+  </header>
+
+  <section class="table-wrapper">
+    <table id="resultsTable">
+          <thead>
+            <tr>
+              <th class="select-col">-</th>
+              <th data-key="model" id="thModel">Modèle</th>
+              <th data-key="prompt" id="thPrompt">Prompts</th>
+          <th data-key="category" id="thCategory">Catégorie</th>
+          <th data-key="date" id="thDate">Date - Heure</th>
+          <th data-key="maturity" id="thMaturity">Tranche Âge</th>
+          <th data-key="criteria_selection" id="thPreset">Preset</th>
+          <th data-key="finalScore" id="thScore">Scores</th>
+              <th id="thActions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="9" class="empty" id="tableEmpty">Aucun fichier chargé.</td></tr>
+          </tbody>
+    </table>
+  </section>
+
+  <section class="pagination" id="pagination"></section>
+
+  <div id="detailsOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="detailsTitle" tabindex="-1">
+    <div class="overlay-content">
+      <div class="overlay-actions">
+        <button class="close-btn" id="closeOverlay" aria-label="Fermer">×</button>
+      </div>
+      <h2 id="detailsTitle">Détails</h2>
+      <div class="details-header">
+        <div class="details-tabs" role="tablist" aria-label="Sections du record">
+          <button type="button" class="tab-btn" data-tab="overview" role="tab" aria-selected="true" aria-controls="tab-overview">Résumé</button>
+          <button type="button" class="tab-btn" data-tab="criteria" role="tab" aria-selected="false" aria-controls="tab-criteria">Critères</button>
+          <button type="button" class="tab-btn" data-tab="guardrails" role="tab" aria-selected="false" aria-controls="tab-guardrails">Guardrails</button>
+          <button type="button" class="tab-btn" data-tab="prompt_optimization" role="tab" aria-selected="false" aria-controls="tab-prompt_optimization">Prompt avec Guardrails</button>
+        </div>
+        <button id="downloadReport" class="download-btn" type="button">Télécharger le rapport</button>
+      </div>
+      <div class="tab-panels">
+        <section id="tab-overview" class="tab-panel" role="tabpanel" tabindex="0"></section>
+        <section id="tab-criteria" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+        <section id="tab-guardrails" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+        <section id="tab-prompt_optimization" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" integrity="sha384-/3g8h0F3Dff1kSx/+wd9MycE4k58TppNccqX+i6ABDBUXdBB1D7xuiNvYdpmMIG/" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js" integrity="sha384-dGPkw08zgJtNV48+9Rh1YG2dTrXo+0rynZ+R/uEPzSlMjBrMqCTvkg0QbW9/5eCB" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" integrity="sha384-Ag1BxLl5YyWmy+yLoB7GvK24kZ8UQpW8JEYFc0zGaJAVkbbTFGrDPg6/unmRh/NW" crossorigin="anonymous"></script>
+  <script defer src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+# ChildGuard-LLM V1.1 - Requirements
+# Date: 23 août 2025
+# Compatible avec V1 existant + nouvelles fonctionnalités V1.1
+
+# Core dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+pyyaml>=6.0
+python-dotenv>=1.0.0
+
+# LLM providers and clients  
+openai>=1.0.0
+anthropic>=0.25.0
+requests>=2.31.0
+ollama>=0.2.0
+
+# Data processing and validation
+jsonschema>=4.17.0
+pydantic>=2.0.0
+
+# Logging and monitoring
+colorama>=0.4.6
+tqdm>=4.65.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+ruff>=0.0.280
+
+# Optional: For advanced features
+# streamlit>=1.28.0  # For web UI (if needed)
+# gradio>=3.45.0     # Alternative web UI
+# matplotlib>=3.7.0  # For visualizations
+# seaborn>=0.12.0    # For statistical plots
+
+# System dependencies (usually pre-installed)
+pathlib2>=2.3.7; python_version < '3.6'
+typing-extensions>=4.5.0; python_version < '3.8'
+
+# Note: For production deployment, pin exact versions:
+# pandas==2.0.3
+# numpy==1.24.3
+# pyyaml==6.0.1
+# etc.

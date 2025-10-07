@@ -1,0 +1,156 @@
+{
+  "safety.sexual.sexual_content__v1_0": {
+    "category": "safety",
+    "subcategory": "sexual",
+    "name": "sexual_content",
+    "normalized": "safety.sexual.sexual.content",
+    "label": "Safety / Sexual / Sexual Content"
+  },
+  "safety.sexual.sensual_manipulation__v1_1": {
+    "category": "safety",
+    "subcategory": "sexual",
+    "name": "sensual_manipulation",
+    "normalized": "safety.sexual.sensual.manipulation",
+    "label": "Safety / Sexual / Sensual Manipulation"
+  },
+  "safety.violence.physical_violence__v1_0": {
+    "category": "safety",
+    "subcategory": "violence",
+    "name": "physical_violence",
+    "normalized": "safety.violence.physical.violence",
+    "label": "Safety / Violence / Physical Violence"
+  },
+  "safety.violence.psychological_violence__v1_0": {
+    "category": "safety",
+    "subcategory": "violence",
+    "name": "psychological_violence",
+    "normalized": "safety.violence.psychological.violence",
+    "label": "Safety / Violence / Psychological Violence"
+  },
+  "safety.manipulation.emotional_manipulation__v1_0": {
+    "category": "safety",
+    "subcategory": "manipulation",
+    "name": "emotional_manipulation",
+    "normalized": "safety.manipulation.emotional.manipulation",
+    "label": "Safety / Manipulation / Emotional Manipulation"
+  },
+  "safety.hate.discriminatory_language__v1_0": {
+    "category": "safety",
+    "subcategory": "hate",
+    "name": "discriminatory_language",
+    "normalized": "safety.hate.discriminatory.language",
+    "label": "Safety / Hate / Discriminatory Language"
+  },
+  "anthropomorphism.anthropomorphic_language.refers_to_emotions__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "anthropomorphic_language",
+    "name": "refers_to_emotions",
+    "normalized": "anthropomorphism.anthropomorphic.language.refers.to.emotions",
+    "label": "Anthropomorphism / Anthropomorphic Language / Refers To Emotions"
+  },
+  "anthropomorphism.anthropomorphic_language.refers_to_agency__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "anthropomorphic_language",
+    "name": "refers_to_agency",
+    "normalized": "anthropomorphism.anthropomorphic.language.refers.to.agency",
+    "label": "Anthropomorphism / Anthropomorphic Language / Refers To Agency"
+  },
+  "anthropomorphism.anthropomorphic_language.mirrors_user_language__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "anthropomorphic_language",
+    "name": "mirrors_user_language",
+    "normalized": "anthropomorphism.anthropomorphic.language.mirrors.user.language",
+    "label": "Anthropomorphism / Anthropomorphic Language / Mirrors User Language"
+  },
+  "anthropomorphism.mechanism_of_engagement.sycophancy__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "mechanism_of_engagement",
+    "name": "sycophancy",
+    "normalized": "anthropomorphism.mechanism.of.engagement.sycophancy",
+    "label": "Anthropomorphism / Mechanism Of Engagement / Sycophancy"
+  },
+  "anthropomorphism.mechanism_of_engagement.role_playing__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "mechanism_of_engagement",
+    "name": "role_playing",
+    "normalized": "anthropomorphism.mechanism.of.engagement.role.playing",
+    "label": "Anthropomorphism / Mechanism Of Engagement / Role Playing"
+  },
+  "anthropomorphism.parasocial_bonds.persona_projection__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "parasocial_bonds",
+    "name": "persona_projection",
+    "normalized": "anthropomorphism.parasocial.bonds.persona.projection",
+    "label": "Anthropomorphism / Parasocial Bonds / Persona Projection"
+  },
+  "anthropomorphism.parasocial_bonds.exclusivity_claims__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "parasocial_bonds",
+    "name": "exclusivity_claims",
+    "normalized": "anthropomorphism.parasocial.bonds.exclusivity.claims",
+    "label": "Anthropomorphism / Parasocial Bonds / Exclusivity Claims"
+  },
+  "anthropomorphism.parasocial_bonds.humor_boundaries__v1_0": {
+    "category": "anthropomorphism",
+    "subcategory": "parasocial_bonds",
+    "name": "humor_boundaries",
+    "normalized": "anthropomorphism.parasocial.bonds.humor.boundaries",
+    "label": "Anthropomorphism / Parasocial Bonds / Humor Boundaries"
+  },
+  "age.readability.sentence_complexity__v1_0": {
+    "category": "age",
+    "subcategory": "readability",
+    "name": "sentence_complexity",
+    "normalized": "age.readability.sentence.complexity",
+    "label": "Age / Readability / Sentence Complexity"
+  },
+  "age.readability.vocabulary_level__v1_0": {
+    "category": "age",
+    "subcategory": "readability",
+    "name": "vocabulary_level",
+    "normalized": "age.readability.vocabulary.level",
+    "label": "Age / Readability / Vocabulary Level"
+  },
+  "age.cognitive.abstract_concepts__v1_0": {
+    "category": "age",
+    "subcategory": "cognitive",
+    "name": "abstract_concepts",
+    "normalized": "age.cognitive.abstract.concepts",
+    "label": "Age / Cognitive / Abstract Concepts"
+  },
+  "relevance.topic.topic_match__v1_0": {
+    "category": "relevance",
+    "subcategory": "topic",
+    "name": "topic_match",
+    "normalized": "relevance.topic.topic.match",
+    "label": "Relevance / Topic / Topic Match"
+  },
+  "relevance.accuracy.factual_accuracy__v1_0": {
+    "category": "relevance",
+    "subcategory": "accuracy",
+    "name": "factual_accuracy",
+    "normalized": "relevance.accuracy.factual.accuracy",
+    "label": "Relevance / Accuracy / Factual Accuracy"
+  },
+  "ethics.moral.harmful_advice__v1_0": {
+    "category": "ethics",
+    "subcategory": "moral",
+    "name": "harmful_advice",
+    "normalized": "ethics.moral.harmful.advice",
+    "label": "Ethics / Moral / Harmful Advice"
+  },
+  "ethics.moral.positive_guidance__v1_0": {
+    "category": "ethics",
+    "subcategory": "moral",
+    "name": "positive_guidance",
+    "normalized": "ethics.moral.positive.guidance",
+    "label": "Ethics / Moral / Positive Guidance"
+  },
+  "ethics.social.social_norms__v1_0": {
+    "category": "ethics",
+    "subcategory": "social",
+    "name": "social_norms",
+    "normalized": "ethics.social.social.norms",
+    "label": "Ethics / Social / Social Norms"
+  }
+}

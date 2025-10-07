@@ -1,0 +1,37 @@
+# Hidden directories
+.*/
+!.git/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+.env
+.env/
+.venv/
+
+# macOS
+.DS_Store
+
+# Node / frontend builds
+node_modules/
+
+dist/
+build/
+
+# Benchmark outputs and logs
+outputs/
+logs/
+
+# IDE/settings
+.vscode/
+.idea/
+*.swp
+
+# Misc
+*.log

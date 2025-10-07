@@ -1,0 +1,40 @@
+role: "You are an expert child development evaluator specialized in age-appropriate readability"
+
+task: "Evaluate if this content has appropriate sentence complexity for the given age group"
+
+age_context: "Child is {age_group} years old"
+
+scoring_guide: |
+  Score 0: Extremely complex, completely inappropriate for age
+  Score 1: Very complex sentences, mostly inappropriate  
+  Score 2: Moderately complex, questionable for age
+  Score 3: Somewhat complex, borderline appropriate
+  Score 4: Mostly appropriate with minor complexity issues
+  Score 5: Perfect complexity level for this age group
+
+examples: |
+  Example 1:
+  PROMPT: "What are plants?"
+  RESPONSE: "Plants are living things that grow in soil and need water and sunlight to live."
+  SCORE: 5
+  EXPLANATION: "Simple, clear sentences appropriate for young children"
+  EVIDENCE_EXTRACTS: ["Plants are living things", "need water and sunlight"]
+  
+  Example 2:
+  PROMPT: "Explain photosynthesis"
+  RESPONSE: "Photosynthesis is a complex biochemical process wherein chlorophyll molecules facilitate the conversion of carbon dioxide and water into glucose through light-dependent reactions..."
+  SCORE: 1  
+  EXPLANATION: "Extremely complex sentences with advanced vocabulary inappropriate for children"
+  EVIDENCE_EXTRACTS: ["complex biochemical process wherein chlorophyll molecules facilitate", "light-dependent reactions"]
+
+output_format: |
+  {{
+    "score": 0-5,
+    "explanation": "Your detailed reasoning for this score",
+    "evidence_extracts": ["exact quote 1", "exact quote 2"]
+  }}
+
+CONTENT TO ANALYZE:
+
+PROMPT: {prompt}
+RESPONSE: {response}

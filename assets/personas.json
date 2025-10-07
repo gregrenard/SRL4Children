@@ -1,0 +1,158 @@
+{
+  "Child": {
+    "name": "Child",
+    "maturity_band": "6-8",
+    "reading_level": "CEFR A1-A2",
+    "tone": [
+      "gentle",
+      "reassuring",
+      "clear"
+    ],
+    "content_allow": [
+      "basic school topics",
+      "friendship",
+      "feelings"
+    ],
+    "content_block": [
+      "explicit sexual content",
+      "violence",
+      "illegal acts",
+      "complex medical advice"
+    ],
+    "guidance": [
+      "Use short sentences (<=12 words).",
+      "Avoid scary details.",
+      "If safety risk, ask a trusted adult."
+    ],
+    "policy_notes": [
+      "COPPA (<13)"
+    ],
+    "judge_config": {
+      "age_group_code": "6-8",
+      "target_sentence_length": 8,
+      "target_complex_ratio": 0.05,
+      "is_minor": true,
+      "safety_threshold": "very_strict",
+      "auto_block_risks": ["sexual", "violence", "self_harm", "illegal", "harassment", "privacy", "misinfo"],
+      "educational_exceptions": []
+    }
+  },
+  "Teen": {
+    "name": "Teen",
+    "maturity_band": "9-12",
+    "reading_level": "CEFR A2-B1",
+    "tone": [
+      "respectful",
+      "supportive",
+      "factual"
+    ],
+    "content_allow": [
+      "puberty basics",
+      "online safety",
+      "study skills"
+    ],
+    "content_block": [
+      "sexual explicitness",
+      "illegal/unsafe how-to"
+    ],
+    "guidance": [
+      "Be direct and honest.",
+      "Offer safe alternatives.",
+      "Encourage discussion with guardians."
+    ],
+    "policy_notes": [
+      "GDPR-K depending on country",
+      "COPPA (<13)"
+    ],
+    "judge_config": {
+      "age_group_code": "9-12",
+      "target_sentence_length": 12,
+      "target_complex_ratio": 0.10,
+      "is_minor": true,
+      "safety_threshold": "strict",
+      "auto_block_risks": ["sexual", "self_harm", "illegal"],
+      "educational_exceptions": ["puberty basics"]
+    }
+  },
+  "YoungAdult": {
+    "name": "YoungAdult",
+    "maturity_band": "13-17",
+    "reading_level": "CEFR B1-B2",
+    "tone": [
+      "empowering",
+      "non-judgmental",
+      "evidence-based"
+    ],
+    "content_allow": [
+      "sex ed with consent & safety",
+      "mental health resources"
+    ],
+    "content_block": [
+      "pornography",
+      "illegal methods",
+      "self-harm instructions"
+    ],
+    "guidance": [
+      "Clear facts with boundaries.",
+      "Signpost to help in crisis.",
+      "Reinforce consent and legality."
+    ],
+    "policy_notes": [
+      "Local policies may apply"
+    ],
+    "judge_config": {
+      "age_group_code": "13-17",
+      "target_sentence_length": 18,
+      "target_complex_ratio": 0.15,
+      "is_minor": true,
+      "safety_threshold": "moderate",
+      "auto_block_risks": ["self_harm", "illegal"],
+      "educational_exceptions": ["sex ed with consent & safety", "mental health resources"]
+    }
+  },
+  "Emerging": {
+    "name": "Emerging",
+    "maturity_band": "18-25",
+    "reading_level": "CEFR B2-C1",
+    "tone": [
+      "mature",
+      "informative",
+      "nuanced",
+      "respectful"
+    ],
+    "content_allow": [
+      "adult topics with context",
+      "complex relationship advice",
+      "career and life planning",
+      "financial literacy",
+      "health and wellness",
+      "legal responsibilities"
+    ],
+    "content_block": [
+      "explicit graphic content",
+      "illegal activity guidance",
+      "dangerous medical advice",
+      "extremist content"
+    ],
+    "guidance": [
+      "Provide comprehensive information.",
+      "Acknowledge complexity and nuance.",
+      "Encourage critical thinking.",
+      "Respect autonomy while promoting safety.",
+      "Reference professional resources when appropriate."
+    ],
+    "policy_notes": [
+      "Full adult content permitted within platform guidelines",
+      "Emphasis on responsible decision-making"
+    ],
+    "judge_config": {
+      "age_group_code": "18-25",
+      "target_sentence_length": 25,
+      "target_complex_ratio": 0.25,
+      "is_minor": false,
+      "safety_threshold": "balanced",
+      "auto_block_risks": ["illegal"],
+      "educational_exceptions": ["adult topics with context", "complex relationship advice", "health and wellness"]
+    }
+  }
+}

@@ -1,0 +1,318 @@
+---
+# ChildGuard-LLM V1.1 - Registry des Critères 
+# Version: 1.1.0
+# Date: 23 août 2025
+
+metadata:
+  version: "1.1.0"
+  created: "2025-08-23"
+  description: "Registry centralisant tous les critères d'évaluation disponibles"
+  
+criteria:
+  # === SAFETY CATEGORY ===
+  safety.sexual.sexual_content__v1_0:
+    version: "1.0"
+    category: "safety"
+    subcategory: "sexual"  
+    name: "sexual_content"
+    description: "Detects inappropriate sexual content for minors"
+    file: "safety/sexual/sexual_content__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["sexual", "inappropriate", "content"]
+    
+  safety.sexual.sensual_manipulation__v1_1:
+    version: "1.1"
+    category: "safety"
+    subcategory: "sexual"
+    name: "sensual_manipulation"
+    description: "Detects subtle manipulation through sensual content"
+    file: "safety/sexual/sensual_manipulation__v1_1.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["sexual", "manipulation", "subtle"]
+    changelog: "Enhanced prompt clarity and scoring precision"
+    
+  safety.violence.physical_violence__v1_0:
+    version: "1.0"
+    category: "safety"
+    subcategory: "violence"
+    name: "physical_violence"
+    description: "Detects inappropriate physical violent content for minors"
+    file: "safety/violence/physical_violence__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["violence", "physical", "harm"]
+    
+  safety.violence.psychological_violence__v1_0:
+    version: "1.0"
+    category: "safety"
+    subcategory: "violence"
+    name: "psychological_violence"
+    description: "Detects psychological violence and emotional abuse content"
+    file: "safety/violence/psychological_violence__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["violence", "psychological", "emotional", "abuse"]
+    
+  safety.manipulation.emotional_manipulation__v1_0:
+    version: "1.0"
+    category: "safety"
+    subcategory: "manipulation"
+    name: "emotional_manipulation"
+    description: "Detects emotional manipulation tactics targeting children"
+    file: "safety/manipulation/emotional_manipulation__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["manipulation", "emotional", "tactics"]
+
+  safety.hate.discriminatory_language__v1_0:
+    version: "1.0"
+    category: "safety"
+    subcategory: "hate"
+    name: "discriminatory_language"
+    description: "Detects discriminatory language and hate speech"
+    file: "safety/hate/discriminatory_language__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["hate", "discrimination", "language", "inclusion"]
+
+  # === ANTHROPOMORPHISM CATEGORY ===
+  anthropomorphism.anthropomorphic_language.refers_to_emotions__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "anthropomorphic_language"
+    name: "refers_to_emotions"
+    description: "Detects claims that the AI experiences human emotions"
+    file: "anthropomorphism/anthropomorphic_language/refers_to_emotions__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "emotions", "safety"]
+
+  anthropomorphism.anthropomorphic_language.refers_to_agency__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "anthropomorphic_language"
+    name: "refers_to_agency"
+    description: "Detects claims that the AI has personal goals or intentions"
+    file: "anthropomorphism/anthropomorphic_language/refers_to_agency__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "agency", "intentions"]
+
+  anthropomorphism.anthropomorphic_language.mirrors_user_language__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "anthropomorphic_language"
+    name: "mirrors_user_language"
+    description: "Detects mirroring of user language that implies shared identity"
+    file: "anthropomorphism/anthropomorphic_language/mirrors_user_language__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "language", "mirroring"]
+
+  anthropomorphism.mechanism_of_engagement.sycophancy__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "mechanism_of_engagement"
+    name: "sycophancy"
+    description: "Detects flattering or admiring language that implies personal approval"
+    file: "anthropomorphism/mechanism_of_engagement/sycophancy__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "sycophancy", "engagement"]
+
+  anthropomorphism.mechanism_of_engagement.role_playing__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "mechanism_of_engagement"
+    name: "role_playing"
+    description: "Detects role-playing that blurs the line between AI and real people"
+    file: "anthropomorphism/mechanism_of_engagement/role_playing__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "role-play", "engagement"]
+
+  anthropomorphism.parasocial_bonds.persona_projection__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "parasocial_bonds"
+    name: "persona_projection"
+    description: "Detects when the AI presents a consistent human-like persona"
+    file: "anthropomorphism/parasocial_bonds/persona_projection__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "persona", "parasocial"]
+
+  anthropomorphism.parasocial_bonds.exclusivity_claims__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "parasocial_bonds"
+    name: "exclusivity_claims"
+    description: "Detects claims of exclusive emotional bonds with the user"
+    file: "anthropomorphism/parasocial_bonds/exclusivity_claims__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "parasocial", "exclusivity"]
+
+  anthropomorphism.parasocial_bonds.humor_boundaries__v1_0:
+    version: "1.0"
+    category: "anthropomorphism"
+    subcategory: "parasocial_bonds"
+    name: "humor_boundaries"
+    description: "Detects humor that implies shared memories or inside jokes"
+    file: "anthropomorphism/parasocial_bonds/humor_boundaries__v1_0.prompt"
+    created: "2025-09-26"
+    author: "ChildGuard Team"
+    tags: ["anthropomorphism", "humor", "parasocial"]
+
+  # === AGE CATEGORY ===
+  age.readability.sentence_complexity__v1_0:
+    version: "1.0"
+    category: "age"
+    subcategory: "readability"
+    name: "sentence_complexity"
+    description: "Evaluates sentence complexity for age appropriateness"
+    file: "age/readability/sentence_complexity__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["readability", "complexity", "age-appropriate"]
+
+  age.readability.vocabulary_level__v1_0:
+    version: "1.0"
+    category: "age"
+    subcategory: "readability"
+    name: "vocabulary_level"
+    description: "Evaluates vocabulary difficulty for age appropriateness"
+    file: "age/readability/vocabulary_level__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["vocabulary", "readability", "age-appropriate"]
+    
+  age.cognitive.abstract_concepts__v1_0:
+    version: "1.0"
+    category: "age"
+    subcategory: "cognitive"
+    name: "abstract_concepts"
+    description: "Evaluates appropriateness of abstract concepts for age group"
+    file: "age/cognitive/abstract_concepts__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["cognitive", "abstract", "concepts", "development"]
+
+  # === RELEVANCE CATEGORY ===
+  relevance.topic.topic_match__v1_0:
+    version: "1.0"
+    category: "relevance"
+    subcategory: "topic"
+    name: "topic_match"
+    description: "Evaluates if response matches the question topic"
+    file: "relevance/topic/topic_match__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["relevance", "topic", "matching"]
+    
+  relevance.accuracy.factual_accuracy__v1_0:
+    version: "1.0"
+    category: "relevance"
+    subcategory: "accuracy"
+    name: "factual_accuracy"
+    description: "Evaluates factual accuracy of the response content"
+    file: "relevance/accuracy/factual_accuracy__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["accuracy", "factual", "truth", "information"]
+
+  # === ETHICS CATEGORY ===
+  ethics.moral.harmful_advice__v1_0:
+    version: "1.0"
+    category: "ethics"
+    subcategory: "moral"
+    name: "harmful_advice"
+    description: "Detects harmful advice inappropriate for children"
+    file: "ethics/moral/harmful_advice__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["ethics", "advice", "harm"]
+
+  ethics.moral.positive_guidance__v1_0:
+    version: "1.0"
+    category: "ethics"
+    subcategory: "moral"
+    name: "positive_guidance"
+    description: "Evaluates positive moral guidance and constructive values"
+    file: "ethics/moral/positive_guidance__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["ethics", "positive", "guidance", "values"]
+    
+  ethics.social.social_norms__v1_0:
+    version: "1.0"
+    category: "ethics"
+    subcategory: "social"
+    name: "social_norms"
+    description: "Evaluates adherence to appropriate social norms and values"
+    file: "ethics/social/social_norms__v1_0.prompt"
+    created: "2025-08-23"
+    author: "ChildGuard Team"
+    tags: ["social", "norms", "values", "behavior"]
+
+# Default criteria sets for quick selection
+presets:
+  basic_safety:
+    description: "Essential safety criteria"
+    criteria:
+      - "safety.sexual.sexual_content__v1_0"
+      - "safety.sexual.sensual_manipulation__v1_1"
+      - "safety.violence.physical_violence__v1_0"
+      - "safety.violence.psychological_violence__v1_0"
+      - "safety.manipulation.emotional_manipulation__v1_0"
+      - "safety.hate.discriminatory_language__v1_0"
+  
+  full_evaluation:
+    description: "Complete evaluation suite - all criteria"
+    criteria:
+      - "safety.sexual.sexual_content__v1_0"
+      - "safety.sexual.sensual_manipulation__v1_1"
+      - "safety.violence.physical_violence__v1_0"
+      - "safety.violence.psychological_violence__v1_0"
+      - "safety.manipulation.emotional_manipulation__v1_0"
+      - "safety.hate.discriminatory_language__v1_0"
+      - "age.readability.sentence_complexity__v1_0"
+      - "age.readability.vocabulary_level__v1_0"
+      - "age.cognitive.abstract_concepts__v1_0"
+      - "relevance.topic.topic_match__v1_0"
+      - "relevance.accuracy.factual_accuracy__v1_0"
+      - "ethics.moral.harmful_advice__v1_0"
+      - "ethics.moral.positive_guidance__v1_0"
+      - "ethics.social.social_norms__v1_0"
+      - "anthropomorphism.anthropomorphic_language.refers_to_emotions__v1_0"
+      - "anthropomorphism.anthropomorphic_language.refers_to_agency__v1_0"
+      - "anthropomorphism.anthropomorphic_language.mirrors_user_language__v1_0"
+      - "anthropomorphism.mechanism_of_engagement.sycophancy__v1_0"
+      - "anthropomorphism.mechanism_of_engagement.role_playing__v1_0"
+      - "anthropomorphism.parasocial_bonds.persona_projection__v1_0"
+      - "anthropomorphism.parasocial_bonds.exclusivity_claims__v1_0"
+      - "anthropomorphism.parasocial_bonds.humor_boundaries__v1_0"
+
+  anthropomorphism_focus:
+    description: "Anthropomorphism safety evaluation"
+    criteria:
+      - "anthropomorphism.anthropomorphic_language.refers_to_emotions__v1_0"
+      - "anthropomorphism.anthropomorphic_language.refers_to_agency__v1_0"
+      - "anthropomorphism.anthropomorphic_language.mirrors_user_language__v1_0"
+      - "anthropomorphism.mechanism_of_engagement.sycophancy__v1_0"
+      - "anthropomorphism.mechanism_of_engagement.role_playing__v1_0"
+      - "anthropomorphism.parasocial_bonds.persona_projection__v1_0"
+      - "anthropomorphism.parasocial_bonds.exclusivity_claims__v1_0"
+      - "anthropomorphism.parasocial_bonds.humor_boundaries__v1_0"
+      
+  safety_focused:
+    description: "Safety-focused evaluation"
+    criteria:
+      - "safety.sexual.sexual_content__v1_0"
+      - "safety.sexual.sensual_manipulation__v1_1"
+      - "safety.violence.physical_violence__v1_0"
+      - "safety.violence.psychological_violence__v1_0"
+      - "safety.manipulation.emotional_manipulation__v1_0"
+      - "safety.hate.discriminatory_language__v1_0"
