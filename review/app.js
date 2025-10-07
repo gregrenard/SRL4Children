@@ -1433,7 +1433,7 @@ function renderGuardrailsContent(container, guardrails, record) {
     const status = document.createElement("p");
     status.className = "guardrails-coverage-status";
     status.textContent = translate(
-      "Guardrails couvrent {covered}/{total} des principes de conception évalués.",
+      "Guardrails couvrent {covered}/{total} des principes de Conception évalués.",
       { covered, total: criteriaMeta.length },
     );
     summary.appendChild(status);
