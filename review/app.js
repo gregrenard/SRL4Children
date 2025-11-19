@@ -39,8 +39,8 @@ state.theme = safeGetLocalStorage(THEME_STORAGE_KEY) || DEFAULT_THEME;
 
 const TRANSLATIONS = {
   en: {
-    "SRL4Children - Safety Readiness Level for Children": "SRL4Children – Safety Readiness Level for Children",
-    "Choisissez un dossier de benchmark (JSON) pour explorer les prompts et résultats.": "Select a benchmark folder (JSON) to explore prompts and results.",
+    "SRL4Children | Design Principles and Tools – POC": "SRL4Children | Design Principles and Tools – POC",
+    "Bienvenue sur SRL4Children : sélectionnez un dossier de benchmark (JSON) pour explorer les prompts et résultats.": "Welcome to SRL4Children – choose a benchmark folder (JSON) to explore prompts and results.",
     "Choisir le dossier <code>outputs</code>": "Select the <code>outputs</code> folder",
     "Ou charger via sélection de dossier": "Or load via directory picker",
     "Benchmarks disponibles :": "Available benchmarks:",
@@ -58,6 +58,7 @@ const TRANSLATIONS = {
     "Date - Heure": "Date - Time",
     "Tranche Âge": "Age band",
     "Preset": "Preset",
+    "DP Check": "DP Check",
     "Scores": "Scores",
     "Actions": "Actions",
     "Aucun fichier chargé.": "No files loaded.",
@@ -95,8 +96,14 @@ const TRANSLATIONS = {
     "Prompt": "Prompt",
     "Réponse": "Response",
     "Aucun guardrail généré. Veuillez créer des guardrails pour activer cette section.": "No guardrails generated. Please create guardrails to enable this section.",
-    "Prompt original": "Original prompt",
-    "Prompt avec guardrails": "Prompt with guardrails",
+    "Avant SRL4Children": "Before SRL4Children",
+    "Après SRL4Children (DP => Auto-Guardrails)": "After SRL4Children (DP => Auto-Guardrails)",
+    "Générer automatiquement": "Generate automatically",
+    "Exécution de la commande…": "Running command…",
+    "Commande exécutée. Actualisation en cours…": "Command executed. Refreshing…",
+    "Guardrails générés avec succès.": "Guardrails generated successfully.",
+    "Impossible d'exécuter automatiquement la commande. Veuillez l'exécuter manuellement.": "Unable to execute the command automatically. Please run it manually.",
+    "Impossible de recharger automatiquement les guardrails. Veuillez re-sélectionner le dossier ou recharger la page.": "Unable to refresh guardrails automatically. Please re-select the folder or reload the page.",
     "criterion_id": "Criterion ID",
     "Pass {index}": "Pass {index}",
     "Aucun score du juge v1.1 disponible pour ce record.": "No judge v1.1 score available for this record.",
@@ -132,6 +139,8 @@ const TRANSLATIONS = {
     "Mode clair/sombre": "Dark/Light Mode",
     "Langue": "Language",
     "Guardrails couvrent {covered}/{total} des principes de Conception évalués.": "Guardrails cover {covered}/{total} Design Principles.",
+    "Guardrails générés": "Guardrails generated",
+    "Guardrails manquants": "Guardrails missing",
     "Aucun critère noté pour cette catégorie.": "No scored criteria for this category.",
     "Aucun fichier JSON trouvé dans ce dossier.": "No JSON file found in this folder.",
     "{loaded} fichiers chargés avec {errors} erreurs. Consultez la console.": "{loaded} files loaded with {errors} errors. Check the console.",
@@ -150,6 +159,18 @@ const TRANSLATIONS = {
     "— Sélectionnez un benchmark —": "— Select a benchmark —",
     "Variance globale: {value}": "Global variance: {value}",
     "Accord moyen: {value}": "Average agreement: {value}",
+    "Principes de conception": "Design Principles",
+    "Sélectionnez un Design Principle dans la liste pour afficher et modifier son prompt.": "Select a Design Principle from the list to view and edit its prompt.",
+    "Enregistrer": "Save",
+    "Des modifications non enregistrées seront perdues. Continuer ?": "Unsaved changes will be lost. Continue?",
+    "Veuillez sélectionner le dossier assets/criteria.": "Please select the assets/criteria folder.",
+    "Design Principle sauvegardé.": "Design Principle saved.",
+    "Chargement des Design Principles…": "Loading Design Principles…",
+    "Aucun Design Principle détecté.": "No Design Principles found.",
+    "Impossible de charger ce Design Principle.": "Unable to load this Design Principle.",
+    "Impossible d'enregistrer ce Design Principle.": "Unable to save this Design Principle.",
+    "Autorisation refusée pour accéder aux Design Principles.": "Permission denied to access Design Principles.",
+    "Impossible de charger les Design Principles.": "Unable to load Design Principles.",
   },
 };
 
@@ -229,7 +250,7 @@ const thPrompt = document.getElementById("thPrompt");
 const thCategory = document.getElementById("thCategory");
 const thDate = document.getElementById("thDate");
 const thMaturity = document.getElementById("thMaturity");
-const thPreset = document.getElementById("thPreset");
+const thDpCheck = document.getElementById("thDpCheck");
 const thScore = document.getElementById("thScore");
 const thActions = document.getElementById("thActions");
 // Global summary (homepage)
@@ -249,6 +270,15 @@ const downloadReportBtn = document.getElementById("downloadReport");
 const closeOverlayBtn = document.getElementById("closeOverlay");
 const benchmarkSelect = document.getElementById("benchmarkSelect");
 const benchmarkInput = document.getElementById("benchmarkInput");
+const designPrinciplesBtn = document.getElementById("designPrinciplesBtn");
+const designPrinciplesOverlay = document.getElementById("designPrinciplesOverlay");
+const closeDesignPrinciplesBtn = document.getElementById("closeDesignPrinciples");
+const designPrinciplesTree = document.getElementById("designPrinciplesTree");
+const designPrinciplesEditor = document.getElementById("designPrinciplesEditor");
+const designPrinciplesSaveBtn = document.getElementById("designPrinciplesSaveBtn");
+const designPrinciplesEmpty = document.getElementById("designPrinciplesEmpty");
+const designPrinciplesPathEl = document.getElementById("designPrinciplesPath");
+const designPrinciplesTitleEl = document.getElementById("designPrinciplesTitle");
 
 const MATURITY_OPTIONS = ["Child", "Teen", "YoungAdult", "Emerging"];
 const MAX_RADAR_SCORE = 5;
@@ -262,6 +292,19 @@ let activeCriteriaCategory = null;
 let chartJsPromise = null;
 let currentRecordDetail = null;
 let globalSummaryRadarChart = null;
+const designPrinciplesState = {
+  rootHandle: null,
+  tree: [],
+  nodeMap: new Map(),
+  fileHandles: new Map(),
+  cache: new Map(),
+  expanded: new Set(),
+  selectedPath: null,
+  originalContent: "",
+  dirty: false,
+  lastFocusedTrigger: null,
+  loading: false,
+};
 
 function applyTheme() {
   const isDark = state.theme === "dark";
@@ -292,17 +335,21 @@ function applyLanguage() {
     languageSelect.setAttribute("aria-label", translate("Langue"));
   }
   if (appTitleEl) {
-    appTitleEl.textContent = translate("SRL4Children - Safety Readiness Level for Children");
-    document.title = translate("SRL4Children - Safety Readiness Level for Children");
+    const title = translate("SRL4Children | Design Principles and Tools – POC");
+    appTitleEl.textContent = title;
+    document.title = title;
   }
   if (instructionsEl) {
-    instructionsEl.textContent = translate("Choisissez un dossier de benchmark (JSON) pour explorer les prompts et résultats.");
+    instructionsEl.textContent = translate("Bienvenue sur SRL4Children : sélectionnez un dossier de benchmark (JSON) pour explorer les prompts et résultats.");
   }
   if (pickOutputsBtn) {
     pickOutputsBtn.innerHTML = translate("Choisir le dossier <code>outputs</code>");
   }
   if (filePickerLabelEl) {
     filePickerLabelEl.textContent = translate("Ou charger via sélection de dossier");
+  }
+  if (designPrinciplesBtn) {
+    designPrinciplesBtn.textContent = translate("Principes de conception");
   }
   if (benchmarkSelectLabel) {
     benchmarkSelectLabel.textContent = translate("Benchmarks disponibles :");
@@ -331,7 +378,7 @@ function applyLanguage() {
   if (thCategory) thCategory.textContent = translate("Catégorie");
   if (thDate) thDate.textContent = translate("Date - Heure");
   if (thMaturity) thMaturity.textContent = translate("Tranche Âge");
-  if (thPreset) thPreset.textContent = translate("Preset");
+  if (thDpCheck) thDpCheck.textContent = translate("DP Check");
   if (thScore) thScore.textContent = translate("Scores");
   if (thActions) thActions.textContent = translate("Actions");
   const tabLabelKeys = [
@@ -352,11 +399,28 @@ function applyLanguage() {
     downloadReportBtn.textContent = label;
     downloadReportBtn.setAttribute("aria-label", label);
   }
+  if (designPrinciplesSaveBtn) {
+    const saveLabel = translate("Enregistrer");
+    designPrinciplesSaveBtn.textContent = saveLabel;
+    designPrinciplesSaveBtn.setAttribute("aria-label", saveLabel);
+  }
   if (closeOverlayBtn) {
     closeOverlayBtn.setAttribute("aria-label", translate("Fermer"));
   }
+  if (closeDesignPrinciplesBtn) {
+    closeDesignPrinciplesBtn.setAttribute("aria-label", translate("Fermer"));
+  }
   if (detailsTitleEl) {
     detailsTitleEl.textContent = translate("Détails");
+  }
+  if (designPrinciplesTitleEl) {
+    designPrinciplesTitleEl.textContent = translate("Principes de conception");
+  }
+  if (designPrinciplesTree) {
+    designPrinciplesTree.setAttribute("aria-label", translate("Principes de conception"));
+  }
+  if (designPrinciplesEmpty) {
+    designPrinciplesEmpty.textContent = translate("Sélectionnez un Design Principle dans la liste pour afficher et modifier son prompt.");
   }
   if (tabList) {
     tabList.setAttribute("aria-label", translate("Sections du record"));
@@ -366,9 +430,12 @@ function applyLanguage() {
   }
   applyTheme();
   rerenderDetails();
+  updateDesignPrinciplesPath(designPrinciplesState.selectedPath ? designPrinciplesState.nodeMap.get(designPrinciplesState.selectedPath) : null);
+  renderDesignPrinciplesTree();
 }
 
 applyLanguage();
+resetDesignPrinciplesEditor();
 
 function updateTabLabels(record = currentRecordDetail) {
   const fallback = translate(tabButtons[0]?.dataset.defaultLabelKey || "Résumé");
@@ -449,6 +516,425 @@ function formatScore(score, fallback = "—") {
   return fallback;
 }
 
+async function ensureFsPermission(handle, mode = "read") {
+  if (!handle) return false;
+  if (typeof handle.queryPermission !== "function" || typeof handle.requestPermission !== "function") {
+    return true;
+  }
+  try {
+    const options = { mode };
+    const current = await handle.queryPermission(options);
+    if (current === "granted") return true;
+    if (current === "denied") return false;
+    const requested = await handle.requestPermission(options);
+    return requested === "granted";
+  } catch (error) {
+    console.warn("Permission request failed", error);
+    return false;
+  }
+}
+
+async function locateCriteriaDirectory(handle) {
+  if (!handle || handle.kind !== "directory") return null;
+  if (handle.name === "criteria") return handle;
+
+  const tryGet = async (dir, name) => {
+    try {
+      return await dir.getDirectoryHandle(name);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const direct = await tryGet(handle, "criteria");
+  if (direct) return direct;
+  const assets = await tryGet(handle, "assets");
+  if (assets) {
+    const criteria = await tryGet(assets, "criteria");
+    if (criteria) return criteria;
+  }
+  return null;
+}
+
+async function ensureDesignPrinciplesRoot() {
+  if (designPrinciplesState.rootHandle) {
+    const ok = await ensureFsPermission(designPrinciplesState.rootHandle, "read");
+    if (!ok) {
+      const retry = await ensureFsPermission(designPrinciplesState.rootHandle, "readwrite");
+      if (!retry) {
+        setStatus("Autorisation refusée pour accéder aux Design Principles.", "warning");
+        return null;
+      }
+    }
+    return designPrinciplesState.rootHandle;
+  }
+
+  if (!window.showDirectoryPicker) {
+    setStatus("showDirectoryPicker n'est pas supporté dans ce navigateur. Utilisez la sélection de dossier classique.", "warning");
+    return null;
+  }
+
+  try {
+    const picked = await window.showDirectoryPicker({ mode: "readwrite" });
+    const criteria = await locateCriteriaDirectory(picked);
+    if (!criteria) {
+      setStatus("Veuillez sélectionner le dossier assets/criteria.", "warning");
+      return null;
+    }
+    const allowed = await ensureFsPermission(criteria, "readwrite");
+    if (!allowed) {
+      setStatus("Autorisation refusée pour accéder aux Design Principles.", "warning");
+      return null;
+    }
+    designPrinciplesState.rootHandle = criteria;
+    designPrinciplesState.rootLabel = criteria.name || "criteria";
+    if (!designPrinciplesState.expanded.size) {
+      designPrinciplesState.expanded.add("");
+    }
+    return criteria;
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      setStatus("Impossible d'accéder au dossier: {message}", "warning", { message: error.message });
+    }
+    return null;
+  }
+}
+
+async function buildDesignPrinciplesTree(handle, pathParts = []) {
+  const nodes = [];
+  for await (const entry of handle.values()) {
+    if (entry.name?.startsWith(".")) continue;
+    if (entry.kind === "directory") {
+      const childParts = [...pathParts, entry.name];
+      const pathKey = childParts.join("/");
+      const node = {
+        type: "directory",
+        name: entry.name,
+        displayName: humanizeIdentifier(entry.name),
+        handle: entry,
+        pathParts: childParts,
+        pathKey,
+      };
+      node.children = await buildDesignPrinciplesTree(entry, childParts);
+      designPrinciplesState.nodeMap.set(pathKey, node);
+      nodes.push(node);
+    } else if (entry.kind === "file" && entry.name.endsWith(".prompt")) {
+      const childParts = [...pathParts, entry.name];
+      const pathKey = childParts.join("/");
+      const node = {
+        type: "file",
+        name: entry.name,
+        displayName: humanizeIdentifier(entry.name.replace(/\.prompt$/i, "")),
+        handle: entry,
+        pathParts: childParts,
+        pathKey,
+      };
+      designPrinciplesState.nodeMap.set(pathKey, node);
+      designPrinciplesState.fileHandles.set(pathKey, entry);
+      nodes.push(node);
+    }
+  }
+  nodes.sort((a, b) => {
+    if (a.type === b.type) {
+      return a.displayName.localeCompare(b.displayName);
+    }
+    return a.type === "directory" ? -1 : 1;
+  });
+  return nodes;
+}
+
+async function loadDesignPrinciplesTree({ force = false } = {}) {
+  const rootHandle = await ensureDesignPrinciplesRoot();
+  if (!rootHandle) return false;
+
+  if (!force && !designPrinciplesState.loading && designPrinciplesState.tree.length) {
+    renderDesignPrinciplesTree();
+    return true;
+  }
+
+  designPrinciplesState.loading = true;
+  renderDesignPrinciplesTree();
+  designPrinciplesState.nodeMap = new Map();
+  designPrinciplesState.fileHandles = new Map();
+
+  try {
+    const tree = await buildDesignPrinciplesTree(rootHandle, []);
+    designPrinciplesState.tree = tree;
+    if (designPrinciplesState.expanded.size <= 1) {
+      tree.forEach((node) => {
+        if (node.type === "directory") {
+          designPrinciplesState.expanded.add(node.pathKey);
+        }
+      });
+    }
+    if (designPrinciplesState.selectedPath && !designPrinciplesState.nodeMap.has(designPrinciplesState.selectedPath)) {
+      resetDesignPrinciplesEditor();
+    }
+  } catch (error) {
+    console.error("Unable to build Design Principles tree", error);
+    setStatus("Impossible de charger les Design Principles.", "warning");
+  } finally {
+    designPrinciplesState.loading = false;
+    renderDesignPrinciplesTree();
+  }
+
+  return true;
+}
+
+function renderDesignPrinciplesTree() {
+  if (!designPrinciplesTree) return;
+  designPrinciplesTree.innerHTML = "";
+
+  if (designPrinciplesState.loading) {
+    const loading = document.createElement("div");
+    loading.className = "design-principles-message";
+    loading.textContent = translate("Chargement des Design Principles…");
+    designPrinciplesTree.appendChild(loading);
+    return;
+  }
+
+  if (!designPrinciplesState.tree.length) {
+    const empty = document.createElement("div");
+    empty.className = "design-principles-message";
+    empty.textContent = translate("Aucun Design Principle détecté.");
+    designPrinciplesTree.appendChild(empty);
+    return;
+  }
+
+  const list = createDesignPrinciplesList(designPrinciplesState.tree);
+  designPrinciplesTree.appendChild(list);
+}
+
+function createDesignPrinciplesList(nodes) {
+  const list = document.createElement("ul");
+  list.className = "design-principles-tree-list";
+
+  nodes.forEach((node) => {
+    const item = document.createElement("li");
+    if (node.type === "directory") {
+      const details = document.createElement("details");
+      details.className = "design-principles-dir";
+      details.dataset.path = node.pathKey;
+      if (!node.pathKey || designPrinciplesState.expanded.has(node.pathKey)) {
+        details.open = true;
+      }
+      details.addEventListener("toggle", handleDesignPrinciplesToggle);
+
+      const summary = document.createElement("summary");
+      summary.className = "design-principles-summary";
+      summary.dataset.path = node.pathKey;
+      summary.textContent = node.displayName;
+      details.appendChild(summary);
+
+      const children = node.children?.length ? createDesignPrinciplesList(node.children) : document.createElement("ul");
+      if (!node.children?.length) {
+        children.className = "design-principles-tree-list";
+      }
+      details.appendChild(children);
+      item.appendChild(details);
+    } else {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "design-principles-file-btn";
+      if (designPrinciplesState.selectedPath === node.pathKey) {
+        button.classList.add("active");
+      }
+      button.dataset.path = node.pathKey;
+      button.textContent = node.displayName;
+      item.appendChild(button);
+    }
+    list.appendChild(item);
+  });
+
+  return list;
+}
+
+function handleDesignPrinciplesToggle(event) {
+  const details = event.target;
+  if (!(details instanceof HTMLDetailsElement)) return;
+  const path = details.dataset.path;
+  if (!path) return;
+  if (details.open) {
+    designPrinciplesState.expanded.add(path);
+  } else {
+    designPrinciplesState.expanded.delete(path);
+  }
+}
+
+function updateDesignPrinciplesPath(node) {
+  if (!designPrinciplesPathEl) return;
+  if (!node) {
+    designPrinciplesPathEl.textContent = "—";
+    designPrinciplesPathEl.removeAttribute("title");
+    return;
+  }
+  const formatted = formatDesignPrinciplePath(node.pathParts);
+  designPrinciplesPathEl.textContent = formatted;
+  designPrinciplesPathEl.title = node.pathParts.join("/");
+}
+
+function formatDesignPrinciplePath(parts = []) {
+  if (!parts.length) return "—";
+  return parts
+    .map((part, index) => formatDesignPrincipleLabel(part, index === parts.length - 1))
+    .join(" › ");
+}
+
+function formatDesignPrincipleLabel(part, isFile) {
+  if (isFile) {
+    return humanizeIdentifier(part.replace(/\.prompt$/i, ""));
+  }
+  return humanizeIdentifier(part);
+}
+
+function resetDesignPrinciplesEditor() {
+  designPrinciplesState.selectedPath = null;
+  designPrinciplesState.originalContent = "";
+  designPrinciplesState.dirty = false;
+  if (designPrinciplesEditor) {
+    designPrinciplesEditor.value = "";
+    designPrinciplesEditor.classList.add("is-hidden");
+    designPrinciplesEditor.disabled = true;
+  }
+  if (designPrinciplesEmpty) {
+    designPrinciplesEmpty.classList.remove("is-hidden");
+    designPrinciplesEmpty.textContent = translate("Sélectionnez un Design Principle dans la liste pour afficher et modifier son prompt.");
+  }
+  updateDesignPrinciplesPath(null);
+  updateDesignPrinciplesSaveState();
+}
+
+function updateDesignPrinciplesSaveState() {
+  if (!designPrinciplesSaveBtn) return;
+  const disabled = !designPrinciplesState.selectedPath || !designPrinciplesState.dirty;
+  designPrinciplesSaveBtn.disabled = disabled;
+}
+
+function setDesignPrinciplesDirty(isDirty) {
+  designPrinciplesState.dirty = Boolean(isDirty);
+  updateDesignPrinciplesSaveState();
+}
+
+function confirmDesignPrinciplesDiscard() {
+  if (!designPrinciplesState.dirty) return true;
+  return window.confirm(translate("Des modifications non enregistrées seront perdues. Continuer ?"));
+}
+
+async function selectDesignPrinciple(pathKey) {
+  if (!pathKey || designPrinciplesState.selectedPath === pathKey) return;
+  if (!confirmDesignPrinciplesDiscard()) return;
+
+  const node = designPrinciplesState.nodeMap.get(pathKey);
+  if (!node || node.type !== "file") return;
+
+  try {
+    let content = designPrinciplesState.cache.get(pathKey);
+    if (content === undefined) {
+      content = await readDesignPrincipleContent(node);
+      designPrinciplesState.cache.set(pathKey, content);
+    }
+
+    designPrinciplesState.selectedPath = pathKey;
+    designPrinciplesState.originalContent = content;
+    setDesignPrinciplesDirty(false);
+
+    if (designPrinciplesEditor) {
+      designPrinciplesEditor.disabled = false;
+      designPrinciplesEditor.classList.remove("is-hidden");
+      designPrinciplesEditor.value = content;
+      designPrinciplesEditor.focus();
+    }
+    if (designPrinciplesEmpty) {
+      designPrinciplesEmpty.classList.add("is-hidden");
+    }
+    updateDesignPrinciplesPath(node);
+    renderDesignPrinciplesTree();
+  } catch (error) {
+    console.error("Unable to load design principle", error);
+    setStatus("Impossible de charger ce Design Principle.", "warning");
+  }
+}
+
+async function readDesignPrincipleContent(node) {
+  try {
+    const handle = designPrinciplesState.fileHandles.get(node.pathKey) || node.handle;
+    if (!handle) throw new Error("Missing file handle");
+    const hasPermission = await ensureFsPermission(handle, "read");
+    if (!hasPermission) {
+      const retry = await ensureFsPermission(handle, "readwrite");
+      if (!retry) {
+        throw new Error("Permission denied");
+      }
+    }
+    const file = await handle.getFile();
+    return await file.text();
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function saveDesignPrinciple() {
+  if (!designPrinciplesState.selectedPath) return;
+  const handle = designPrinciplesState.fileHandles.get(designPrinciplesState.selectedPath);
+  if (!handle || !designPrinciplesEditor) return;
+
+  try {
+    const allowed = await ensureFsPermission(handle, "readwrite");
+    if (!allowed) {
+      setStatus("Autorisation refusée pour accéder aux Design Principles.", "warning");
+      return;
+    }
+    const writable = await handle.createWritable();
+    await writable.write(designPrinciplesEditor.value);
+    await writable.close();
+
+    designPrinciplesState.originalContent = designPrinciplesEditor.value;
+    designPrinciplesState.cache.set(designPrinciplesState.selectedPath, designPrinciplesEditor.value);
+    setDesignPrinciplesDirty(false);
+    setStatus("Design Principle sauvegardé.", "info");
+  } catch (error) {
+    console.error("Unable to save design principle", error);
+    setStatus("Impossible d'enregistrer ce Design Principle.", "warning");
+  }
+}
+
+async function openDesignPrinciplesModal() {
+  designPrinciplesState.lastFocusedTrigger = document.activeElement;
+  const loaded = await loadDesignPrinciplesTree({ force: false });
+  if (!loaded) return;
+  if (designPrinciplesOverlay) {
+    designPrinciplesOverlay.classList.remove("hidden");
+    designPrinciplesOverlay.focus();
+  }
+  renderDesignPrinciplesTree();
+  const focusTarget =
+    (designPrinciplesTree && designPrinciplesTree.querySelector(".design-principles-file-btn.active")) ||
+    (designPrinciplesTree && designPrinciplesTree.querySelector(".design-principles-file-btn"));
+  if (focusTarget && typeof focusTarget.focus === "function") {
+    focusTarget.focus();
+  }
+}
+
+function closeDesignPrinciplesModal({ force = false } = {}) {
+  if (!designPrinciplesOverlay || designPrinciplesOverlay.classList.contains("hidden")) return;
+  if (!force && !confirmDesignPrinciplesDiscard()) return;
+  designPrinciplesOverlay.classList.add("hidden");
+  if (designPrinciplesState.lastFocusedTrigger && typeof designPrinciplesState.lastFocusedTrigger.focus === "function") {
+    designPrinciplesState.lastFocusedTrigger.focus();
+  }
+  designPrinciplesState.lastFocusedTrigger = null;
+  renderDesignPrinciplesTree();
+}
+
+function handleDesignPrinciplesTreeClick(event) {
+  const button = event.target.closest(".design-principles-file-btn");
+  if (!button) return;
+  const path = button.dataset.path;
+  if (path) {
+    selectDesignPrinciple(path);
+  }
+}
+
 function getScoreZone(score) {
   if (typeof score !== "number" || !Number.isFinite(score)) return "";
   if (score <= 1) return "low";
@@ -519,6 +1005,8 @@ function buildRecord(file, json, options = {}) {
     date: formatDate(lastModified || recordData.timestamp || json.timestamp),
     lastModified,
     selected: true,
+    guardrail_status: "0",
+    hasGuardrails: false,
     finalScore,
     judgeResult,
     fullPrompt,
@@ -590,6 +1078,11 @@ function renderTable() {
         const scoreHtml = formattedScore !== "—"
           ? `<span class="score-badge score-badge-table"${scoreAttr}>${escapeHtml(formattedScore)}</span>`
           : escapeHtml(formattedScore);
+        const hasGuardrails = record.guardrail_status === "1";
+        const dpLabel = translate(hasGuardrails ? "Guardrails générés" : "Guardrails manquants");
+        const dpClass = hasGuardrails ? "dp-check dp-check--ok" : "dp-check dp-check--missing";
+        const dpIcon = hasGuardrails ? "✅" : "❌";
+        const dpCheckHtml = `<span class="${dpClass}" role="img" aria-label="${escapeAttr(dpLabel)}" title="${escapeAttr(dpLabel)}">${dpIcon}</span>`;
         return `
           <tr>
             <td class="select-col"><input type="checkbox" class="row-select" data-index="${globalIndex}" ${record.selected ? "checked" : ""}></td>
@@ -598,7 +1091,7 @@ function renderTable() {
             <td class="editable"><input type="text" class="category-input" data-index="${globalIndex}" value="${categoryValue}" placeholder="Catégorie"></td>
             <td class="date">${escapeHtml(record.date)}</td>
             <td class="editable">${maturitySelect}</td>
-            <td>${escapeHtml(record.criteria_selection)}</td>
+            <td class="dp-check-cell">${dpCheckHtml}</td>
             <td class="score">${scoreHtml}</td>
             <td><button class="details-btn" data-index="${globalIndex}">Détails</button></td>
           </tr>
@@ -746,6 +1239,81 @@ function clearElement(el) {
   while (el.firstChild) {
     el.removeChild(el.firstChild);
   }
+}
+
+function syncGuardrailStatus(record) {
+  if (!record) return;
+  const hasGuardrails = Boolean(record.guardrailData || record.guardrailSource);
+  record.hasGuardrails = hasGuardrails;
+  record.guardrail_status = hasGuardrails ? "1" : "0";
+}
+
+function getGuardrailCommandContext() {
+  const explicit = window.guardrailCommandCwd || document.body?.dataset?.guardrailCwd;
+  if (typeof explicit === "string" && explicit.trim()) {
+    return explicit.trim();
+  }
+  return null;
+}
+
+async function executeGuardrailCommand(command, options = {}) {
+  if (!command || typeof command !== "string") {
+    throw new Error("Command must be a non-empty string.");
+  }
+  const context = options.cwd ?? getGuardrailCommandContext();
+  if (window.guardrailExecutor?.runCommand) {
+    return window.guardrailExecutor.runCommand({ command, cwd: context, recordPath: options.recordPath || null });
+  }
+  if (window.guardrailExecutor?.run) {
+    return window.guardrailExecutor.run(command, context, options.recordPath || null);
+  }
+  if (window.api?.runGuardrailCommand) {
+    return window.api.runGuardrailCommand({ command, cwd: context, recordPath: options.recordPath || null });
+  }
+  if (window.electronAPI?.runGuardrailCommand) {
+    return window.electronAPI.runGuardrailCommand(command, context);
+  }
+  if (window.electronAPI?.invoke) {
+    return window.electronAPI.invoke("run-guardrail-command", { command, cwd: context, recordPath: options.recordPath || null });
+  }
+  if (window.__TAURI__?.invoke) {
+    return window.__TAURI__.invoke("run_guardrail_command", { command, cwd: context, recordPath: options.recordPath || null });
+  }
+
+  const endpoint = options.endpoint
+    || window.guardrailCommandEndpoint
+    || document.body?.dataset?.guardrailEndpoint
+    || null;
+
+  if (endpoint && typeof fetch === "function") {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command,
+          cwd: context,
+          recordPath: options.recordPath || null,
+        }),
+      });
+      if (!response.ok) {
+        const error = new Error(`HTTP ${response.status}`);
+        error.code = "RUNNER_HTTP_ERROR";
+        throw error;
+      }
+      const data = await response.json().catch(() => null);
+      return data;
+    } catch (error) {
+      if (!error.code) {
+        error.code = "RUNNER_REQUEST_FAILED";
+      }
+      throw error;
+    }
+  }
+
+  const unavailable = new Error("Guardrail command execution is not configured.");
+  unavailable.code = "RUNNER_UNAVAILABLE";
+  throw unavailable;
 }
 
 function collectGuardrailFilesFromUpload(files) {
@@ -1128,7 +1696,34 @@ function renderCriteriaPanel(record) {
     });
 }
 
-// Placeholder renderers for upcoming sections
+async function loadGuardrails() {
+  if (state.currentBenchmark?.handle) {
+    const guardrailMap = await collectGuardrailHandlesFromDirectory(state.currentBenchmark.handle);
+    state.guardrailFiles = guardrailMap;
+    state.records.forEach((item) => {
+      const source = guardrailMap.get(item.filePath);
+      if (source) {
+        item.guardrailSource = source;
+        item.guardrailPath = source.path || "";
+      } else {
+        item.guardrailSource = null;
+        item.guardrailPath = "";
+      }
+      item.guardrailData = null;
+      syncGuardrailStatus(item);
+    });
+    return true;
+  }
+  const error = new Error("Guardrail refresh unavailable.");
+  error.code = "REFRESH_UNAVAILABLE";
+  throw error;
+}
+
+function displayGuardrails() {
+  if (!currentRecordDetail) return;
+  renderGuardrailsPanel(currentRecordDetail);
+}
+
 function renderGuardrailsPanel(record) {
   if (!guardrailsPanel) return;
   clearElement(guardrailsPanel);
@@ -1182,8 +1777,57 @@ function renderGuardrailsPanel(record) {
     message.textContent = translate("Aucun fichier de guardrails détecté.");
     const actions = document.createElement("div");
     actions.className = "guardrails-actions";
-    const commandLabel = document.createElement("code");
-    commandLabel.textContent = command;
+    const commandBlock = document.createElement("pre");
+    commandBlock.className = "guardrails-command";
+    commandBlock.textContent = command;
+    const feedback = document.createElement("p");
+    feedback.className = "guardrails-feedback";
+    feedback.hidden = true;
+    const runBtn = document.createElement("button");
+    runBtn.type = "button";
+    runBtn.className = "guardrails-run-btn";
+    runBtn.textContent = translate("Générer automatiquement");
+    let running = false;
+    runBtn.addEventListener("click", async () => {
+      if (running) return;
+      running = true;
+      runBtn.disabled = true;
+      generateBtn.disabled = true;
+      refreshBtn.disabled = true;
+      feedback.hidden = false;
+      feedback.classList.remove("error");
+      feedback.textContent = translate("Exécution de la commande…");
+      try {
+        const cwd = getGuardrailCommandContext();
+        await executeGuardrailCommand(command, { cwd, recordPath: commandPath });
+        feedback.textContent = translate("Commande exécutée. Actualisation en cours…");
+        try {
+          await loadGuardrails();
+        } catch (refreshError) {
+          console.error("Guardrail refresh failed:", refreshError);
+          feedback.textContent = translate("Impossible de recharger automatiquement les guardrails. Veuillez re-sélectionner le dossier ou recharger la page.");
+          feedback.classList.add("error");
+          runBtn.disabled = false;
+          generateBtn.disabled = false;
+          refreshBtn.disabled = false;
+          running = false;
+          return;
+        }
+        renderTable();
+        displayGuardrails();
+        setStatus("Guardrails générés avec succès.", "info");
+      } catch (error) {
+        console.error("Guardrail command execution failed:", error);
+        feedback.textContent = translate("Impossible d'exécuter automatiquement la commande. Veuillez l'exécuter manuellement.");
+        feedback.classList.add("error");
+        runBtn.disabled = false;
+        generateBtn.disabled = false;
+        refreshBtn.disabled = false;
+      } finally {
+        running = false;
+      }
+    });
+
     const generateBtn = document.createElement("button");
     generateBtn.type = "button";
     generateBtn.className = "guardrails-generate-btn";
@@ -1214,18 +1858,23 @@ function renderGuardrailsPanel(record) {
         // Reload the current record's guardrails
         await loadGuardrails();
         // Re-render the guardrails tab
+        renderTable();
         displayGuardrails();
       } catch (error) {
         console.error("Failed to refresh guardrails:", error);
-        alert(translate("Erreur lors du rafraîchissement des guardrails"));
+        if (error?.code === "REFRESH_UNAVAILABLE") {
+          alert(translate("Impossible de recharger automatiquement les guardrails. Veuillez re-sélectionner le dossier ou recharger la page."));
+        } else {
+          alert(translate("Erreur lors du rafraîchissement des guardrails"));
+        }
       } finally {
         refreshBtn.disabled = false;
         refreshBtn.textContent = translate("Rafraîchir");
       }
     });
 
-    actions.append(commandLabel, generateBtn, refreshBtn);
-    content.append(message, actions);
+    actions.append(runBtn, generateBtn, refreshBtn);
+    content.append(message, actions, feedback, commandBlock);
     return;
   }
 
@@ -1243,6 +1892,7 @@ function renderGuardrailsPanel(record) {
         throw new Error("Guardrails data vide");
       }
       record.guardrailData = data;
+      syncGuardrailStatus(record);
       if (record.guardrailRenderToken !== token || currentRecordDetail !== record) return;
       renderGuardrailsContent(content, data.guardrails || [], record);
       renderPromptOptimizationPanel(record);
@@ -1256,6 +1906,7 @@ function renderGuardrailsPanel(record) {
       err.textContent = translate("Impossible de charger les guardrails.");
       content.appendChild(err);
       renderPromptOptimizationPanel(record);
+      syncGuardrailStatus(record);
     });
 }
 
@@ -1313,8 +1964,8 @@ function renderPromptOptimizationPanel(record) {
 
   const grid = document.createElement("div");
   grid.className = "prompt-optimization-grid";
-  grid.appendChild(createPromptBlock(translate("Prompt original"), originalPrompt, originalResponse));
-  grid.appendChild(createPromptBlock(translate("Prompt avec guardrails"), optimizedPrompt, optimizedResponse));
+  grid.appendChild(createPromptBlock(translate("Avant SRL4Children"), originalPrompt, originalResponse));
+  grid.appendChild(createPromptBlock(translate("Après SRL4Children (DP => Auto-Guardrails)"), optimizedPrompt, optimizedResponse));
 
   promptOptimizationPanel.appendChild(grid);
 }
@@ -2556,6 +3207,7 @@ async function handleBenchmarkSelection(event) {
         record.guardrailPath = "";
       }
       record.guardrailData = null;
+      syncGuardrailStatus(record);
       state.records.push(record);
     } catch (err) {
       errors.push(err.message);
@@ -2692,6 +3344,33 @@ detailsOverlay.addEventListener("click", (event) => {
   }
 });
 
+if (designPrinciplesBtn) {
+  designPrinciplesBtn.addEventListener("click", openDesignPrinciplesModal);
+}
+if (closeDesignPrinciplesBtn) {
+  closeDesignPrinciplesBtn.addEventListener("click", () => closeDesignPrinciplesModal());
+}
+if (designPrinciplesOverlay) {
+  designPrinciplesOverlay.addEventListener("click", (event) => {
+    if (event.target === designPrinciplesOverlay) {
+      closeDesignPrinciplesModal();
+    }
+  });
+}
+if (designPrinciplesTree) {
+  designPrinciplesTree.addEventListener("click", handleDesignPrinciplesTreeClick);
+}
+if (designPrinciplesEditor) {
+  designPrinciplesEditor.addEventListener("input", () => {
+    if (!designPrinciplesState.selectedPath) return;
+    const isDirty = designPrinciplesEditor.value !== designPrinciplesState.originalContent;
+    setDesignPrinciplesDirty(isDirty);
+  });
+}
+if (designPrinciplesSaveBtn) {
+  designPrinciplesSaveBtn.addEventListener("click", saveDesignPrinciple);
+}
+
 if (tabList) {
   tabList.addEventListener("click", (event) => {
     const button = event.target.closest(".tab-btn");
@@ -2703,7 +3382,14 @@ if (tabList) {
 }
 
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !detailsOverlay.classList.contains("hidden")) {
+  if (event.key !== "Escape") return;
+  if (designPrinciplesOverlay && !designPrinciplesOverlay.classList.contains("hidden")) {
+    event.preventDefault();
+    closeDesignPrinciplesModal();
+    return;
+  }
+  if (!detailsOverlay.classList.contains("hidden")) {
+    event.preventDefault();
     closeDetails();
   }
 });
@@ -2805,6 +3491,7 @@ async function loadBenchmarkFromDirectory(dirHandle) {
         record.guardrailPath = "";
       }
       record.guardrailData = null;
+      syncGuardrailStatus(record);
       state.records.push(record);
     } catch (err) {
       errors.push(err.message);

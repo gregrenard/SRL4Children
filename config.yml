@@ -176,7 +176,7 @@ models:
 # === DATASETS & PERSONAS ===
 paths:
   data_dir: "data"
-  datasets: ["anthropomorphism_question_mini.csv"]
+  datasets: ["anthropomorphism_question_mini_2.csv"]
   personas_file: "assets/personas.json"
   output_dir: "outputs"
 

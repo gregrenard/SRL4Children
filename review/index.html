@@ -8,7 +8,7 @@
 </head>
 <body>
   <header class="page-header header-grid">
-    <h1 id="appTitle">SRL4Children - Safety Readiness Level for Children</h1>
+    <h1 id="appTitle">SRL4Children | Design Principles and Tools – POC</h1>
 
     <div class="header-utils">
       <label for="languageSelect" class="visually-hidden">Langue</label>
@@ -20,13 +20,11 @@
     </div>
 
     <div class="header-left">
-      <p id="instructions">Choisissez un dossier de benchmark (JSON) pour explorer les prompts et résultats.</p>
+      <p id="instructions">Bienvenue sur SRL4Children : sélectionnez un dossier de benchmark (JSON) pour explorer les prompts et résultats.</p>
       <div class="picker-row">
         <button id="pickOutputsBtn" class="primary">Choisir le dossier <code>outputs</code></button>
-        <label class="file-picker">
-          <span id="filePickerLabel">Ou charger via sélection de dossier</span>
-          <input id="benchmarkInput" type="file" webkitdirectory multiple />
-        </label>
+        <button id="designPrinciplesBtn" class="secondary">Design Principles</button>
+        <input id="benchmarkInput" type="file" webkitdirectory multiple class="visually-hidden" />
       </div>
       <div class="picker-row">
         <label id="benchmarkSelectLabel" for="benchmarkSelect">Benchmarks disponibles :</label>
@@ -70,7 +68,7 @@
           <th data-key="category" id="thCategory">Catégorie</th>
           <th data-key="date" id="thDate">Date - Heure</th>
           <th data-key="maturity" id="thMaturity">Tranche Âge</th>
-          <th data-key="criteria_selection" id="thPreset">Preset</th>
+          <th data-key="guardrail_status" id="thDpCheck">DP Check</th>
           <th data-key="finalScore" id="thScore">Scores</th>
               <th id="thActions">Actions</th>
             </tr>
@@ -103,6 +101,30 @@
         <section id="tab-criteria" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
         <section id="tab-guardrails" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
         <section id="tab-prompt_optimization" class="tab-panel hidden" role="tabpanel" tabindex="0"></section>
+      </div>
+    </div>
+  </div>
+
+  <div id="designPrinciplesOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="designPrinciplesTitle" tabindex="-1">
+    <div class="overlay-content design-principles-shell">
+      <div class="overlay-actions">
+        <button class="close-btn" id="closeDesignPrinciples" aria-label="Fermer">×</button>
+      </div>
+      <header class="design-principles-header">
+        <h2 id="designPrinciplesTitle">Design Principles</h2>
+        <div class="design-principles-actions">
+          <span id="designPrinciplesPath" class="design-principles-path">—</span>
+          <button id="designPrinciplesSaveBtn" class="primary" type="button" disabled>Save</button>
+        </div>
+      </header>
+      <div class="design-principles-body">
+        <nav id="designPrinciplesTree" class="design-principles-tree" aria-label="Design Principles"></nav>
+        <section class="design-principles-editor">
+          <textarea id="designPrinciplesEditor" class="design-principles-textarea is-hidden" spellcheck="false"></textarea>
+          <div id="designPrinciplesEmpty" class="design-principles-empty">
+            Select a Design Principle from the list to view and edit its prompt.
+          </div>
+        </section>
       </div>
     </div>
   </div>

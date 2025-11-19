@@ -35,3 +35,6 @@ logs/
 
 # Misc
 *.log
+
+# Personal notes with sensitive data
+notes.txt
