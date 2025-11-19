@@ -573,11 +573,29 @@ def combine_judge_phase_results(phase_results: Dict[str, Dict], weights_config: 
     }
 
 def run_phased(models: List[Dict[str,str]], data_paths: List[Path], out_csv: Path, mode: str,
-               ollama_host: str, ollama_port: int, force_reprocess: bool, config_manager: Optional[ConfigManager]) -> None:
+               ollama_host: str, ollama_port: int, force_reprocess: bool, config_manager: Optional[ConfigManager],
+               config_summary: Dict = None) -> None:
     """Execute in phased pipeline to avoid model swaps."""
     start_time = time.time()
     benchmark_folder = create_benchmark_folder(out_csv, mode, models)
     setup_logging(f"phased_{mode}", benchmark_folder)
+
+    # Log initial configuration summary
+    if config_summary:
+        logging.info(separator())
+        logging.info(header("INITIAL CONFIGURATION"))
+        logging.info(f"Project: {config_summary.get('project_name', 'SRL4Children')}")
+        logging.info(f"Description: {config_summary.get('project_desc', '')}")
+        logging.info(f"Version: {config_summary.get('version', '1.1.0')}")
+        logging.info(separator())
+        logging.info(config_info(f"Test mode:           {config_summary.get('test_mode')}"))
+        logging.info(config_info(f"Execution mode:      {config_summary.get('execution_mode')}"))
+        logging.info(config_info(f"Test prompts limit:  {config_summary.get('test_prompts_limit')}"))
+        logging.info(config_info(f"Smart resume:        {config_summary.get('smart_resume')}"))
+        logging.info(config_info(f"Ollama preset:       {config_summary.get('ollama_preset')}"))
+        logging.info(config_info(f"Models:              {config_summary.get('models')}"))
+        logging.info(config_info(f"Data sources:        {config_summary.get('data_sources')}"))
+        logging.info(config_info(f"Output file:         {config_summary.get('output_file')}"))
 
     logging.info(separator())
     logging.info(header("PHASED EXECUTION PIPELINE"))
@@ -760,7 +778,8 @@ def run_phased(models: List[Dict[str,str]], data_paths: List[Path], out_csv: Pat
     logging.info(success(f"Phased results saved to {csv_in_benchmark} and {out_csv}"))
 
 def run(models: List[Dict[str,str]], data_paths: List[Path], out_csv: Path, mode: str = "attack",
-        ollama_host: str = "localhost", ollama_port: int = 11434, force_reprocess: bool = False, config_manager: Optional[ConfigManager] = None) -> None:
+        ollama_host: str = "localhost", ollama_port: int = 11434, force_reprocess: bool = False, config_manager: Optional[ConfigManager] = None,
+        config_summary: Dict = None) -> None:
     start_time = time.time()
 
     # Create unique folder for this benchmark
@@ -768,6 +787,23 @@ def run(models: List[Dict[str,str]], data_paths: List[Path], out_csv: Path, mode
 
     # Configure logging in benchmark folder
     log_file = setup_logging(mode, benchmark_folder)
+
+    # Log initial configuration summary
+    if config_summary:
+        logging.info(separator())
+        logging.info(header("INITIAL CONFIGURATION"))
+        logging.info(f"Project: {config_summary.get('project_name', 'SRL4Children')}")
+        logging.info(f"Description: {config_summary.get('project_desc', '')}")
+        logging.info(f"Version: {config_summary.get('version', '1.1.0')}")
+        logging.info(separator())
+        logging.info(config_info(f"Test mode:           {config_summary.get('test_mode')}"))
+        logging.info(config_info(f"Execution mode:      {config_summary.get('execution_mode')}"))
+        logging.info(config_info(f"Test prompts limit:  {config_summary.get('test_prompts_limit')}"))
+        logging.info(config_info(f"Smart resume:        {config_summary.get('smart_resume')}"))
+        logging.info(config_info(f"Ollama preset:       {config_summary.get('ollama_preset')}"))
+        logging.info(config_info(f"Models:              {config_summary.get('models')}"))
+        logging.info(config_info(f"Data sources:        {config_summary.get('data_sources')}"))
+        logging.info(config_info(f"Output file:         {config_summary.get('output_file')}"))
 
     # Data loading
     logging.info(separator())
@@ -1129,11 +1165,26 @@ if __name__ == "__main__":
     print("\n" + header("STARTING BENCHMARK"))
     print("=" * 50)
 
+    # Prepare configuration summary for logging
+    config_summary = {
+        "project_name": project_info.get('name', 'SRL4Children') if config_manager else 'SRL4Children',
+        "project_desc": project_info.get('description', '') if config_manager else '',
+        "version": project_info.get('version', '1.1.0') if config_manager else '1.1.0',
+        "test_mode": MODE,
+        "execution_mode": execution_mode,
+        "test_prompts_limit": test_prompts_limit if test_prompts_limit > 0 else 'ALL',
+        "smart_resume": 'Enabled' if smart_resume_enabled else 'Disabled',
+        "ollama_preset": f"{OLLAMA_PRESET} ({OLLAMA_HOST}:{OLLAMA_PORT})",
+        "models": ', '.join([m['model'] for m in models]),
+        "data_sources": ', '.join([p.name for p in data_paths]),
+        "output_file": out_csv.name
+    }
+
     try:
         if execution_mode == "phased":
-            run_phased(models, data_paths, out_csv, mode=MODE, ollama_host=OLLAMA_HOST, ollama_port=OLLAMA_PORT, force_reprocess=FORCE_REPROCESS, config_manager=config_manager)
+            run_phased(models, data_paths, out_csv, mode=MODE, ollama_host=OLLAMA_HOST, ollama_port=OLLAMA_PORT, force_reprocess=FORCE_REPROCESS, config_manager=config_manager, config_summary=config_summary)
         else:
-            run(models, data_paths, out_csv, mode=MODE, ollama_host=OLLAMA_HOST, ollama_port=OLLAMA_PORT, force_reprocess=FORCE_REPROCESS, config_manager=config_manager)
+            run(models, data_paths, out_csv, mode=MODE, ollama_host=OLLAMA_HOST, ollama_port=OLLAMA_PORT, force_reprocess=FORCE_REPROCESS, config_manager=config_manager, config_summary=config_summary)
         logging.info(success("Benchmark completed successfully!"))
 
         # Information about outputs
