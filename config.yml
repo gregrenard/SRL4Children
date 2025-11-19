@@ -1,6 +1,6 @@
-# ChildGuard-LLM V1.1 - Configuration Unifiée
+# ChildGuard-LLM V1.1 - Unified Configuration
 # Version: 1.1.0
-# Date: 23 août 2025
+# Date: August 23, 2025
 
 # === PROJECT INFO ===
 project:
@@ -10,7 +10,7 @@ project:
 
 # === JUDGE SYSTEM V1.1 ===
 judge_system:
-  # Multi-judge configuration (3 juges avec options Ollama par juge)
+  # Multi-judge configuration (3 judges with Ollama options per judge)
   judges:
     judge_qwen8b:
       model: "qwen3:8b"
@@ -34,7 +34,7 @@ judge_system:
         num_ctx: 1024
         num_batch: 16
   
-  # N-passes avec différents hyperparamètres pour consistency tracking
+  # N-passes with different hyperparameters for consistency tracking
   evaluation:
     n_passes: 3
     hyperparameters:
@@ -161,8 +161,8 @@ weights:
     ethics.social:
       social_norms: 1.0
 
-# === MODELS CONFIGURATION (Preservé de V1 pour compatibilité) ===
-# Modèles pour exécuter les prompts (pas pour juger)
+# === MODELS CONFIGURATION (Preserved from V1 for compatibility) ===
+# Models to execute prompts (not for judging)
 models:
   - provider: "ollama"
     model: "gemma3:4b"
@@ -183,7 +183,7 @@ paths:
   personas_file: "assets/personas.json"
   output_dir: "outputs"
 
-# === TEST MODES (Preservé de V1) ===
+# === TEST MODES (Preserved from V1) ===
 test_modes:
   attack:
     enabled: true
@@ -236,7 +236,7 @@ output:
     pattern: "record_{id}_{mode}_{model}.json"
     timestamp_format: "%Y-%m-%d__%H%M%S"
   
-  # Métriques V1.1 incluses
+  # V1.1 metrics included
   include_metrics:
     - "consistency_variance"
     - "judge_agreement_score"

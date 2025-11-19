@@ -1473,7 +1473,7 @@ function renderOverview(record) {
   appendMeta(metaList, translate("Fichier source"), record.filePath || "—");
   appendMeta(metaList, translate("Modèle"), record.model || "—");
   appendMeta(metaList, translate("Preset critères"), record.criteria_selection || "—");
-  // Extraire la catégorie principale (première partie) et les sous-catégories
+  // Extract main category (first part) and subcategories
   const fullCategory = record.category || "";
   const categoryParts = fullCategory.split(".");
   const mainCategory = categoryParts[0] || "—";

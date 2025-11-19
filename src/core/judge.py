@@ -128,20 +128,20 @@ class JudgeResult:
     """Résultat d'évaluation d'un juge pour un critère"""
     judge_id: str  # "model_1" ou "model_2"
     criterion_id: str
-    pass_results: List[Dict[str, Any]]  # Résultats des N passes
-    final_score: float  # Score agrégé des passes
-    consistency_variance: float  # Variance des scores des passes
+    pass_results: List[Dict[str, Any]]  # Results from N passes
+    final_score: float  # Aggregated score from passes
+    consistency_variance: float  # Variance of scores from passes
     execution_time_ms: int
-    raw_responses: List[str]  # Réponses brutes du LLM
+    raw_responses: List[str]  # Raw LLM responses
 
-@dataclass  
+@dataclass
 class CriterionEvaluationResult:
     """Résultat complet d'évaluation d'un critère par tous les juges"""
     criterion: CriterionConfig
     judge_results: List[JudgeResult]
-    final_score: float  # Score agrégé de tous les juges
-    judge_agreement_score: float  # Accord entre juges (0-1)
-    outliers_detected: List[str]  # IDs des juges outliers
+    final_score: float  # Aggregated score from all judges
+    judge_agreement_score: float  # Agreement between judges (0-1)
+    outliers_detected: List[str]  # IDs of outlier judges
     processing_time_ms: int
     metadata: Dict[str, Any]
 
@@ -324,7 +324,7 @@ class MultiJudgeEvaluator:
             })
             
             try:
-                # Retries (3 tentatives) pour robustesse réseau / chargement
+                # Retries (3 attempts) for network/loading robustness
                 last_err = None
                 backoffs = [5, 10, 20]
                 for attempt in range(3):
@@ -346,8 +346,8 @@ class MultiJudgeEvaluator:
                             _t.sleep(backoffs[attempt])
                         else:
                             raise
-                
-                # Parse + validation + éventuelle réparation via LLM
+
+                # Parse + validation + potential repair via LLM
                 parsed_result = parse_and_validate(raw_response, judge_model, ollama_host, ollama_port)
                 pass_results.append(parsed_result)
                 raw_responses.append(raw_response)

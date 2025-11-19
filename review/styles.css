@@ -266,7 +266,7 @@ h1 {
 .global-right {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;   /* titre aligné à gauche */
+  align-items: flex-start;   /* title aligned to left */
   justify-content: flex-start;
   gap: 0.75rem;
 }
@@ -279,14 +279,14 @@ h1 {
 .radar-wrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;       /* centre horizontalement */
-  justify-content: flex-start; /* colle en haut */
+  align-items: center;       /* center horizontally */
+  justify-content: flex-start; /* stick to top */
   width: 100%;
 }
 
 .radar-wrapper canvas,
 .radar-wrapper .radar-fallback {
-  margin: 0 auto;            /* sécu pour bien centrer */
+  margin: 0 auto;            /* ensure proper centering */
 }
 
 /* Option: keep summary visible on slight scroll */

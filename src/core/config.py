@@ -62,9 +62,9 @@ class ConfigManager:
             config_path: Chemin vers le fichier config.yml (par défaut: config.yml à la racine)
         """
         if config_path is None:
-            # Chercher config.yml à la racine du projet
+            # Search for config.yml at project root
             current_dir = Path(__file__).parent
-            while current_dir != current_dir.parent:  # Remonter jusqu'à la racine
+            while current_dir != current_dir.parent:  # Go up to root
                 config_file = current_dir / "config.yml"
                 if config_file.exists():
                     config_path = config_file
@@ -76,7 +76,7 @@ class ConfigManager:
         self.config_path = Path(config_path)
         self.config = self._load_config()
         self._resolve_environment_variables()
-        # Runtime state pour la session courante
+        # Runtime state for current session
         self._selected_ollama_preset = "default"
     
     def _load_config(self) -> Dict[str, Any]:
@@ -336,7 +336,7 @@ class ConfigManager:
             raise RuntimeError(f"Failed to save config: {e}")
 
 
-# Instance globale du gestionnaire de configuration
+# Global instance of configuration manager
 _config_manager = None
 
 
@@ -361,7 +361,7 @@ def reload_config(config_path: Optional[Union[str, Path]] = None) -> ConfigManag
     return _config_manager
 
 
-# Fonctions utilitaires pour accès rapide
+# Utility functions for quick access
 def get_enabled_models() -> List[ModelConfig]:
     """Accès rapide aux modèles activés"""
     return get_config().get_enabled_models()
