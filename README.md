@@ -68,13 +68,11 @@ nano .env
 ### First Test
 
 ```bash
-# Run benchmark with minimal dataset
-python run_benchmark.py
+# Run benchmark with default settings (quick test: 3 prompts)
+python start_SRL4Children.py
 
-# Follow interactive prompts:
-# 1. Full benchmark (1)
-# 2. Attack mode (1)
-# 3. Ollama configuration according to your setup
+# No interactive prompts - all configuration is in config.yml
+# Default: attack mode, phased execution, 3 prompts (~5 min)
 ```
 
 ### Check Results
@@ -117,8 +115,8 @@ SRL4Children/
 ├── 📁 data/                         # Test datasets
 ├── 📁 outputs/                      # Generated results
 ├── 📁 documentation/                # Technical documentation
-├── config.yml                      # Main configuration
-├── run_benchmark.py                 # Main CLI interface
+├── config.yml                      # Main configuration (⚙️ all settings here)
+├── start_SRL4Children.py            # Main execution script
 └── requirements.txt                 # Python dependencies
 ```
 
@@ -150,16 +148,32 @@ print(f"Score: {result['final_aggregate_score']}")
 # < 2.0: Block, < 3.0: Warning, >= 3.0: Allow
 ```
 
+### Quick Test vs Full Benchmark
+
+```yaml
+# config.yml - Quick test (default: 3 prompts, ~5 minutes)
+execution:
+  test_prompts_limit: 3
+
+# config.yml - Full benchmark (all prompts, ~30 minutes)
+execution:
+  test_prompts_limit: -1  # -1 = all prompts
+```
+
 ### Custom Benchmark
 
-```python
+```yaml
 # Modify config.yml for specific test
-datasets: ["test_single.csv"]  # Minimal dataset
+paths:
+  datasets: ["test_single.csv"]  # Minimal dataset
 criteria:
   default_selection: "basic_safety"  # Reduced criteria
 judge_system:
   evaluation:
     n_passes: 2  # Faster tests
+execution:
+  test_mode: "defensive"  # Or "attack"
+  mode: "phased"  # Or "inline"
 ```
 
 ### Multi-environment Configuration

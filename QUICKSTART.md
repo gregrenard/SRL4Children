@@ -58,16 +58,31 @@ To get an OpenAI API key: https://platform.openai.com/api-keys
 
 ## 🎯 Basic Usage
 
-### Option A: Run a full benchmark
+### Option A: Run a benchmark
 
 ```bash
-python run_benchmark.py
+python start_SRL4Children.py
 ```
 
-The script will guide you interactively:
-1. Choose benchmark type (full / attack mode / etc.)
-2. Select Ollama configuration
-3. Launch evaluation
+The script reads all configuration from `config.yml` (no interactive prompts):
+- **Test mode**: attack / defensive (default: attack)
+- **Execution mode**: phased / inline (default: phased)
+- **Test prompts limit**: N for quick test, -1 for all prompts (default: 3)
+- **Ollama preset**: local / ssh_tunnel / custom (default: local)
+
+**Quick test** (default: 3 prompts, ~5 minutes):
+```bash
+# Default config.yml settings
+python start_SRL4Children.py
+```
+
+**Full benchmark** (all prompts, ~30 minutes):
+```bash
+# Edit config.yml first:
+# execution:
+#   test_prompts_limit: -1  # -1 = all prompts
+python start_SRL4Children.py
+```
 
 **Results**: Check the `outputs/` folder for generated JSON files.
 
@@ -167,8 +182,8 @@ SRL4Children/
 │   ├── core/                  # Judgment system and weighting
 │   └── utils/                 # Utilities
 ├── tools/                     # Guardrail generation tools
-├── config.yml                 # Main configuration
-├── run_benchmark.py           # Benchmark execution script
+├── config.yml                 # Main configuration (⚙️ all settings here)
+├── start_SRL4Children.py      # Benchmark execution script
 └── requirements.txt           # Python dependencies
 ```
 

@@ -55,29 +55,32 @@ judge_system:
     track_outliers: true
     agreement_threshold: 0.8  # Minimum agreement between judges
 
-# === OLLAMA CONFIGURATION (Preservé de V1) ===
+# === OLLAMA CONFIGURATION ===
 ollama:
+  # Active preset (options: "local", "ssh_tunnel", "custom")
+  active_preset: "local"
+
   default:
     host: "localhost"
     port: 11434
-    description: "Configuration locale par défaut"
-  
+    description: "Default local configuration"
+
   presets:
     local:
       host: "localhost"
       port: 11434
-      description: "Serveur Ollama local"
-    
+      description: "Local Ollama server"
+
     ssh_tunnel:
       host: "localhost"
       port: 11435
-      description: "Serveur distant via tunnel SSH"
+      description: "Remote server via SSH tunnel"
       ssh_command: "ssh -L 11435:localhost:11434 user@server-ip"
-    
+
     custom:
       host: "localhost"
       port: 11434
-      description: "Configuration personnalisée"
+      description: "Custom configuration"
 
 # === CRITERIA SYSTEM V1.1 ===
 criteria:
@@ -191,18 +194,28 @@ test_modes:
 
 # === EXECUTION SETTINGS ===
 execution:
-  # Post-processing V1 préservé
+  # Test configuration
+  test_prompts_limit: 3  # Number of prompts to test (3=quick test ~5min, -1=all prompts ~30min)
+
+  # Execution mode
+  mode: "phased"  # Options: "inline" or "phased" (phased is more stable)
+
+  # Default test mode
+  test_mode: "attack"  # Options: "attack" or "defensive"
+
+  # Smart resume (skip already processed records)
   smart_resume:
     enabled: true
     check_existing_records: true
-  
+
+  # Auto post-processing
   auto_postprocess:
     enabled: true
     replay_failed_records: true
-    regenerate_csv: false  # Pas de CSV pour l'instant
-  
-  # Performance
-  parallel_execution: false  # Simplifié pour debug
+    regenerate_csv: false
+
+  # Performance settings
+  parallel_execution: false
   batch_size: 1
   sleep_between_requests: 0.01
 

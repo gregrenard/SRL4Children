@@ -1029,143 +1029,110 @@ def run(models: List[Dict[str,str]], data_paths: List[Path], out_csv: Path, mode
         regenerate_csv_from_json(json_output_dir, out_csv)
 
 if __name__ == "__main__":
-    
-    # Charger la configuration centralisée
+
+    # Load centralized configuration
     try:
         config_manager = get_config()
         project_info = config_manager.get_project_info()
-        print(header(f"{project_info.get('name', 'ChildGuard-LLM')} - {project_info.get('description', 'Child Safety Benchmark')}"))
+        print(header(f"{project_info.get('name', 'SRL4Children')} - {project_info.get('description', 'Child Safety Benchmark')}"))
         print(f"Version: {project_info.get('version', '1.1.0')}")
         print("=" * 50)
-        
-        # Mode debug rapide si activé
-        if config_manager.is_quick_test_enabled():
-            quick_config = config_manager.get_quick_test_config()
-            print(config_info("⚡ Mode test rapide activé depuis config.yml"))
-            print(f"   - Limite: {quick_config.get('limit_records', 10)} records")
-            print(f"   - Single model: {quick_config.get('single_model_only', True)}")
-            print(f"   - Single pass: {quick_config.get('single_pass', True)}")
-            
+
     except Exception as e:
-        print(error(f"Erreur lors du chargement de config.yml: {e}"))
-        print(config_info("Utilisation des paramètres par défaut..."))
+        print(error(f"Error loading config.yml: {e}"))
+        print(config_info("Using default parameters..."))
         config_manager = None
 
-    # Configuration interactive
-    print(header("ChildGuard-LLM V1.1 - Child Safety Benchmark"))
-    print("=" * 50)
-    
-    # 0. Mode de fonctionnement
-    print(f"\n{config_info('Mode de fonctionnement')} :")
-    print("1. Lancer le benchmark complet")
-    print("2. Post-processing uniquement (replay failed records)")
-    
-    operation_choice = input("\nChoisissez l'opération (1-2): ").strip() or "1"
-    
-    if operation_choice == "2":
-        # Mode post-processing seulement
-        print(f"\n{config_info('Configuration Ollama pour post-processing')} :")
-        OLLAMA_HOST, OLLAMA_PORT, OLLAMA_PRESET = configure_ollama(config_manager) if config_manager else configure_ollama_fallback()
-        
-        # Sauvegarder le preset sélectionné dans le config_manager pour le juge
-        if config_manager:
-            config_manager.set_selected_ollama_preset(OLLAMA_PRESET)
-        
-        # Pour le post-processing, utiliser un dossier simple
-        postprocess_folder = OUT / f"postprocess_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}"
-        setup_logging("postprocess", postprocess_folder)
-        
-        out_csv = OUT / f"results_attack.csv"  # Par défaut
-        personas = load_personas()
-        models = [{"provider":"ollama","model":"gemma3:4b"}]  # Par défaut
-        
-        json_output_dir = out_csv.parent
-        replayed_count = replay_failed_records(json_output_dir, models, personas, "attack", OLLAMA_HOST, OLLAMA_PORT)
-        
-        if replayed_count > 0:
-            regenerate_csv_from_json(json_output_dir, out_csv)
-            
-        print(success(f"Post-processing completed: {replayed_count} records replayed"))
-        exit(0)
-    
-    # 1. Configuration du mode
-    print(f"\n{config_info('Mode de test')} :")
-    print("1. Attack (prompt neutres pour détecter vulnérabilités)")
-    print("2. Defensive (prompts avec guidance de sécurité)")
-    
-    mode_choice = input("\nChoisissez le mode (1-2): ").strip() or "1"
-    MODE = "attack" if mode_choice == "1" else "defensive"
-    
-    # 2. Configuration de reprise
-    print(f"\n{config_info('Reprise de benchmark')} :")
-    print("1. Skipper les records déjà traités aujourd'hui (recommandé)")
-    print("2. Forcer le reprocessing de tous les records")
-    
-    resume_choice = input("\nChoisissez l'option (1-2): ").strip() or "1"
-    FORCE_REPROCESS = resume_choice == "2"
-    
-    if FORCE_REPROCESS:
-        print(config_info("⚠️  Mode force reprocess activé - tous les records seront retraités"))
+    # Read execution settings from config.yml
+    execution_config = config_manager.config.get("execution", {}) if config_manager else {}
+    test_prompts_limit = execution_config.get("test_prompts_limit", 3)
+    execution_mode = execution_config.get("mode", "phased")
+    MODE = execution_config.get("test_mode", "attack")
+    smart_resume_enabled = execution_config.get("smart_resume", {}).get("enabled", True)
+    FORCE_REPROCESS = not smart_resume_enabled
+
+    # Read Ollama configuration from config.yml
+    ollama_config = config_manager.config.get("ollama", {}) if config_manager else {}
+    active_preset_name = ollama_config.get("active_preset", "local")
+    presets = ollama_config.get("presets", {})
+
+    if active_preset_name in presets:
+        active_preset = presets[active_preset_name]
+        OLLAMA_HOST = active_preset.get("host", "localhost")
+        OLLAMA_PORT = active_preset.get("port", 11434)
+        OLLAMA_PRESET = active_preset_name
     else:
-        print(config_info("✅ Mode reprise intelligente - les records existants seront skippés"))
-    
-    # 3. Configuration Ollama
-    OLLAMA_HOST, OLLAMA_PORT, OLLAMA_PRESET = configure_ollama(config_manager) if config_manager else configure_ollama_fallback()
-    
-    # Sauvegarder le preset sélectionné dans le config_manager pour le juge
+        # Fallback to default
+        default_config = ollama_config.get("default", {})
+        OLLAMA_HOST = default_config.get("host", "localhost")
+        OLLAMA_PORT = default_config.get("port", 11434)
+        OLLAMA_PRESET = "default"
+
+    # Display configuration summary
+    print("\n" + header("CONFIGURATION SUMMARY"))
+    print("=" * 50)
+    print(config_info(f"Test mode:           {MODE}"))
+    print(config_info(f"Execution mode:      {execution_mode}"))
+    print(config_info(f"Test prompts limit:  {test_prompts_limit if test_prompts_limit > 0 else 'ALL'}"))
+    print(config_info(f"Smart resume:        {'Enabled' if smart_resume_enabled else 'Disabled'}"))
+    print(config_info(f"Ollama preset:       {OLLAMA_PRESET} ({OLLAMA_HOST}:{OLLAMA_PORT})"))
+
+    # Save selected preset in config_manager for judge
     if config_manager:
         config_manager.set_selected_ollama_preset(OLLAMA_PRESET)
-    
-    # Le logging sera configuré dans la fonction run() avec le dossier de benchmark
-    
-    # Utiliser la configuration depuis config.yml si disponible
+
+    # Load dataset configuration from config.yml
     if config_manager:
-        # Chemins des datasets depuis config
+        # Dataset paths from config
         paths_config = config_manager.get_paths()
         data_dir = Path(paths_config.get("data_dir", "data"))
-        datasets = paths_config.get("datasets", ["test.csv"])
+        datasets = paths_config.get("datasets", ["anthropomorphism_question_mini_2.csv"])
         data_paths = [data_dir / dataset for dataset in datasets]
-        
-        # Modèles activés depuis config
+
+        # Enabled models from config
         models = [
             {"provider": model.provider, "model": model.model, "options": getattr(model, 'options', {})}
             for model in config_manager.get_enabled_models()
         ]
-        
+
         if not models:
-            print(config_info("⚠️  Aucun modèle activé dans config.yml, utilisation par défaut"))
+            print(config_info("⚠️  No models enabled in config.yml, using default"))
             models = [{"provider":"ollama","model":"gemma3:4b"}]
-            
-        # Nom de fichier de sortie depuis config
+
+        # Output file name from config
         out_csv = Path(paths_config.get(f"results_{MODE.lower()}", f"outputs/results_{MODE}.csv"))
     else:
-        # Configuration par défaut si pas de config.yml
-        data_paths = [
-            DATA / "test.csv",
-            DATA / "test_mini.csv",
-        ]
-        models = [
-            {"provider":"ollama","model":"gemma3:4b"},
-            # {"provider":"openai","model":"gpt-4o-mini"},
-            # {"provider":"anthropic","model":"claude-3-5-sonnet-20240620"},
-            # {"provider":"groq","model":"llama3-70b-8192"},
-            # {"provider":"mistral","model":"mistral-large-latest"},
-        ]
-        # Nom de fichier adapté au mode
+        # Default configuration if no config.yml
+        data_paths = [DATA / "anthropomorphism_question_mini_2.csv"]
+        models = [{"provider":"ollama","model":"gemma3:4b"}]
         out_csv = OUT / f"results_{MODE}.csv"
-    
-    logging.info(config_info(f"Output file: {out_csv}"))
-    logging.info(info(f"Data sources: {[p.name for p in data_paths]}"))
-    logging.info(config_info(f"Ollama: {OLLAMA_HOST}:{OLLAMA_PORT}"))
 
-    # Choix du style d'exécution
-    print(f"\n{config_info('Mode d\'exécution')} :")
-    print("1. Inline (modèle testé + juges dans la même boucle)")
-    print("2. Phased (Phase A Génération → Phase B/C/D Juges)")
-    exec_choice = input("\nChoisissez le mode (1-2): ").strip() or "2"
+    print(config_info(f"Models:              {', '.join([m['model'] for m in models])}"))
+    print(config_info(f"Data sources:        {', '.join([p.name for p in data_paths])}"))
+    print(config_info(f"Output file:         {out_csv.name}"))
+    print("=" * 50)
+
+    # Apply test_prompts_limit to dataset
+    if test_prompts_limit > 0:
+        print(info(f"\n⚡ Quick test mode: limiting to first {test_prompts_limit} prompts"))
+        # Load data to get the limit
+        original_data = load_all(data_paths)
+        if len(original_data) > test_prompts_limit:
+            print(config_info(f"   Dataset has {len(original_data)} prompts, testing {test_prompts_limit}"))
+            # Create temporary limited dataset
+            limited_csv = DATA / f"temp_limited_{test_prompts_limit}.csv"
+            original_data.head(test_prompts_limit).to_csv(limited_csv, index=False)
+            data_paths = [limited_csv]
+        else:
+            print(config_info(f"   Dataset has {len(original_data)} prompts (less than limit)"))
+    else:
+        print(info(f"\n🚀 Full benchmark mode: testing ALL prompts"))
+
+    print("\n" + header("STARTING BENCHMARK"))
+    print("=" * 50)
 
     try:
-        if exec_choice == "2":
+        if execution_mode == "phased":
             run_phased(models, data_paths, out_csv, mode=MODE, ollama_host=OLLAMA_HOST, ollama_port=OLLAMA_PORT, force_reprocess=FORCE_REPROCESS, config_manager=config_manager)
         else:
             run(models, data_paths, out_csv, mode=MODE, ollama_host=OLLAMA_HOST, ollama_port=OLLAMA_PORT, force_reprocess=FORCE_REPROCESS, config_manager=config_manager)
