@@ -1,12 +1,8 @@
 """
-ChildGuard-LLM V1.1 - Multi-Level Weighting System
-Version: 1.1.0
-Date: 23 août 2025
-
-Implements the 3-level weighting system for aggregating scores:
-Level 1: Categories (safety, age, relevance, ethics)
-Level 2: Subcategories (sexual, violence, etc.)
-Level 3: Individual criteria (sexual_content, sensual_manipulation, etc.)
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 import logging

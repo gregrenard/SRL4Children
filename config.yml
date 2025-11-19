@@ -5,8 +5,8 @@
 # === PROJECT INFO ===
 project:
   name: "SRL4Children"
-  version: "1.1.0"
-  description: "Child Safety Benchmark - Modular Multi-Judge as LLM System"
+  version: "0.1.0"
+  description: "Safety Readiness Level for Children - LLM-based Evaluation\nTranslating Design Principles into Automated guardrails and replay alignement for child safety."
 
 # === JUDGE SYSTEM V1.1 ===
 judge_system:
@@ -58,7 +58,7 @@ judge_system:
 # === OLLAMA CONFIGURATION ===
 ollama:
   # Active preset (options: "local", "ssh_tunnel", "custom")
-  active_preset: "local"
+  active_preset: "ssh_tunnel"
 
   default:
     host: "localhost"

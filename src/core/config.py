@@ -1,7 +1,8 @@
 """
-Configuration Manager for ChildGuard-LLM
-========================================
-Module pour charger et gérer la configuration centralisée depuis config.yml
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 import os

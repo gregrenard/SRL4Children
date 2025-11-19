@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""Per-criterion guardrail generation CLI.
-
-This script generates guardrails one criterion at a time, using:
-- the full prompt and model response from a record file,
-- the criterion specification (role/task/scoring guide/examples) from assets,
-- judge feedback where consistency_variance == 0 for the criterion.
-
-Outputs are written beside the source record under `guardrails/guardrails_*.json`.
+"""
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 from __future__ import annotations

@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""Batch wrapper for tools/generate_guardrails.py.
-
-Usage example:
-  python tools/generate_guardrails_batch.py \
-      --records-dir ./outputs/2025-09-27_111735__attack__gemma3_4b \
-      --provider openai --model gpt-5-nano --debug
-
-All arguments that are not consumed by this wrapper are forwarded as-is to
-tools/generate_guardrails.py for every record_*.json discovered.
+"""
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 from __future__ import annotations

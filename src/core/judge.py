@@ -1,11 +1,8 @@
 """
-ChildGuard-LLM V1.1 - Multi-Judge System
-========================================
-Système de jugement modulaire basé sur les critères dans assets/criteria/
-- Multi-juges (model_1, model_2) avec agreement tracking
-- N-passes avec consistency tracking
-- Format JSON V1.1 unifié
-- Pondération multi-niveau
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 import json

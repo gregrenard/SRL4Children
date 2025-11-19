@@ -1,9 +1,8 @@
 """
-ChildGuard-LLM V1.1 - Configuration Loader
-Version: 1.1.0
-Date: 23 août 2025
-
-Handles loading and validation of YAML configuration files with environment variable substitution.
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 import os

@@ -38,3 +38,6 @@ logs/
 
 # Personal notes with sensitive data
 notes.txt
+
+# Temporary test datasets
+data/temp_limited_*.csv

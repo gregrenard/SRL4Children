@@ -1,9 +1,8 @@
 """
-ChildGuard-LLM V1.1 - CLI Interface Utilities
-Version: 1.1.0
-Date: 23 août 2025
-
-Provides formatted CLI output, progress tracking, and user interaction utilities.
+SRL4Children - Child Safety Benchmark System
+Author: Gregory Renard (with GenAI: Claude, Gemini, Codex)
+Organization: Everyone.AI | Year: 2025
+For the well-being and safety of our children
 """
 
 import sys
