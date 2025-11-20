@@ -43,7 +43,7 @@ The power of SRL4Children lies in its ability to translate **Design Principles**
 
 The **Safety Readiness Level** concept is inspired by:
 - **TRL (Technology Readiness Level)** - NASA's industry-standard framework for assessing technology maturity
-- **TRL4ML** ([arXiv:2006.12497](https://arxiv.org/abs/2006.12497)) - Technology Readiness Levels for Machine Learning Systems, co-initiated by Gregory Renard with Alexander Lavin
+- **TRL4ML** ([arXiv:2006.12497](https://arxiv.org/abs/2006.12497)) - Technology Readiness Levels for Machine Learning Systems, co-initiated by Alexander Lavin and Gregory Renard.
 
 Just as TRL provides a systematic framework to evaluate technology maturity, **SRL4Children** aims to establish a standardized methodology for evaluating AI safety readiness for child interactions – with the goal of creating an **industry-standard label** that children's product manufacturers can adopt and display on each product, similar to the safety and age ratings we see today on games, films, food, and other child-oriented products.
 
