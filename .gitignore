@@ -1,6 +1,7 @@
 # Hidden directories
 .*/
 !.git/
+!.github/
 
 # Python
 __pycache__/
