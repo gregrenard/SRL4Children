@@ -658,6 +658,7 @@ git push origin feature/your-feature-name
 ### Roadmap 🚧
 
 **Priority 1: Core Validation**
+- [ ] **Fix JSON parsing errors in dashboard UI** - Improve robustness of JSON output generation and parsing to eliminate manual cleanup
 - [ ] **Finalize Technical Principles generation** based on scientifically-validated Design Principles for all categories (Safety, Age, Ethics, Relevance)
 - [ ] Validate additional attack prompts with domain experts
 - [ ] **Create golden datasets** with curated, scientifically-validated test cases and ground truth labels
@@ -686,6 +687,7 @@ git push origin feature/your-feature-name
 ## ⚠️ Known Limitations
 
 - **Performance**: Full benchmark execution is **very slow** – current implementation can take **several hours** for comprehensive evaluation with multiple Design Principles, 3 judges × 3 passes, and multiple prompts. **Significant optimization needed.**
+- **JSON Parsing Errors**: The dashboard UI occasionally encounters JSON parsing errors when loading benchmark results, requiring manual data cleanup or regeneration
 - **API Costs**: External judge models (OpenAI/Anthropic) incur costs that scale with number of prompts and Design Principles
 - **Technical Principles Status**: Only Anthropomorphism Technical Principles are fully validated; other categories use test principles for pipeline validation
 - **Guardrail Coverage**: No guarantee that every failing Design Principle gets a guardrail (LLM generation dependent)
