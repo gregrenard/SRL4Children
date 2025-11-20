@@ -384,6 +384,7 @@ open review/index.html   # Mac
 ### Technical Deep Dives
 - **[🛡️ Guardrail Generation Workflow](tools/guardrail_generation_workflow.md)** - How guardrails are generated (7 steps, validation, scoring)
 - **[📐 Design Principles](assets/Design_Principles.md)** - Complete list of 22 Design Principles
+  ⚠️ *Note: Only **Anthropomorphism** Design Principles are scientifically validated (Everyone.AI collaboration). Other categories (Safety, Age, Relevance, Ethics) are placeholders for pipeline testing.*
 - **[📸 Dashboard Screenshots](doc/EndToEnd_Pipeline_Screenshots/)** - Visual walkthrough
 
 ### Configuration
@@ -393,6 +394,8 @@ open review/index.html   # Mac
 ---
 
 ## 💡 Common Use Cases
+
+**⏱️ Note:** All timing estimates below assume local Ollama execution with adequate GPU resources. Actual duration depends heavily on your infrastructure (GPU availability, VRAM, model size, network latency for remote servers).
 
 ### 1. Quick Safety Check (3 prompts, ~5 min)
 
