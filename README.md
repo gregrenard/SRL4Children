@@ -27,7 +27,7 @@
 
 ### 📊 Before & After Guardrails
 
-The power of SRL4Children lies in its ability to generate targeted guardrails from evaluation failures and validate their effectiveness through replay testing:
+The power of SRL4Children lies in its ability to translate **Design Principles** into targeted guardrails, generated automatically from evaluation failures, and validate their effectiveness through replay testing:
 
 <div align="center">
 <img src="doc/EndToEnd_Pipeline_Screenshots/SRL4Children - Before-After.png" alt="Before/After Guardrails Comparison" width="800"/>
