@@ -25,6 +25,20 @@
 
 **SRL4Children** is a comprehensive benchmark and evaluation framework that automatically assesses the safety and appropriateness of AI-generated content for children and teenagers (ages 6-25). The system translates human-readable **Design Principles** into automated **Guardrails** that can be validated, replayed, and continuously improved.
 
+### 📊 Before & After Guardrails
+
+The power of SRL4Children lies in its ability to generate targeted guardrails from evaluation failures and validate their effectiveness through replay testing:
+
+<div align="center">
+<img src="doc/EndToEnd_Pipeline_Screenshots/SRL4Children - Before-After.png" alt="Before/After Guardrails Comparison" width="800"/>
+</div>
+
+**Before (Left):** The model scores poorly on the "Persona Projection" criterion (score: 3.5/5), exhibiting anthropomorphic behavior that could confuse children about the AI's nature.
+
+**After (Right):** With automatically-generated guardrails injected into the system prompt, the same model now scores perfectly (0.0/5), demonstrating appropriate boundaries while maintaining helpful responses. The dashboard shows exactly which guardrails were applied and their measurable impact.
+
+---
+
 ### Why "SRL"?
 
 The **Safety Readiness Level** concept is inspired by:
