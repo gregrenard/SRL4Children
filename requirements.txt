@@ -1,6 +1,7 @@
-# ChildGuard-LLM V1.1 - Requirements
-# Date: 23 août 2025
-# Compatible avec V1 existant + nouvelles fonctionnalités V1.1
+# SRL4Children v0.1.0 - Requirements
+# Safety Readiness Level for Children - LLM-based Evaluation
+# Python 3.12+ required (tested with Python 3.12.6)
+# Date: 2025-01-19
 
 # Core dependencies
 pandas>=2.0.0

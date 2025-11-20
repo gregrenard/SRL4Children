@@ -193,8 +193,8 @@ SRL4Children/
 
 1. **Read the full README**: `README.md`
 2. **Understand Design Principles**: `assets/Design_Principles.md`
-3. **Create your own criteria**: `documentation/HOWTO_Create_Criteria.md`
-4. **Check presentations**: `documentation/SRL4Children - Presentation v3_EN.pdf`
+3. **Create your own criteria**: `doc/HOWTO_Create_Criteria.md`
+4. **Check presentations**: `doc/SRL4Children - Presentation v3_EN.pdf`
 
 ---
 
@@ -233,7 +233,7 @@ python tools/generate_guardrails.py \
 
 For questions or issues, consult:
 - 📚 **Complete documentation**: `README.md`
-- 🔧 **Troubleshooting guide**: `documentation/TROUBLESHOOTING.md` (if available)
+- 🔧 **Troubleshooting guide**: `doc/TROUBLESHOOTING.md` (if available)
 - 🌐 **Website**: https://www.everyone.ai
 
 ---
