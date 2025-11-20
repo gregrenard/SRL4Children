@@ -181,22 +181,27 @@ SRL4Children/
 │   │   └── ethics/                    # Moral, Social (3 principles)
 │   ├── criteria_registry.yml          # Central registry with metadata
 │   ├── Design_Principles.md           # Human-readable Design Principles list
-│   └── personas.json                  # Age-group configurations
+│   ├── personas.json                  # Age-group configurations
+│   └── presets/                       # Configuration presets
 │
 ├── 📂 src/                            # Core System Implementation
 │   ├── core/
 │   │   ├── judge.py                   # Multi-judge system (v1.1)
 │   │   ├── criteria_loader.py         # Modular criteria loader
 │   │   ├── weighting_system.py        # Multi-level weighting
-│   │   └── config.py                  # Configuration manager
+│   │   ├── config.py                  # Configuration manager
+│   │   └── prompts.py                 # Prompt templates
 │   ├── connectors/
 │   │   └── clients.py                 # Unified LLM interface (OpenAI, Anthropic, Ollama, ...)
 │   ├── data/
 │   │   └── loader.py                  # Dataset loader & validator
-│   └── utils/                         # CLI, logging, colors
+│   └── utils/
+│       ├── cli_interface.py           # Command-line interface
+│       ├── colors.py                  # Terminal colors & formatting
+│       └── config_loader.py           # Configuration utilities
 │
 ├── 📂 tools/                          # Guardrail Generation Pipeline
-│   ├── generate_guardrails.py         # Main generation engine (945 lines)
+│   ├── generate_guardrails.py         # Main generation engine (944 lines)
 │   ├── generate_guardrails_batch.py   # Batch wrapper for multiple records
 │   └── guardrail_generation_workflow.md  # Detailed workflow documentation
 │
@@ -204,15 +209,22 @@ SRL4Children/
 │   ├── index.html                     # Main dashboard
 │   ├── app.js                         # Frontend logic
 │   ├── styles.css                     # UI styling
-│   └── guardrail_registry_lookup.json # Criterion metadata
+│   ├── guardrail_registry_lookup.json # Criterion metadata
+│   └── README.md                      # Dashboard usage guide
 │
 ├── 📂 data/                           # Test Datasets
-│   └── anthropomorphism_question_mini_2.csv  # Example dataset
+│   ├── anthropomorphism_question.csv      # Full anthropomorphism dataset
+│   ├── anthropomorphism_question_mini*.csv # Mini test datasets
+│   ├── basic_safety.csv               # Basic safety prompts
+│   ├── master_dataset.csv             # Comprehensive test set
+│   └── test*.csv                      # Various test files
 │
-├── 📂 doc/                  # Comprehensive Documentation
-│   ├── SRL4Children - Presentation v3_EN.pdf  # Full presentation slides
-│   ├── SRL4Children - Workflow Overview.md    # System workflow
-│   └── EndToEnd_Pipeline_Screenshots/         # Dashboard screenshots
+├── 📂 doc/                            # Comprehensive Documentation
+│   ├── SRL4Children - Presentation v3_EN.pdf  # Full presentation slides (EN)
+│   ├── SRL4Children - Workflow Overview.md    # System workflow diagram
+│   ├── HOWTO_Create_Criteria.md       # Guide for creating new Design Principles
+│   ├── SRL4Children_logo.png          # Project logo
+│   └── EndToEnd_Pipeline_Screenshots/ # Dashboard screenshots & examples
 │
 ├── 📂 outputs/                        # Generated Results (gitignored)
 │   └── YYYY-MM-DD__mode__model/       # Benchmark runs with JSON records + logs
@@ -221,7 +233,10 @@ SRL4Children/
 ├── 🚀 start_SRL4Children.py           # Main execution script
 ├── 📋 requirements.txt                # Python dependencies
 ├── 📖 QUICKSTART.md                   # 10-minute getting started guide
-└── 🧪 TESTING.md                      # Testing strategy & quality plan
+├── 🧪 TESTING.md                      # Testing strategy & quality plan
+├── 📄 LICENSE                         # MIT License
+├── 🔐 .env.template                   # Environment variables template
+└── 📝 .gitignore                      # Git ignore rules
 
 ```
 
