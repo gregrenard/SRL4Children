@@ -7,7 +7,7 @@
 ### Safety Readiness Level for Children
 **Translating Design Principles into Automated Guardrails and Replay Alignment for Child Safety**
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/version-0.1.0_POC-orange.svg)](https://github.com/yourusername/SRL4Children) [![Status](https://img.shields.io/badge/status-Proof_of_Concept-yellow.svg)](#)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE) [![Version](https://img.shields.io/badge/version-0.1.0_POC-orange.svg)](https://github.com/gregrenard/SRL4Children) [![Status](https://img.shields.io/badge/status-Proof_of_Concept-yellow.svg)](#)
 
 **For the well-being and safety of our children**
 
@@ -281,7 +281,7 @@ SRL4Children/
 
 ```bash
 # 1. Clone and navigate
-git clone https://github.com/yourusername/SRL4Children.git
+git clone https://github.com/gregrenard/SRL4Children.git
 cd SRL4Children
 
 # 2. Create virtual environment
@@ -586,7 +586,7 @@ We welcome contributions! Here's how:
 
 ```bash
 # 1. Fork and clone
-git clone https://github.com/yourusername/SRL4Children.git
+git clone https://github.com/gregrenard/SRL4Children.git
 
 # 2. Create feature branch
 git checkout -b feature/your-feature-name
@@ -739,8 +739,8 @@ SOFTWARE.
 
 ## 📞 Support & Contact
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/SRL4Children/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/SRL4Children/discussions)
+- **Issues:** [GitHub Issues](https://github.com/gregrenard/SRL4Children/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/gregrenard/SRL4Children/discussions)
 - **Collaboration Inquiries:** Contact Everyone.AI to join the development team
 
 ---
