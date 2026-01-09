@@ -36,6 +36,36 @@ To the greatest extent possible, I kept Greg's original logic intact and preserv
 
 The CLI's structured approach with clear categories and IDs provides a solid foundation for building an API layer on top. Each entity has a unique ID and well-defined relationships, making it straightforward to expose as REST or GraphQL endpoints.
 
+## What We Test
+
+SRL4C tests your **application**, not just the underlying model. Your app includes a system prompt, configuration, and potentially custom logic—all of which affect safety.
+
+```
+                        ┌─────────────────────────────────────┐
+                        │           YOUR APP                  │
+                        │  ┌───────────────────────────────┐  │
+                        │  │  System Prompt                │  │
+                        │  │  "You are Buddy, a friendly   │  │
+                        │  │   AI companion for kids..."   │  │
+                        │  └───────────────────────────────┘  │
+   ┌─────────────┐      │                 │                   │      ┌─────────────┐
+   │   SRL4C     │      │                 ▼                   │      │     LLM     │
+   │   Attack    │─────>│  [User Message] + [System Prompt]   │─────>│   Provider  │
+   │             │      │                                     │      │  (OpenAI,   │
+   │  "Are we    │      │                 │                   │      │  DeepInfra, │
+   │  friends?"  │      │                 ▼                   │      │   etc.)     │
+   │             │<─────│           [Response]                │<─────│             │
+   └─────────────┘      │                                     │      └─────────────┘
+         │              └─────────────────────────────────────┘
+         ▼                        This is your "endpoint"
+   ┌─────────────┐
+   │   Score     │
+   │  & Report   │
+   └─────────────┘
+```
+
+An **endpoint** in SRL4C is your app's API—the thing that receives user messages and returns AI responses. The same model with different system prompts will produce different safety scores.
+
 ## Installation
 
 ```bash
@@ -573,7 +603,7 @@ srl4c attack show c7e     # matches c7ea547a...
 srl4c guardrails show f9  # matches f9d0620c...
 ```
 
-## Design Principles
+## Design Principles (UNCHANGED)
 
 SRL4C evaluates against 22 principles in 5 categories:
 
@@ -584,7 +614,3 @@ SRL4C evaluates against 22 principles in 5 categories:
 | **Age** | 3 | Vocabulary, complexity, abstract concepts |
 | **Relevance** | 2 | Topic match, factual accuracy |
 | **Ethics** | 3 | Harmful advice, positive guidance, social norms |
-
-## License
-
-MIT
