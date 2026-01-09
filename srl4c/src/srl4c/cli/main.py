@@ -199,28 +199,33 @@ def score_compare(
 @guardrails_app.command("generate")
 def guardrails_generate(
     score: str = typer.Argument(..., help="Score ID"),
-    top: int = typer.Option(5, "--top", "-n", help="Number of guardrails to generate"),
+    max_rules: int = typer.Option(3, "--max-rules", help="Max guardrails per failing criterion"),
+    max_total: int = typer.Option(20, "--max-total", help="Max total guardrails across all criteria"),
 ):
     """Generate guardrails from score failures"""
-    console.print(f"[yellow]TODO:[/yellow] Generate {top} guardrails from '{score}'")
+    from srl4c.cli.commands.guardrails import generate_guardrails_cmd
+    generate_guardrails_cmd(console, score, max_rules, max_total)
 
 
 @guardrails_app.command("list")
 def guardrails_list():
     """List generated guardrails"""
-    console.print("[yellow]TODO:[/yellow] List guardrails")
+    from srl4c.cli.commands.guardrails import list_guardrails
+    list_guardrails(console)
 
 
 @guardrails_app.command("show")
-def guardrails_show(id: str = typer.Argument(..., help="Guardrail ID")):
-    """Show guardrail details"""
-    console.print(f"[yellow]TODO:[/yellow] Show guardrail '{id}'")
+def guardrails_show(set_id: str = typer.Argument(..., help="Guardrail set ID")):
+    """Show all guardrails in a set"""
+    from srl4c.cli.commands.guardrails import show_guardrail
+    show_guardrail(console, set_id)
 
 
 @guardrails_app.command("export")
-def guardrails_export(ids: list[str] = typer.Argument(..., help="Guardrail IDs")):
+def guardrails_export(set_id: str = typer.Argument(..., help="Guardrail set ID")):
     """Export guardrails as text for system prompt"""
-    console.print(f"[yellow]TODO:[/yellow] Export guardrails {ids}")
+    from srl4c.cli.commands.guardrails import export_guardrails
+    export_guardrails(console, set_id)
 
 
 @guardrails_app.command("transform")

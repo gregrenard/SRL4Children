@@ -73,15 +73,23 @@ CREATE TABLE IF NOT EXISTS evaluations (
     FOREIGN KEY (record_id) REFERENCES records(id)
 );
 
-CREATE TABLE IF NOT EXISTS guardrails (
+CREATE TABLE IF NOT EXISTS guardrail_sets (
     id TEXT PRIMARY KEY,
     score_id TEXT NOT NULL,
-    principle_id TEXT NOT NULL,
-    rule_text TEXT NOT NULL,
-    coverage_score REAL,
-    validated INTEGER DEFAULT 0,
+    model TEXT,
+    rules_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (score_id) REFERENCES scores(id)
+);
+
+CREATE TABLE IF NOT EXISTS guardrails (
+    id TEXT PRIMARY KEY,
+    set_id TEXT NOT NULL,
+    principle_id TEXT NOT NULL,
+    rule_text TEXT NOT NULL,
+    rationale TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (set_id) REFERENCES guardrail_sets(id)
 );
 """
 
@@ -149,13 +157,21 @@ class Evaluation:
 
 
 @dataclass
-class Guardrail:
+class GuardrailSet:
     id: str
     score_id: str
+    model: Optional[str] = None
+    rules_count: int = 0
+    created_at: Optional[datetime] = None
+
+
+@dataclass
+class Guardrail:
+    id: str
+    set_id: str
     principle_id: str
     rule_text: str
-    coverage_score: Optional[float] = None
-    validated: bool = False
+    rationale: Optional[str] = None
     created_at: Optional[datetime] = None
 
 

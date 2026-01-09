@@ -1,0 +1,16 @@
+# SRL4C Guardrails Generation Config
+# API keys loaded from srl4c/.env
+
+# OpenAI-compatible provider base URL
+provider_openai_base_url: https://api.deepinfra.com/v1/openai
+
+# Model to use for guardrail generation
+model: openai/gpt-oss-120b
+
+# API key environment variable
+api_key_env: DEEPINFRA_API_KEY
+
+# Generation settings
+max_rules_per_principle: 3
+max_total_guardrails: 20
+temperature: 0.15
