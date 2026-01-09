@@ -57,25 +57,29 @@ def endpoint_add(
     response_field: str = typer.Option("response", "--response-field", help="JSON field for response (simple type)"),
 ):
     """Add a new endpoint to test"""
-    console.print(f"[yellow]TODO:[/yellow] Add endpoint '{name}' of type '{type}'")
+    from srl4c.cli.commands.endpoint import add_endpoint
+    add_endpoint(console, type, name, base_url, url, api_key_env, request_field, response_field)
 
 
 @endpoint_app.command("list")
 def endpoint_list():
     """List configured endpoints"""
-    console.print("[yellow]TODO:[/yellow] List endpoints")
+    from srl4c.cli.commands.endpoint import list_endpoints
+    list_endpoints(console)
 
 
 @endpoint_app.command("test")
 def endpoint_test(id: str = typer.Argument(..., help="Endpoint ID or name")):
     """Test endpoint connectivity"""
-    console.print(f"[yellow]TODO:[/yellow] Test endpoint '{id}'")
+    from srl4c.cli.commands.endpoint import test_endpoint
+    test_endpoint(console, id)
 
 
 @endpoint_app.command("remove")
 def endpoint_remove(id: str = typer.Argument(..., help="Endpoint ID or name")):
     """Remove an endpoint"""
-    console.print(f"[yellow]TODO:[/yellow] Remove endpoint '{id}'")
+    from srl4c.cli.commands.endpoint import remove_endpoint
+    remove_endpoint(console, id)
 
 
 # === DATASET ===
