@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS evaluations (
     record_id TEXT NOT NULL,
     principle_id TEXT NOT NULL,
     final_score REAL,
+    agreement_score REAL,
     explanation TEXT,
     evidence_json TEXT,
     judge_details_json TEXT,

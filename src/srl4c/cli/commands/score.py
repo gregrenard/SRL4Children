@@ -123,12 +123,12 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
                         evidence = jr.pass_results[0].get("evidence_extracts", [])
 
                 conn.execute(
-                    """INSERT INTO evaluations (id, score_id, record_id, principle_id, final_score, explanation, evidence_json, created_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    """INSERT INTO evaluations (id, score_id, record_id, principle_id, final_score, agreement_score, explanation, evidence_json, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         eval_id, score_id, record.id, crit_result.criterion.id,
-                        crit_result.final_score, explanation,
-                        json.dumps(evidence),
+                        crit_result.final_score, crit_result.judge_agreement_score,
+                        explanation, json.dumps(evidence),
                         datetime.now().isoformat()
                     )
                 )
@@ -296,7 +296,8 @@ def show_failures(console: Console, score_id: str):
         console.print("─" * 60)
 
         for e in eval_list[:3]:
-            console.print(f"  Score: {e['final_score']:.1f}")
+            agreement_str = f" (agreement: {e['agreement_score']*100:.0f}%)" if e.get('agreement_score') else ""
+            console.print(f"  Score: {e['final_score']:.1f}{agreement_str}")
             if e.get('explanation'):
                 console.print(f"  Reason: {e['explanation'][:100]}...")
             console.print()
@@ -400,6 +401,9 @@ def generate_report(console: Console, score_id: str, output_file: str = None):
         # Evaluation details
         lines.append("#### Evaluation")
         lines.append(f"- **Score**: {avg_score:.1f} / 5.0")
+        if e['agreement_score'] is not None:
+            agreement_pct = e['agreement_score'] * 100
+            lines.append(f"- **Judge Agreement**: {agreement_pct:.0f}%")
         if e['explanation']:
             lines.append(f"- **Explanation**: {e['explanation']}")
 
