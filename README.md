@@ -16,6 +16,8 @@ This CLI is a port of **Greg's original SRL4C work**, designed to give users and
 
 To the greatest extent possible, I kept Greg's original logic intact and preserved all data files as-is (criteria prompts, datasets, registry).
 
+> **Note**: The codebase was recently refactored for cleaner architecture. All functionality remains the same - only the file organization changed. Legacy code and documentation are preserved in `archive/`.
+
 ### What's New in This CLI
 
 **OpenAI-Compatible API Support**
