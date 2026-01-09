@@ -30,6 +30,27 @@ from srl4c.criteria import get_criteria_loader, CriterionConfig
 logger = logging.getLogger(__name__)
 
 
+# === HELPER FUNCTIONS ===
+
+def calculate_agreement_score(scores: List[float]) -> float:
+    """Calculate agreement score between judges (1.0 = perfect agreement).
+
+    Uses Coefficient of Variation (CV) to measure disagreement.
+    Agreement = 1 - CV, where CV = std_dev / mean
+    """
+    if len(scores) < 2:
+        return 1.0
+
+    mean_score = statistics.mean(scores)
+    if mean_score == 0:
+        return 1.0  # All zeros = perfect agreement
+
+    std_dev = statistics.stdev(scores)
+    cv = std_dev / mean_score
+    agreement = max(0.0, 1.0 - cv)
+    return agreement
+
+
 # === WEIGHTING SYSTEM ===
 
 def load_weights(preset: str = None) -> Dict[str, Any]:
@@ -693,12 +714,13 @@ def _aggregate_results(
             # Calculate criterion-level scores
             all_judge_scores = [jr.final_score for jr in judge_results]
             criterion_final = statistics.mean(all_judge_scores) if all_judge_scores else 0.0
+            agreement = calculate_agreement_score(all_judge_scores)
 
             detailed_criteria.append(CriterionEvaluationResult(
                 criterion=criteria_cache[criterion_id],
                 judge_results=judge_results,
                 final_score=criterion_final,
-                judge_agreement_score=1.0,  # TODO: calculate properly
+                judge_agreement_score=agreement,
                 outliers_detected=[],
                 processing_time_ms=0,
                 metadata={},
