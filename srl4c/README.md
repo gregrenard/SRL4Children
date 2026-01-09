@@ -19,40 +19,45 @@ uv run python -m srl4c.cli.main --help
 ## Quick Start
 
 ```bash
-# 1. Initialize SRL4C
+# 1. Initialize & connect endpoint
 srl4c init
-
-# 2. Add your AI endpoint
 srl4c endpoint add simple --name my-app --url https://my-app.com/chat
 
-# 3. Run an attack (adversarial prompts)
+# 2. Run attack (adversarial prompts)
 srl4c attack run --endpoint my-app --dataset anthropomorphism_question_mini
 
-# 4. Score the results
+# 3. Score the results
 srl4c score run <attack-id> --age child
 
-# 5. Generate guardrails from failures
-srl4c guardrails generate <score-id>
+# 3a. Generate report
+srl4c score report <score-id> --output report.md
 
-# 6. Export guardrails for your system prompt
+# 3b. Generate guardrails from failures
+srl4c guardrails generate <score-id>
 srl4c guardrails export <set-id>
+
+# 4. Re-attack with guardrails applied (coming soon)
+srl4c serve --guardrails <set-id> --target my-app --port 8081
 ```
 
 ## The Workflow
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           SRL4C Workflow                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  1. ATTACK        2. SCORE         3. GUARDRAILS      4. RE-ATTACK     │
-│  ─────────        ─────────        ─────────────      ──────────       │
-│  Send prompts     Judge each       Generate fix       Validate with    │
-│  to your AI   →   response with →  rules from     →   guardrails       │
-│  endpoint         multi-judge      failures           applied          │
-│                   system                                                │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+                            SRL4C Workflow
+
+  1. ENDPOINT       2. ATTACK        3. SCORE         4. RE-ATTACK
+  ──────────        ─────────        ─────────        ──────────
+  Connect your      Send prompts     Judge each       Test again
+  AI endpoint   →   from dataset →   response     →   with guards
+                                         │            applied
+                                         ▼
+                               ┌─────────┴─────────┐
+                               │                   │
+                            3a. REPORT         3b. GUARDRAILS
+                            ──────────         ─────────────
+                            Generate MD        Generate fix
+                            report             rules from
+                                               failures
 ```
 
 ## Commands
