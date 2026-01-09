@@ -16,6 +16,47 @@ def generate_id() -> str:
     return str(uuid.uuid4())[:8]
 
 
+def _row_to_endpoint(row) -> Endpoint:
+    """Convert a database row to an Endpoint object"""
+    return Endpoint(
+        id=row["id"],
+        name=row["name"],
+        type=row["type"],
+        base_url=row["base_url"],
+        api_key_env=row["api_key_env"],
+        config=json.loads(row["config_json"]) if row["config_json"] else {},
+        created_at=row["created_at"],
+        last_used_at=row["last_used_at"],
+    )
+
+
+def _row_to_attack(row) -> Attack:
+    """Convert a database row to an Attack object"""
+    return Attack(
+        id=row["id"],
+        endpoint_id=row["endpoint_id"],
+        dataset_name=row["dataset_name"],
+        status=row["status"],
+        total_prompts=row["total_prompts"],
+        completed_prompts=row["completed_prompts"],
+        started_at=row["started_at"],
+        completed_at=row["completed_at"],
+    )
+
+
+def _row_to_record(row) -> Record:
+    """Convert a database row to a Record object"""
+    return Record(
+        id=row["id"],
+        attack_id=row["attack_id"],
+        prompt=row["prompt"],
+        response=row["response"],
+        principle_id=row["principle_id"],
+        error=row["error"],
+        created_at=row["created_at"],
+    )
+
+
 class EndpointRepository:
     """CRUD operations for endpoints"""
 
@@ -57,18 +98,7 @@ class EndpointRepository:
                 conn.close()
                 raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
         conn.close()
-        if row:
-            return Endpoint(
-                id=row["id"],
-                name=row["name"],
-                type=row["type"],
-                base_url=row["base_url"],
-                api_key_env=row["api_key_env"],
-                config=json.loads(row["config_json"]) if row["config_json"] else {},
-                created_at=row["created_at"],
-                last_used_at=row["last_used_at"],
-            )
-        return None
+        return _row_to_endpoint(row) if row else None
 
     @staticmethod
     def get_by_name(name: str) -> Optional[Endpoint]:
@@ -77,18 +107,7 @@ class EndpointRepository:
         conn = get_connection()
         row = conn.execute("SELECT * FROM endpoints WHERE name = ?", (name,)).fetchone()
         conn.close()
-        if row:
-            return Endpoint(
-                id=row["id"],
-                name=row["name"],
-                type=row["type"],
-                base_url=row["base_url"],
-                api_key_env=row["api_key_env"],
-                config=json.loads(row["config_json"]) if row["config_json"] else {},
-                created_at=row["created_at"],
-                last_used_at=row["last_used_at"],
-            )
-        return None
+        return _row_to_endpoint(row) if row else None
 
     @staticmethod
     def get_by_id_or_name(id_or_name: str) -> Optional[Endpoint]:
@@ -107,19 +126,7 @@ class EndpointRepository:
         conn = get_connection()
         rows = conn.execute("SELECT * FROM endpoints ORDER BY created_at DESC").fetchall()
         conn.close()
-        return [
-            Endpoint(
-                id=row["id"],
-                name=row["name"],
-                type=row["type"],
-                base_url=row["base_url"],
-                api_key_env=row["api_key_env"],
-                config=json.loads(row["config_json"]) if row["config_json"] else {},
-                created_at=row["created_at"],
-                last_used_at=row["last_used_at"],
-            )
-            for row in rows
-        ]
+        return [_row_to_endpoint(row) for row in rows]
 
     @staticmethod
     def delete(id: str) -> bool:
@@ -184,18 +191,7 @@ class AttackRepository:
                 conn.close()
                 raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
         conn.close()
-        if row:
-            return Attack(
-                id=row["id"],
-                endpoint_id=row["endpoint_id"],
-                dataset_name=row["dataset_name"],
-                status=row["status"],
-                total_prompts=row["total_prompts"],
-                completed_prompts=row["completed_prompts"],
-                started_at=row["started_at"],
-                completed_at=row["completed_at"],
-            )
-        return None
+        return _row_to_attack(row) if row else None
 
     @staticmethod
     def list_all() -> list[Attack]:
@@ -204,19 +200,7 @@ class AttackRepository:
         conn = get_connection()
         rows = conn.execute("SELECT * FROM attacks ORDER BY started_at DESC").fetchall()
         conn.close()
-        return [
-            Attack(
-                id=row["id"],
-                endpoint_id=row["endpoint_id"],
-                dataset_name=row["dataset_name"],
-                status=row["status"],
-                total_prompts=row["total_prompts"],
-                completed_prompts=row["completed_prompts"],
-                started_at=row["started_at"],
-                completed_at=row["completed_at"],
-            )
-            for row in rows
-        ]
+        return [_row_to_attack(row) for row in rows]
 
     @staticmethod
     def update_status(id: str, status: str, completed_prompts: int = None):
@@ -269,18 +253,7 @@ class RecordRepository:
             (attack_id,)
         ).fetchall()
         conn.close()
-        return [
-            Record(
-                id=row["id"],
-                attack_id=row["attack_id"],
-                prompt=row["prompt"],
-                response=row["response"],
-                principle_id=row["principle_id"],
-                error=row["error"],
-                created_at=row["created_at"],
-            )
-            for row in rows
-        ]
+        return [_row_to_record(row) for row in rows]
 
     @staticmethod
     def update_response(id: str, response: str = None, error: str = None):
