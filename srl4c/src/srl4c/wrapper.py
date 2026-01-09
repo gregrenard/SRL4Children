@@ -44,34 +44,32 @@ def _get_worker_url() -> Optional[str]:
     return None
 
 
+def _to_obj(data):
+    """Convert dict/list to object with attribute access, keep scalars as-is."""
+    if isinstance(data, dict):
+        return _DictToObject(data)
+    elif isinstance(data, list):
+        return [_to_obj(item) for item in data]
+    else:
+        # Keep scalars (str, int, float, None, bool) as-is
+        return data
+
+
 class _DictToObject:
     """Convert dict to object with attribute access (like OpenAI response)."""
 
-    def __init__(self, data):
-        if isinstance(data, dict):
-            for key, value in data.items():
-                setattr(self, key, _DictToObject(value))
-        elif isinstance(data, list):
-            self._list = [_DictToObject(item) for item in data]
-        else:
-            self._value = data
+    def __init__(self, data: dict):
+        for key, value in data.items():
+            setattr(self, key, _to_obj(value))
 
     def __repr__(self):
-        if hasattr(self, '_list'):
-            return repr(self._list)
-        if hasattr(self, '_value'):
-            return repr(self._value)
         return str({k: v for k, v in self.__dict__.items() if not k.startswith('_')})
 
     def __iter__(self):
-        if hasattr(self, '_list'):
-            return iter(self._list)
         raise TypeError("Not iterable")
 
     def __getitem__(self, key):
-        if hasattr(self, '_list'):
-            return self._list[key]
-        raise TypeError("Not subscriptable")
+        return getattr(self, key)
 
 
 class GuardedChatCompletions:
@@ -110,7 +108,7 @@ class GuardedChatCompletions:
             raise Exception(f"Worker error: {response.status_code} - {response.text}")
 
         # Return as object with same structure as OpenAI response
-        return _DictToObject(response.json())
+        return _to_obj(response.json())
 
 
 class GuardedChat:

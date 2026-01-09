@@ -66,19 +66,21 @@ srl4c score report <score-id> --output baseline.md
 
 # 3b. Generate guardrails from failures
 srl4c guardrails generate <score-id>
-srl4c guardrails export <set-id>
 
-# 4. Re-attack with guardrails applied (coming soon)
-srl4c serve --guardrails <set-id> --target my-app --port 8081
-srl4c attack run --endpoint localhost:8081 --dataset anthropomorphism_question_mini
+# 4. Deploy guardrails as a Cloudflare Worker
+srl4c guardrails deploy <set-id>
+# → Deployed: https://srl4c-guard-f9d0620c.your-account.workers.dev
 
-# 5. Score the guarded results
+# 5. Modify your app to use the guardrail proxy (see Integration below)
+
+# 6. Re-attack the guarded app
+srl4c attack run --endpoint my-app-guarded --dataset anthropomorphism_question_mini
+
+# 7. Score and generate improved report
 srl4c score run <new-attack-id> --age child
-
-# 5a. Generate improved report
 srl4c score report <new-score-id> --output improved.md
 
-# 6. Compare (manual for now)
+# 8. Compare
 diff baseline.md improved.md
 ```
 
@@ -313,7 +315,145 @@ Add these rules to your system prompt:
   special bond; always state that it is an AI.
 
 ──────────────────────────────────────────────────────────────────────
+
+# Deploy as a Cloudflare Worker (see Integration below)
+$ srl4c guardrails deploy f9d0620c
+
+Generating Cloudflare Worker with guardrails...
+Deploying to Cloudflare Workers...
+✓ Deployed successfully!
+  Worker URL: https://srl4c-guard-f9d0620c.your-account.workers.dev
+  Guardrails: 5 rules baked in
 ```
+
+## Guardrail Integration
+
+After generating guardrails, you have two options to apply them:
+
+### Option A: Manual (Copy to System Prompt)
+
+Use `srl4c guardrails export` to get the rules, then manually add them to your system prompt. This requires no code changes but you must update your prompt each time guardrails change.
+
+### Option B: Automatic Proxy (Recommended)
+
+Deploy guardrails as a Cloudflare Worker proxy and modify your application to route calls through it. The proxy automatically injects guardrails into every request.
+
+**This requires modifying your application code** to wrap the OpenAI client.
+
+#### Step 1: Deploy the Worker
+
+```bash
+# Prerequisites: wrangler installed and logged in
+npm install -g wrangler
+wrangler login
+
+# Deploy guardrails as a worker
+srl4c guardrails deploy f9d0620c
+# → https://srl4c-guard-f9d0620c.your-account.workers.dev
+```
+
+The worker is serverless (Cloudflare free tier: 100k requests/day) with your guardrails baked in.
+
+#### Step 2: Modify Your Application Code
+
+Install the srl4c package and wrap your OpenAI client:
+
+```bash
+pip install srl4c
+# or: uv add srl4c
+```
+
+**Before** (direct OpenAI calls):
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-...",
+    base_url="https://api.openai.com/v1"
+)
+
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+**After** (routed through guardrail proxy):
+```python
+from openai import OpenAI
+from srl4c import srl4c  # <-- Add this import
+
+client = srl4c(OpenAI(         # <-- Wrap with srl4c()
+    api_key="sk-...",
+    base_url="https://api.openai.com/v1"
+), worker="https://srl4c-guard-f9d0620c.your-account.workers.dev")
+
+# Use exactly as before - calls now go through guardrail proxy
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+The `srl4c()` wrapper:
+- Intercepts `chat.completions.create()` calls
+- Sends them to your Cloudflare Worker
+- Worker injects guardrails into the system message
+- Worker forwards to original LLM provider
+- Returns response to your app
+
+#### Step 3: Configure Worker URL (Optional)
+
+Instead of passing the URL directly, you can configure it via environment variable or config file:
+
+```bash
+# Option 1: Environment variable
+export SRL4C_WORKER_URL=https://srl4c-guard-f9d0620c.your-account.workers.dev
+
+# Option 2: Config file (~/.srl4c/config.yaml)
+worker_url: https://srl4c-guard-f9d0620c.your-account.workers.dev
+```
+
+Then simplify your code:
+
+```python
+from openai import OpenAI
+from srl4c import srl4c
+
+client = srl4c(OpenAI(api_key="sk-...", base_url="..."))
+# Worker URL read from SRL4C_WORKER_URL or config
+```
+
+#### How the Proxy Works
+
+```
+SRL4C Attack         Your App                 Cloudflare Worker            LLM Provider
+     │                  │                            │                          │
+     │  Attack prompts  │                            │                          │
+     │─────────────────>│                            │                          │
+     │                  │                            │                          │
+     │                  │  POST /v1/chat/completions │                          │
+     │                  │  + _target: original_url   │                          │
+     │                  │  + _api_key: your_key      │                          │
+     │                  │───────────────────────────>│                          │
+     │                  │                            │                          │
+     │                  │                            │ Inject guardrails        │
+     │                  │                            │ into system message      │
+     │                  │                            │                          │
+     │                  │                            │  POST /chat/completions  │
+     │                  │                            │─────────────────────────>│
+     │                  │                            │                          │
+     │                  │                            │<─────────────────────────│
+     │                  │<───────────────────────────│                          │
+     │<─────────────────│                            │                          │
+     │                  │                            │                          │
+     │  Score response  │                            │                          │
+     │  (with guards)   │                            │                          │
+```
+
+The worker receives your original base URL and API key in the request body, so it can forward to any OpenAI-compatible provider (OpenAI, DeepInfra, OpenRouter, etc.).
+
+This allows SRL4C to test your app with guardrails applied without changing your app's endpoint configuration—just wrap the OpenAI client.
 
 ### `srl4c principles`
 

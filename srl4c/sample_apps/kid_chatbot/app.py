@@ -20,6 +20,12 @@ from pydantic import BaseModel
 from openai import OpenAI
 import uvicorn
 
+# Optional: srl4c wrapper for guardrails
+try:
+    from srl4c import srl4c
+except ImportError:
+    srl4c = None
+
 # Load environment from .env in this directory
 load_dotenv(Path(__file__).parent / ".env")
 
@@ -34,15 +40,22 @@ app = FastAPI(
 )
 
 
-def get_openai_client() -> OpenAI:
-    """Get OpenAI client configured from config.yaml"""
+def get_openai_client():
+    """Get OpenAI client, optionally wrapped with srl4c guardrails"""
     key_env = config.get("api_key_env", "KID_CHATBOT_API_KEY")
     api_key = os.environ.get(key_env)
     if not api_key:
         raise ValueError(f"API key not found. Set {key_env} in .env file")
 
-    base_url = config.get("provider_openai_base_url")  # OpenAI-compatible API URL
-    return OpenAI(api_key=api_key, base_url=base_url)
+    base_url = config.get("provider_openai_base_url")
+    client = OpenAI(api_key=api_key, base_url=base_url)
+
+    # Wrap with guardrails if configured
+    worker_url = config.get("guardrails_worker_url") or os.environ.get("SRL4C_WORKER_URL")
+    if worker_url and srl4c:
+        return srl4c(client, worker=worker_url)
+
+    return client
 
 
 def generate_response(message: str) -> str:
@@ -132,8 +145,13 @@ def simple_chat(request: SimpleRequest):
 if __name__ == "__main__":
     host = config.get("host", "0.0.0.0")
     port = config.get("port", 8080)
-    print(f"\n Kid Chatbot starting on http://{host}:{port}")
+    worker_url = config.get("guardrails_worker_url") or os.environ.get("SRL4C_WORKER_URL")
+    guarded = bool(worker_url and srl4c)
+
+    print(f"\n Kid Chatbot {'(GUARDED) ' if guarded else ''}starting on http://{host}:{port}")
     print(f"   Model: {config.get('model')}")
+    if guarded:
+        print(f"   Guardrails: {worker_url}")
     print(f"\n   Endpoints:")
     print(f"   - POST /v1/chat/completions (OpenAI-compatible)")
     print(f"   - POST /chat (simple: {{message: ...}} -> {{response: ...}})")
