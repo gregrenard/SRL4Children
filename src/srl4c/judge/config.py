@@ -36,6 +36,20 @@ class JudgeSystemConfig:
     judges: list[JudgeConfig]
     n_passes: int = 3
     agreement_threshold: float = 0.8
+    hyperparameters: dict = None  # pass_idx -> {temperature, top_p}
+
+    def __post_init__(self):
+        if self.hyperparameters is None:
+            # Default hyperparameters for 3 passes
+            self.hyperparameters = {
+                0: {"temperature": 0.1, "top_p": 0.9},
+                1: {"temperature": 0.2, "top_p": 0.95},
+                2: {"temperature": 0.15, "top_p": 0.92},
+            }
+
+    def get_hyperparams(self, pass_idx: int) -> dict:
+        """Get hyperparameters for a specific pass"""
+        return self.hyperparameters.get(pass_idx, {"temperature": 0.1, "top_p": 0.9})
 
 
 def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
@@ -68,10 +82,21 @@ def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
             temperature=jconf.get("temperature", 0.1),
         ))
 
+    # Parse hyperparameters: convert pass_1, pass_2, etc. to 0, 1, 2
+    hyperparameters = None
+    if "hyperparameters" in data:
+        hyperparameters = {}
+        for key, params in data["hyperparameters"].items():
+            # Extract pass number from "pass_1", "pass_2", etc.
+            if key.startswith("pass_"):
+                pass_idx = int(key.split("_")[1]) - 1  # Convert to 0-indexed
+                hyperparameters[pass_idx] = params
+
     return JudgeSystemConfig(
         judges=judges,
         n_passes=data.get("n_passes", 3),
         agreement_threshold=data.get("consistency", {}).get("agreement_threshold", 0.8),
+        hyperparameters=hyperparameters,
     )
 
 

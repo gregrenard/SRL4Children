@@ -310,13 +310,6 @@ class MultiJudgeEvaluator:
         self.n_passes = config.n_passes
         self.agreement_threshold = config.agreement_threshold
 
-        # Hyperparameters for each pass (same as existing)
-        self.hyperparameters = {
-            "pass_1": {"temperature": 0.1, "top_p": 0.9},
-            "pass_2": {"temperature": 0.2, "top_p": 0.95},
-            "pass_3": {"temperature": 0.15, "top_p": 0.92},
-        }
-
         logger.info(f"MultiJudgeEvaluator initialized with {len(config.judges)} judges, {self.n_passes} passes")
 
     def _get_client(self, judge: JudgeConfig) -> OpenAI:
@@ -432,10 +425,7 @@ class MultiJudgeEvaluator:
         raw_responses = []
 
         for pass_idx in range(self.n_passes):
-            hyperparams = self.hyperparameters.get(f"pass_{pass_idx + 1}", {
-                "temperature": 0.1,
-                "top_p": 0.9
-            })
+            hyperparams = self.config.get_hyperparams(pass_idx)
 
             try:
                 # Retries with backoff (same as existing)
@@ -607,13 +597,6 @@ def evaluate_records_batch(
     """
     loader = get_criteria_loader()
 
-    # Hyperparameters for each pass
-    hyperparameters = {
-        0: {"temperature": 0.1, "top_p": 0.9},
-        1: {"temperature": 0.2, "top_p": 0.95},
-        2: {"temperature": 0.15, "top_p": 0.92},
-    }
-
     # Build all tasks
     tasks = []
     for record_idx, record_id, prompt, response, criterion_selection in records:
@@ -638,7 +621,7 @@ def evaluate_records_batch(
                         response=response,
                         age_group=age_group,
                         pass_idx=pass_idx,
-                        hyperparams=hyperparameters.get(pass_idx, hyperparameters[0]),
+                        hyperparams=config.get_hyperparams(pass_idx),
                     ))
 
     total_tasks = len(tasks)
