@@ -20,6 +20,7 @@ from srl4c.db.repository import generate_id
 from srl4c.db import DB_PATH
 
 import sqlite3
+from contextlib import contextmanager
 
 
 # Load API keys from .env
@@ -27,8 +28,15 @@ from srl4c.paths import PROJECT_ROOT, TEMPLATES_DIR, USER_CONFIG_DIR, CRITERIA_D
 load_dotenv(PROJECT_ROOT / ".env")
 
 
+@contextmanager
 def _get_conn():
-    return sqlite3.connect(str(DB_PATH))
+    """Get a database connection as a context manager."""
+    conn = sqlite3.connect(str(DB_PATH))
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def load_guardrails_config() -> Dict[str, Any]:
@@ -153,40 +161,43 @@ def format_judge_feedback(explanation: str, evidence_json: str, final_score: flo
             evidence = json.loads(evidence_json)
             if evidence:
                 lines.append(f"  Evidence: {', '.join(evidence)}")
-        except:
+        except (json.JSONDecodeError, TypeError):
             pass
     return "\n".join(lines) if lines else "No detailed feedback available."
 
 
 def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3, max_total: int = 20):
     """Generate guardrails from score failures"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
+    # Phase 1: Read score and evaluations
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
 
-    # Get score
-    score = conn.execute(
-        "SELECT * FROM scores WHERE id = ? OR id LIKE ?",
-        (score_id, f"{score_id}%")
-    ).fetchone()
+        # Get score
+        score = conn.execute(
+            "SELECT * FROM scores WHERE id = ? OR id LIKE ?",
+            (score_id, f"{score_id}%")
+        ).fetchone()
 
-    if not score:
-        console.print(f"[red]Score not found: {score_id}[/red]")
-        conn.close()
-        return
+        if not score:
+            console.print(f"[red]Score not found: {score_id}[/red]")
+            return
 
-    # Get failing evaluations with record details
-    evals = conn.execute(
-        """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
-           FROM evaluations e
-           JOIN records r ON e.record_id = r.id
-           WHERE e.score_id = ? AND e.final_score < 3.0
-           ORDER BY e.final_score ASC""",
-        (score['id'],)
-    ).fetchall()
+        # Convert to dict to use after connection closes
+        score = dict(score)
+
+        # Get failing evaluations with record details
+        evals = conn.execute(
+            """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
+               FROM evaluations e
+               JOIN records r ON e.record_id = r.id
+               WHERE e.score_id = ? AND e.final_score < 3.0
+               ORDER BY e.final_score ASC""",
+            (score['id'],)
+        ).fetchall()
+        evals = [dict(e) for e in evals]  # Convert to dicts
 
     if not evals:
         console.print(f"[green]No failures to generate guardrails for (all scores >= 3.0)[/green]")
-        conn.close()
         return
 
     console.print(f"\nAnalyzing {len(evals)} failures from score [cyan]{score['id']}[/cyan]...")
@@ -199,7 +210,6 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
 
     if not api_key:
         console.print(f"[red]API key not found. Set {config.get('api_key_env')} in srl4c/.env[/red]")
-        conn.close()
         return
 
     from openai import OpenAI
@@ -213,16 +223,16 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
         p = e['principle_id']
         if p not in by_principle:
             by_principle[p] = []
-        by_principle[p].append(dict(e))
+        by_principle[p].append(e)
 
-    # Create guardrail set
+    # Phase 2: Create guardrail set
     set_id = generate_id()
-    conn.execute(
-        """INSERT INTO guardrail_sets (id, score_id, model, rules_count, created_at)
-           VALUES (?, ?, ?, ?, ?)""",
-        (set_id, score['id'], model, 0, datetime.now().isoformat())
-    )
-    conn.commit()
+    with _get_conn() as conn:
+        conn.execute(
+            """INSERT INTO guardrail_sets (id, score_id, model, rules_count, created_at)
+               VALUES (?, ?, ?, ?, ?)""",
+            (set_id, score['id'], model, 0, datetime.now().isoformat())
+        )
 
     console.print(f"Guardrail set [cyan]{set_id}[/cyan] created\n")
 
@@ -308,29 +318,28 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
         except Exception as e:
             console.print(f"  [red]LLM error: {e}[/red]")
 
+    # Phase 3: Finalize - either delete empty set or store guardrails
     if not all_guardrails:
         console.print("\n[yellow]No guardrails generated[/yellow]")
         # Delete empty set
-        conn.execute("DELETE FROM guardrail_sets WHERE id = ?", (set_id,))
-        conn.commit()
-        conn.close()
+        with _get_conn() as conn:
+            conn.execute("DELETE FROM guardrail_sets WHERE id = ?", (set_id,))
         return
 
     # Store guardrails in database
-    for g in all_guardrails:
-        conn.execute(
-            """INSERT INTO guardrails (id, set_id, principle_id, rule_text, rationale, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (g['id'], g['set_id'], g['principle_id'], g['rule_text'], g['rationale'], datetime.now().isoformat())
-        )
+    with _get_conn() as conn:
+        for g in all_guardrails:
+            conn.execute(
+                """INSERT INTO guardrails (id, set_id, principle_id, rule_text, rationale, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (g['id'], g['set_id'], g['principle_id'], g['rule_text'], g['rationale'], datetime.now().isoformat())
+            )
 
-    # Update set rules_count
-    conn.execute(
-        "UPDATE guardrail_sets SET rules_count = ? WHERE id = ?",
-        (len(all_guardrails), set_id)
-    )
-    conn.commit()
-    conn.close()
+        # Update set rules_count
+        conn.execute(
+            "UPDATE guardrail_sets SET rules_count = ? WHERE id = ?",
+            (len(all_guardrails), set_id)
+        )
 
     # Display results
     console.print(f"\n[green]✓[/green] Generated {len(all_guardrails)} guardrails in set [cyan]{set_id}[/cyan]\n")
@@ -363,17 +372,16 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
 
 def list_guardrails(console: Console):
     """List all guardrail sets"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        """SELECT gs.*, s.attack_id, e.name as endpoint_name
-           FROM guardrail_sets gs
-           JOIN scores s ON gs.score_id = s.id
-           JOIN attacks a ON s.attack_id = a.id
-           JOIN endpoints e ON a.endpoint_id = e.id
-           ORDER BY gs.created_at DESC"""
-    ).fetchall()
-    conn.close()
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """SELECT gs.*, s.attack_id, e.name as endpoint_name
+               FROM guardrail_sets gs
+               JOIN scores s ON gs.score_id = s.id
+               JOIN attacks a ON s.attack_id = a.id
+               JOIN endpoints e ON a.endpoint_id = e.id
+               ORDER BY gs.created_at DESC"""
+        ).fetchall()
 
     if not rows:
         console.print("[dim]No guardrail sets yet. Use 'srl4c guardrails generate <score-id>' to generate.[/dim]")
@@ -407,26 +415,24 @@ def list_guardrails(console: Console):
 
 def show_guardrail(console: Console, set_id: str):
     """Show all guardrails in a set"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
 
-    # Get the set
-    gset = conn.execute(
-        "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
-        (set_id, f"{set_id}%")
-    ).fetchone()
+        # Get the set
+        gset = conn.execute(
+            "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
+            (set_id, f"{set_id}%")
+        ).fetchone()
 
-    if not gset:
-        console.print(f"[red]Guardrail set not found: {set_id}[/red]")
-        conn.close()
-        return
+        if not gset:
+            console.print(f"[red]Guardrail set not found: {set_id}[/red]")
+            return
 
-    # Get all guardrails in this set
-    guardrails = conn.execute(
-        "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
-        (gset['id'],)
-    ).fetchall()
-    conn.close()
+        # Get all guardrails in this set
+        guardrails = conn.execute(
+            "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
+            (gset['id'],)
+        ).fetchall()
 
     console.print()
     console.print("═" * 75)
@@ -449,26 +455,24 @@ def show_guardrail(console: Console, set_id: str):
 
 def export_guardrails(console: Console, set_id: str):
     """Export all guardrails in a set as text for system prompt"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
 
-    # Get the set
-    gset = conn.execute(
-        "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
-        (set_id, f"{set_id}%")
-    ).fetchone()
+        # Get the set
+        gset = conn.execute(
+            "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
+            (set_id, f"{set_id}%")
+        ).fetchone()
 
-    if not gset:
-        console.print(f"[red]Guardrail set not found: {set_id}[/red]")
-        conn.close()
-        return
+        if not gset:
+            console.print(f"[red]Guardrail set not found: {set_id}[/red]")
+            return
 
-    # Get all guardrails in this set
-    guardrails = conn.execute(
-        "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
-        (gset['id'],)
-    ).fetchall()
-    conn.close()
+        # Get all guardrails in this set
+        guardrails = conn.execute(
+            "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
+            (gset['id'],)
+        ).fetchall()
 
     if not guardrails:
         console.print("[yellow]No guardrails in this set[/yellow]")
@@ -574,26 +578,24 @@ export default {{
 
 def generate_worker(console: Console, set_id: str, output_path: str = None):
     """Generate Cloudflare Worker code with guardrails baked in"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
 
-    # Get the set
-    gset = conn.execute(
-        "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
-        (set_id, f"{set_id}%")
-    ).fetchone()
+        # Get the set
+        gset = conn.execute(
+            "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
+            (set_id, f"{set_id}%")
+        ).fetchone()
 
-    if not gset:
-        console.print(f"[red]Guardrail set not found: {set_id}[/red]")
-        conn.close()
-        return None
+        if not gset:
+            console.print(f"[red]Guardrail set not found: {set_id}[/red]")
+            return None
 
-    # Get guardrails
-    guardrails = conn.execute(
-        "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
-        (gset['id'],)
-    ).fetchall()
-    conn.close()
+        # Get guardrails
+        guardrails = conn.execute(
+            "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
+            (gset['id'],)
+        ).fetchall()
 
     if not guardrails:
         console.print("[yellow]No guardrails in this set[/yellow]")

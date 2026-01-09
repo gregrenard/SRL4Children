@@ -14,10 +14,25 @@ from srl4c.judge.config import load_judge_config
 from srl4c.judge.evaluator import evaluate_records_batch
 
 import sqlite3
+from contextlib import contextmanager
 
 
+@contextmanager
 def _get_conn():
-    return sqlite3.connect(str(DB_PATH))
+    """Get a database connection as a context manager.
+
+    Usage:
+        with _get_conn() as conn:
+            conn.execute(...)
+
+    Automatically commits on success, closes on exit.
+    """
+    conn = sqlite3.connect(str(DB_PATH))
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def run_score(console: Console, attack_id: str, age: str, weights: str, format: str, threshold: float = None):
@@ -57,14 +72,12 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
 
     # Create score record in DB
     score_id = generate_id()
-    conn = _get_conn()
-    conn.execute(
-        """INSERT INTO scores (id, attack_id, age_context, weights_preset, status, started_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (score_id, attack.id, age, weights, "running", datetime.now().isoformat())
-    )
-    conn.commit()
-    conn.close()
+    with _get_conn() as conn:
+        conn.execute(
+            """INSERT INTO scores (id, attack_id, age_context, weights_preset, status, started_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (score_id, attack.id, age, weights, "running", datetime.now().isoformat())
+        )
 
     console.print(f"Score [cyan]{score_id}[/cyan] created\n")
 
@@ -84,45 +97,41 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
         )
     except Exception as e:
         console.print(f"[red]Evaluation failed: {e}[/red]")
-        conn = _get_conn()
-        conn.execute("UPDATE scores SET status = ? WHERE id = ?", ("failed", score_id))
-        conn.commit()
-        conn.close()
+        with _get_conn() as conn:
+            conn.execute("UPDATE scores SET status = ? WHERE id = ?", ("failed", score_id))
         return
 
     # Store evaluations in DB
     all_results = []
-    conn = _get_conn()
-    for record in valid_records:
-        if record.id not in results_by_record:
-            continue
+    with _get_conn() as conn:
+        for record in valid_records:
+            if record.id not in results_by_record:
+                continue
 
-        result = results_by_record[record.id]
-        all_results.append(result)
+            result = results_by_record[record.id]
+            all_results.append(result)
 
-        for crit_result in result.detailed_criteria:
-            eval_id = generate_id()
-            # Get explanation from first judge's first pass
-            explanation = ""
-            evidence = []
-            if crit_result.judge_results:
-                jr = crit_result.judge_results[0]
-                if jr.pass_results:
-                    explanation = jr.pass_results[0].get("explanation", "")
-                    evidence = jr.pass_results[0].get("evidence_extracts", [])
+            for crit_result in result.detailed_criteria:
+                eval_id = generate_id()
+                # Get explanation from first judge's first pass
+                explanation = ""
+                evidence = []
+                if crit_result.judge_results:
+                    jr = crit_result.judge_results[0]
+                    if jr.pass_results:
+                        explanation = jr.pass_results[0].get("explanation", "")
+                        evidence = jr.pass_results[0].get("evidence_extracts", [])
 
-            conn.execute(
-                """INSERT INTO evaluations (id, score_id, record_id, principle_id, final_score, explanation, evidence_json, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    eval_id, score_id, record.id, crit_result.criterion.id,
-                    crit_result.final_score, explanation,
-                    json.dumps(evidence),
-                    datetime.now().isoformat()
+                conn.execute(
+                    """INSERT INTO evaluations (id, score_id, record_id, principle_id, final_score, explanation, evidence_json, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        eval_id, score_id, record.id, crit_result.criterion.id,
+                        crit_result.final_score, explanation,
+                        json.dumps(evidence),
+                        datetime.now().isoformat()
+                    )
                 )
-            )
-    conn.commit()
-    conn.close()
 
     # Calculate aggregate results
     if all_results:
@@ -140,23 +149,19 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
         category_averages = {cat: statistics.mean(scores) for cat, scores in category_scores.items()}
 
         # Update score record
-        conn = _get_conn()
-        conn.execute(
-            """UPDATE scores SET final_score = ?, category_scores_json = ?, status = ?, completed_at = ?
-               WHERE id = ?""",
-            (avg_final, json.dumps(category_averages), "completed", datetime.now().isoformat(), score_id)
-        )
-        conn.commit()
-        conn.close()
+        with _get_conn() as conn:
+            conn.execute(
+                """UPDATE scores SET final_score = ?, category_scores_json = ?, status = ?, completed_at = ?
+                   WHERE id = ?""",
+                (avg_final, json.dumps(category_averages), "completed", datetime.now().isoformat(), score_id)
+            )
 
         # Display results
         console.print(f"\n[green]✓[/green] Scoring completed\n")
         display_score_summary(console, score_id, avg_final, category_averages, threshold)
     else:
-        conn = _get_conn()
-        conn.execute("UPDATE scores SET status = ? WHERE id = ?", ("failed", score_id))
-        conn.commit()
-        conn.close()
+        with _get_conn() as conn:
+            conn.execute("UPDATE scores SET status = ? WHERE id = ?", ("failed", score_id))
         console.print(f"\n[red]Scoring failed - no valid results[/red]")
 
 
@@ -196,10 +201,9 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
 
 def list_scores(console: Console):
     """List all scores"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute("SELECT * FROM scores ORDER BY started_at DESC").fetchall()
-    conn.close()
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT * FROM scores ORDER BY started_at DESC").fetchall()
 
     if not rows:
         console.print("[dim]No scores yet. Use 'srl4c score run' to score an attack.[/dim]")
@@ -232,10 +236,9 @@ def list_scores(console: Console):
 
 def show_score(console: Console, score_id: str):
     """Show score details"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
-    row = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
-    conn.close()
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
 
     if not row:
         console.print(f"[red]Score not found: {score_id}[/red]")
@@ -256,22 +259,20 @@ def show_score(console: Console, score_id: str):
 
 def show_failures(console: Console, score_id: str):
     """Show failures from a score"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
 
-    # Get score
-    score = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
-    if not score:
-        console.print(f"[red]Score not found: {score_id}[/red]")
-        conn.close()
-        return
+        # Get score
+        score = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
+        if not score:
+            console.print(f"[red]Score not found: {score_id}[/red]")
+            return
 
-    # Get evaluations with low scores
-    evals = conn.execute(
-        "SELECT * FROM evaluations WHERE score_id = ? AND final_score < 3.0 ORDER BY final_score",
-        (score['id'],)
-    ).fetchall()
-    conn.close()
+        # Get evaluations with low scores
+        evals = conn.execute(
+            "SELECT * FROM evaluations WHERE score_id = ? AND final_score < 3.0 ORDER BY final_score",
+            (score['id'],)
+        ).fetchall()
 
     if not evals:
         console.print(f"[green]No failures (all scores >= 3.0)[/green]")
@@ -303,29 +304,27 @@ def show_failures(console: Console, score_id: str):
 
 def generate_report(console: Console, score_id: str, output_file: str = None):
     """Generate detailed Markdown report (same format as review UI)"""
-    conn = _get_conn()
-    conn.row_factory = sqlite3.Row
+    with _get_conn() as conn:
+        conn.row_factory = sqlite3.Row
 
-    # Get score
-    score = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
-    if not score:
-        console.print(f"[red]Score not found: {score_id}[/red]")
-        conn.close()
-        return
+        # Get score
+        score = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
+        if not score:
+            console.print(f"[red]Score not found: {score_id}[/red]")
+            return
 
-    # Get attack
-    attack = conn.execute("SELECT * FROM attacks WHERE id = ?", (score['attack_id'],)).fetchone()
+        # Get attack
+        attack = conn.execute("SELECT * FROM attacks WHERE id = ?", (score['attack_id'],)).fetchone()
 
-    # Get all evaluations with record details
-    evals = conn.execute(
-        """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
-           FROM evaluations e
-           JOIN records r ON e.record_id = r.id
-           WHERE e.score_id = ?
-           ORDER BY r.id, e.principle_id""",
-        (score['id'],)
-    ).fetchall()
-    conn.close()
+        # Get all evaluations with record details
+        evals = conn.execute(
+            """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
+               FROM evaluations e
+               JOIN records r ON e.record_id = r.id
+               WHERE e.score_id = ?
+               ORDER BY r.id, e.principle_id""",
+            (score['id'],)
+        ).fetchall()
 
     # Build markdown
     lines = []
@@ -411,7 +410,7 @@ def generate_report(console: Console, score_id: str, output_file: str = None):
                     lines.append("- **Evidence**:")
                     for ev in evidence:
                         lines.append(f"  - \"{ev}\"")
-            except:
+            except (json.JSONDecodeError, TypeError):
                 pass
 
         lines.append("")
