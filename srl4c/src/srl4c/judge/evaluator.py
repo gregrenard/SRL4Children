@@ -32,6 +32,93 @@ from core.criteria_loader import get_criteria_loader, CriterionConfig
 logger = logging.getLogger(__name__)
 
 
+# === WEIGHTING SYSTEM ===
+
+def load_weights(preset: str = None) -> Dict[str, Any]:
+    """Load weights from ~/.srl4c/weights.yaml, optionally applying a preset."""
+    from pathlib import Path
+    import yaml
+
+    # Try user config, fall back to template
+    user_config = Path.home() / ".srl4c" / "weights.yaml"
+    template_config = Path(__file__).parent.parent.parent / "templates" / "weights.yaml"
+    config_path = user_config if user_config.exists() else template_config
+
+    if not config_path.exists():
+        logger.warning(f"No weights config found, using equal weights")
+        return {}
+
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+
+    # Start with default weights
+    weights = config.get("default", {})
+
+    # Apply preset if specified (overrides category weights only)
+    if preset and preset != "default":
+        presets = config.get("presets", {})
+        if preset in presets:
+            preset_cats = presets[preset].get("categories", {})
+            weights["categories"] = preset_cats
+            logger.info(f"Applied weight preset: {preset}")
+        else:
+            logger.warning(f"Unknown preset '{preset}', using default weights")
+
+    return weights
+
+
+def weighted_average(scores: Dict[str, float], weights: Dict[str, float]) -> float:
+    """Compute weighted average, fallback to simple mean if no weights match."""
+    total_w, total_s = 0.0, 0.0
+    for name, score in scores.items():
+        w = weights.get(name, 0)
+        total_s += score * w
+        total_w += w
+    return total_s / total_w if total_w > 0 else (statistics.mean(scores.values()) if scores else 0.0)
+
+
+def calculate_weighted_scores(criteria_results: List['CriterionEvaluationResult'], preset: str = None) -> Tuple[float, Dict[str, float], Dict[str, float]]:
+    """
+    3-level weighted aggregation: criteria → subcategory → category → final.
+    Returns: (final_score, category_scores, subcategory_scores)
+    """
+    if not criteria_results:
+        return 0.0, {}, {}
+
+    weights = load_weights(preset)
+
+    # Group by category.subcategory.criterion_name
+    by_subcat = {}  # {"safety.sexual": {"sexual_content": 2.5, ...}}
+    for cr in criteria_results:
+        parts = cr.criterion.id.split(".")
+        if len(parts) >= 3:
+            subcat_key = f"{parts[0]}.{parts[1]}"
+            crit_name = parts[2].split("__")[0]
+            by_subcat.setdefault(subcat_key, {})[crit_name] = cr.final_score
+
+    # Level 3: criteria → subcategory
+    subcategory_scores = {
+        sk: weighted_average(crits, weights.get("criteria", {}).get(sk, {}))
+        for sk, crits in by_subcat.items()
+    }
+
+    # Level 2: subcategory → category
+    by_cat = {}
+    for sk, score in subcategory_scores.items():
+        cat = sk.split(".")[0]
+        by_cat.setdefault(cat, {})[sk.split(".")[1]] = score
+
+    category_scores = {
+        cat: weighted_average(subcats, weights.get("subcategories", {}).get(cat, {}))
+        for cat, subcats in by_cat.items()
+    }
+
+    # Level 1: category → final
+    final = weighted_average(category_scores, weights.get("categories", {}))
+
+    return final, category_scores, subcategory_scores
+
+
 # === DATA CLASSES (same structure as existing judge.py) ===
 
 @dataclass
@@ -493,6 +580,7 @@ def evaluate_records_batch(
     config: JudgeSystemConfig,
     records: List[Tuple[int, str, str, str, str]],  # (idx, id, prompt, response, criterion_id)
     age_group: str,
+    weights_preset: str = None,
 ) -> Dict[str, BenchmarkResult]:
     """
     Evaluate multiple records in parallel.
@@ -617,22 +705,14 @@ def _aggregate_results(
                 metadata={},
             ))
 
-        # Calculate aggregate scores
-        all_scores = [cr.final_score for cr in detailed_criteria]
-        final_aggregate = statistics.mean(all_scores) if all_scores else 0.0
-
-        # Group by category
-        category_scores = defaultdict(list)
-        for cr in detailed_criteria:
-            parts = cr.criterion.id.split(".")
-            if parts:
-                category_scores[parts[0]].append(cr.final_score)
+        # Calculate weighted aggregate scores
+        final_aggregate, category_scores, subcategory_scores = calculate_weighted_scores(detailed_criteria, weights_preset)
 
         benchmark_results[record_id] = BenchmarkResult(
             detailed_criteria=detailed_criteria,
             final_aggregate_score=final_aggregate,
-            category_scores={k: statistics.mean(v) for k, v in category_scores.items()},
-            subcategory_scores={},
+            category_scores=category_scores,
+            subcategory_scores=subcategory_scores,
             consistency_metrics={},
             metadata={"n_judges": len(config.judges), "n_passes": config.n_passes},
         )
@@ -679,30 +759,8 @@ def evaluate_response(
         except Exception as e:
             logger.error(f"Failed to evaluate criterion {criterion.id}: {e}")
 
-    # Calculate aggregate scores
-    all_scores = [cr.final_score for cr in detailed_criteria]
-    final_aggregate = statistics.mean(all_scores) if all_scores else 0.0
-
-    # Group by category/subcategory
-    category_scores = {}
-    subcategory_scores = {}
-
-    for cr in detailed_criteria:
-        parts = cr.criterion.id.split(".")
-        if len(parts) >= 1:
-            cat = parts[0]
-            if cat not in category_scores:
-                category_scores[cat] = []
-            category_scores[cat].append(cr.final_score)
-
-        if len(parts) >= 2:
-            subcat = f"{parts[0]}.{parts[1]}"
-            if subcat not in subcategory_scores:
-                subcategory_scores[subcat] = []
-            subcategory_scores[subcat].append(cr.final_score)
-
-    category_averages = {k: statistics.mean(v) for k, v in category_scores.items()}
-    subcategory_averages = {k: statistics.mean(v) for k, v in subcategory_scores.items()}
+    # Calculate weighted aggregate scores
+    final_aggregate, category_averages, subcategory_averages = calculate_weighted_scores(detailed_criteria)
 
     # Consistency metrics
     all_variances = [cr.judge_results[0].consistency_variance for cr in detailed_criteria if cr.judge_results]

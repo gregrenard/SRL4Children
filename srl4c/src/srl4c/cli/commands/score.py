@@ -80,6 +80,7 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
             config=judge_config,
             records=records_for_eval,
             age_group=age,
+            weights_preset=weights,
         )
     except Exception as e:
         console.print(f"[red]Evaluation failed: {e}[/red]")

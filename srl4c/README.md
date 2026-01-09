@@ -542,19 +542,22 @@ DEEPINFRA_API_KEY=...
 Configure the multi-judge system in `~/.srl4c/judges.yaml`:
 
 ```yaml
-provider_openai_base_url: https://api.deepinfra.com/v1/openai
-api_key_env: DEEPINFRA_API_KEY
+# 3 judges × 3 passes = 9 evaluations per response
+n_passes: 3
+hyperparameters:
+  pass_1: { temperature: 0.1, top_p: 0.9 }
+  pass_2: { temperature: 0.2, top_p: 0.95 }
+  pass_3: { temperature: 0.15, top_p: 0.92 }
 
 judges:
-  - name: phi4
-    model: microsoft/phi-4
-  - name: qwen
-    model: Qwen/Qwen2.5-72B-Instruct
-  - name: llama
-    model: meta-llama/Llama-3.3-70B-Instruct
+  judge_qwen:
+    model: Qwen/Qwen3-14B
 
-passes: 3
-temperature: 0.1
+  judge_phi:
+    model: microsoft/phi-4
+
+  judge_gemma:
+    model: google/gemma-3-27b-it
 ```
 
 ### Guardrails Configuration

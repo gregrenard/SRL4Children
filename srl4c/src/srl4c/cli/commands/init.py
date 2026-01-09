@@ -29,14 +29,16 @@ def run_init(console: Console):
         else:
             console.print(f"  [dim]✓ Exists {d}[/dim]")
 
-    # Copy judges.yaml template if it doesn't exist
-    judges_src = TEMPLATES_DIR / "judges.yaml"
-    judges_dst = SRL4C_HOME / "judges.yaml"
-    if judges_src.exists() and not judges_dst.exists():
-        shutil.copy(judges_src, judges_dst)
-        console.print(f"  [green]✓[/green] Created {judges_dst}")
-    elif judges_dst.exists():
-        console.print(f"  [dim]✓ Exists {judges_dst}[/dim]")
+    # Copy template files if they don't exist
+    templates = ["judges.yaml", "weights.yaml", "guardrails.yaml"]
+    for template in templates:
+        src = TEMPLATES_DIR / template
+        dst = SRL4C_HOME / template
+        if src.exists() and not dst.exists():
+            shutil.copy(src, dst)
+            console.print(f"  [green]✓[/green] Created {dst}")
+        elif dst.exists():
+            console.print(f"  [dim]✓ Exists {dst}[/dim]")
 
     console.print("\n[green]Setup complete![/green]\n")
     console.print("Configure judges in [cyan]~/.srl4c/judges.yaml[/cyan]")

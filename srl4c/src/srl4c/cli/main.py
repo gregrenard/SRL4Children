@@ -145,7 +145,7 @@ def attack_show(id: str = typer.Argument(..., help="Attack ID")):
 def score_run(
     attack: str = typer.Argument(..., help="Attack ID"),
     age: str = typer.Option("child", "--age", "-a", help="Age context: child, teen, young_adult, emerging"),
-    weights: str = typer.Option("balanced", "--weights", "-w", help="Weight preset: balanced, safety-focused"),
+    weights: str = typer.Option("balanced", "--weights", "-w", help="Weight preset (see ~/.srl4c/weights.yaml)"),
     format: str = typer.Option("table", "--format", "-f", help="Output format: table, json, markdown"),
     threshold: float = typer.Option(None, "--threshold", "-t", help="Fail if score below threshold"),
 ):
