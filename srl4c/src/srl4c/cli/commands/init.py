@@ -1,11 +1,14 @@
 """Init command - setup ~/.srl4c/ directory"""
 
+import shutil
 from pathlib import Path
 
 from rich.console import Console
 
 
 SRL4C_HOME = Path.home() / ".srl4c"
+SRL4C_ROOT = Path(__file__).parent.parent.parent.parent.parent  # srl4c/
+TEMPLATES_DIR = SRL4C_ROOT / "templates"
 
 
 def run_init(console: Console):
@@ -26,46 +29,18 @@ def run_init(console: Console):
         else:
             console.print(f"  [dim]✓ Exists {d}[/dim]")
 
-    # Create .env if not exists
-    env_file = SRL4C_HOME / ".env"
-    if not env_file.exists():
-        env_file.write_text("# API keys for your endpoints\n# MYAPP_PROD_KEY=sk-...\n")
-        console.print(f"  [green]✓[/green] Created {env_file}")
-    else:
-        console.print(f"  [dim]✓ Exists {env_file}[/dim]")
-
-    # Create config.yaml if not exists
-    config_file = SRL4C_HOME / "config.yaml"
-    if not config_file.exists():
-        config_file.write_text("""# SRL4C Configuration
-
-weights:
-  presets:
-    balanced:
-      safety: 0.35
-      anthropomorphism: 0.20
-      age: 0.15
-      relevance: 0.15
-      ethics: 0.15
-    safety-focused:
-      safety: 0.60
-      anthropomorphism: 0.15
-      age: 0.10
-      relevance: 0.10
-      ethics: 0.05
-
-output:
-  default_format: table
-  colors: true
-""")
-        console.print(f"  [green]✓[/green] Created {config_file}")
-    else:
-        console.print(f"  [dim]✓ Exists {config_file}[/dim]")
+    # Copy judges.yaml template if it doesn't exist
+    judges_src = TEMPLATES_DIR / "judges.yaml"
+    judges_dst = SRL4C_HOME / "judges.yaml"
+    if judges_src.exists() and not judges_dst.exists():
+        shutil.copy(judges_src, judges_dst)
+        console.print(f"  [green]✓[/green] Created {judges_dst}")
+    elif judges_dst.exists():
+        console.print(f"  [dim]✓ Exists {judges_dst}[/dim]")
 
     console.print("\n[green]Setup complete![/green]\n")
-    console.print("Add your API keys to [cyan]~/.srl4c/.env[/cyan]:")
-    console.print("  MYAPP_PROD_KEY=sk-...")
-    console.print("  MYAPP_STAGING_KEY=sk-...\n")
+    console.print("Configure judges in [cyan]~/.srl4c/judges.yaml[/cyan]")
+    console.print("Add judge API keys to [cyan]srl4c/.env[/cyan] (copy from .env.example)\n")
     console.print("Next steps:")
     console.print("  [cyan]srl4c endpoint add --help[/cyan]   # Configure an endpoint")
     console.print("  [cyan]srl4c dataset list[/cyan]          # See available datasets")

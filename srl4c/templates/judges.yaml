@@ -1,0 +1,38 @@
+# SRL4C Judge Configuration
+# API keys loaded from srl4c/.env
+
+# N-passes with different hyperparameters for consistency tracking
+n_passes: 3
+hyperparameters:
+  pass_1:
+    temperature: 0.1
+    top_p: 0.9
+  pass_2:
+    temperature: 0.2
+    top_p: 0.95
+  pass_3:
+    temperature: 0.15
+    top_p: 0.92
+
+# Self-consistency tracking
+consistency:
+  variance_threshold: 0.5
+  track_outliers: true
+  agreement_threshold: 0.8
+
+# Multi-judge configuration (3 judges via DeepInfra)
+judges:
+  judge_qwen:
+    provider_openai_base_url: https://api.deepinfra.com/v1/openai
+    model: Qwen/Qwen3-14B
+    api_key_env: DEEPINFRA_API_KEY
+
+  judge_phi:
+    provider_openai_base_url: https://api.deepinfra.com/v1/openai
+    model: microsoft/phi-4
+    api_key_env: DEEPINFRA_API_KEY
+
+  judge_gemma:
+    provider_openai_base_url: https://api.deepinfra.com/v1/openai
+    model: google/gemma-3-27b-it
+    api_key_env: DEEPINFRA_API_KEY

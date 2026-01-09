@@ -150,25 +150,39 @@ def score_run(
     threshold: float = typer.Option(None, "--threshold", "-t", help="Fail if score below threshold"),
 ):
     """Score an attack's results"""
-    console.print(f"[yellow]TODO:[/yellow] Score attack '{attack}' (age={age}, weights={weights})")
+    from srl4c.cli.commands.score import run_score
+    run_score(console, attack, age, weights, format, threshold)
 
 
 @score_app.command("list")
 def score_list():
     """List score runs"""
-    console.print("[yellow]TODO:[/yellow] List scores")
+    from srl4c.cli.commands.score import list_scores
+    list_scores(console)
 
 
 @score_app.command("show")
 def score_show(id: str = typer.Argument(..., help="Score ID")):
     """Show score details"""
-    console.print(f"[yellow]TODO:[/yellow] Show score '{id}'")
+    from srl4c.cli.commands.score import show_score
+    show_score(console, id)
 
 
 @score_app.command("failures")
 def score_failures(id: str = typer.Argument(..., help="Score ID")):
     """Show failures from a score run"""
-    console.print(f"[yellow]TODO:[/yellow] Show failures for '{id}'")
+    from srl4c.cli.commands.score import show_failures
+    show_failures(console, id)
+
+
+@score_app.command("report")
+def score_report(
+    id: str = typer.Argument(..., help="Score ID"),
+    output: str = typer.Option(None, "--output", "-o", help="Output file (default: stdout)"),
+):
+    """Generate detailed Markdown report"""
+    from srl4c.cli.commands.score import generate_report
+    generate_report(console, id, output)
 
 
 @score_app.command("compare")

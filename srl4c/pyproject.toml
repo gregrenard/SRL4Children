@@ -13,6 +13,7 @@ dependencies = [
     "openai>=1.0",
     "fastapi>=0.100.0",
     "uvicorn>=0.20.0",
+    "json-repair>=0.55.0",
 ]
 
 [project.scripts]
