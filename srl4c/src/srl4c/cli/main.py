@@ -121,19 +121,22 @@ def attack_run(
     dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset name"),
 ):
     """Run an attack against an endpoint"""
-    console.print(f"[yellow]TODO:[/yellow] Attack '{endpoint}' with dataset '{dataset}'")
+    from srl4c.cli.commands.attack import run_attack
+    run_attack(console, endpoint, dataset)
 
 
 @attack_app.command("list")
 def attack_list():
     """List attacks"""
-    console.print("[yellow]TODO:[/yellow] List attacks")
+    from srl4c.cli.commands.attack import list_attacks
+    list_attacks(console)
 
 
 @attack_app.command("show")
 def attack_show(id: str = typer.Argument(..., help="Attack ID")):
     """Show attack details"""
-    console.print(f"[yellow]TODO:[/yellow] Show attack '{id}'")
+    from srl4c.cli.commands.attack import show_attack
+    show_attack(console, id)
 
 
 # === SCORE ===
