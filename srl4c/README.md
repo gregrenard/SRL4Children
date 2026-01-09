@@ -29,8 +29,8 @@ srl4c attack run --endpoint my-app --dataset anthropomorphism_question_mini
 # 3. Score the results
 srl4c score run <attack-id> --age child
 
-# 3a. Generate report
-srl4c score report <score-id> --output report.md
+# 3a. Generate baseline report
+srl4c score report <score-id> --output baseline.md
 
 # 3b. Generate guardrails from failures
 srl4c guardrails generate <score-id>
@@ -38,26 +38,49 @@ srl4c guardrails export <set-id>
 
 # 4. Re-attack with guardrails applied (coming soon)
 srl4c serve --guardrails <set-id> --target my-app --port 8081
+srl4c attack run --endpoint localhost:8081 --dataset anthropomorphism_question_mini
+
+# 5. Score the guarded results
+srl4c score run <new-attack-id> --age child
+
+# 5a. Generate improved report
+srl4c score report <new-score-id> --output improved.md
+
+# 6. Compare (manual for now)
+diff baseline.md improved.md
 ```
 
 ## The Workflow
 
 ```
-                            SRL4C Workflow
+                              SRL4C Workflow
 
-  1. ENDPOINT       2. ATTACK        3. SCORE         4. RE-ATTACK
-  ──────────        ─────────        ─────────        ──────────
-  Connect your      Send prompts     Judge each       Test again
-  AI endpoint   →   from dataset →   response     →   with guards
-                                         │            applied
-                                         ▼
-                               ┌─────────┴─────────┐
-                               │                   │
-                            3a. REPORT         3b. GUARDRAILS
-                            ──────────         ─────────────
-                            Generate MD        Generate fix
-                            report             rules from
-                                               failures
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  1. ENDPOINT        2. ATTACK         3. SCORE                               │
+│  ──────────         ─────────         ─────────                              │
+│  Connect your       Send prompts      Judge each                             │
+│  AI endpoint    →   from dataset  →   response                               │
+│                                           │                                  │
+│                                           ▼                                  │
+│                                 ┌─────────┴─────────┐                        │
+│                                 │                   │                        │
+│                              3a. REPORT         3b. GUARDRAILS               │
+│                              ──────────         ─────────────                │
+│                              Baseline MD        Generate fix                 │
+│                              report             rules                        │
+│                                                     │                        │
+│                                                     ▼                        │
+│  6. COMPARE         5. SCORE          4. RE-ATTACK ─┘                        │
+│  ──────────         ─────────         ────────────                           │
+│  Diff baseline      Judge with    ←   Run same attack                        │
+│  vs improved        guardrails        with guardrails                        │
+│      │                  │             applied via proxy                      │
+│      │                  ▼                                                    │
+│      │             5a. REPORT                                                │
+│      │             ──────────                                                │
+│      └──────────── Improved MD                                               │
+│                    report                                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Commands
