@@ -4,6 +4,38 @@
 
 SRL4C tests your AI against 22 Design Principles covering safety, anthropomorphism, age-appropriateness, relevance, and ethics. It identifies failures and generates actionable guardrails to improve your system prompt.
 
+## About This Project
+
+This CLI is a port of **Greg's original SRL4C work**, designed to give users and developers an easy-to-use command-line interface to:
+
+- Manage the **endpoints** they test
+- Work with **design principles** (evaluation criteria)
+- Run **attack vectors** (adversarial prompts)
+- **Score** responses and generate **reports**
+- Create **guardrails** from failures
+
+To the greatest extent possible, I kept Greg's original logic intact and preserved all data files as-is (criteria prompts, datasets, registry).
+
+### What's New in This CLI
+
+**OpenAI-Compatible API Support**
+- Ported to use the OpenAI SDK for all LLM calls
+- Works with any OpenAI-compatible provider (tested with OpenRouter & DeepInfra)
+- Configurable judges and guardrail generation via YAML
+
+**Structured Data Model**
+- SQLite database for persistent state management
+- Clear entity hierarchy: Endpoints → Attacks → Records → Scores → Evaluations → Guardrails
+- Full traceability chain from guardrails back to source endpoint
+
+**Parallel Evaluation**
+- Concurrent API calls for fast multi-judge scoring
+- Configurable number of judges and passes
+
+### Designed for Extension
+
+The CLI's structured approach with clear categories and IDs provides a solid foundation for building an API layer on top. Each entity has a unique ID and well-defined relationships, making it straightforward to expose as REST or GraphQL endpoints.
+
 ## Installation
 
 ```bash
