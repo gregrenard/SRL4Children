@@ -642,13 +642,14 @@ def evaluate_records_batch(
     print(f"\n    Completed {completed}/{total_tasks} API calls")
 
     # Group results by record and build BenchmarkResults
-    return _aggregate_results(results, records, config)
+    return _aggregate_results(results, records, config, weights_preset)
 
 
 def _aggregate_results(
     results: List[EvalTaskResult],
     records: List[Tuple[int, str, str, str, str]],
     config: JudgeSystemConfig,
+    weights_preset: str = None,
 ) -> Dict[str, BenchmarkResult]:
     """Aggregate task results into BenchmarkResults per record"""
     from collections import defaultdict
