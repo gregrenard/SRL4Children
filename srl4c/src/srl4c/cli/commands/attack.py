@@ -160,13 +160,13 @@ def list_attacks(console: Console):
     # Get endpoint names
     endpoints = {ep.id: ep.name for ep in EndpointRepository.list_all()}
 
-    table = Table()
-    table.add_column("ID", style="dim")
-    table.add_column("Endpoint", style="cyan")
-    table.add_column("Dataset", style="blue")
-    table.add_column("Status")
-    table.add_column("Prompts", justify="right")
-    table.add_column("Date", style="dim")
+    table = Table(show_edge=False)
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Endpoint", style="cyan", no_wrap=True)
+    table.add_column("Dataset", style="blue", no_wrap=True)
+    table.add_column("Status", no_wrap=True)
+    table.add_column("Prompts", justify="right", no_wrap=True)
+    table.add_column("Date", style="dim", no_wrap=True)
 
     for attack in attacks:
         endpoint_name = endpoints.get(attack.endpoint_id, attack.endpoint_id[:8])
@@ -175,7 +175,7 @@ def list_attacks(console: Console):
         date = attack.started_at[:10] if attack.started_at else ""
 
         table.add_row(
-            attack.id,
+            attack.id[:8],
             endpoint_name,
             attack.dataset_name,
             f"[{status_style}]{attack.status}[/{status_style}]",

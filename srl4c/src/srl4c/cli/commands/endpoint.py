@@ -62,16 +62,16 @@ def list_endpoints(console: Console):
         console.print("[dim]No endpoints configured. Use 'srl4c endpoint add' to add one.[/dim]")
         return
 
-    table = Table()
-    table.add_column("ID", style="dim")
-    table.add_column("Name", style="cyan")
-    table.add_column("Type", style="blue")
-    table.add_column("URL")
-    table.add_column("Last Used", style="dim")
+    table = Table(show_edge=False)
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Name", style="cyan", no_wrap=True)
+    table.add_column("Type", style="blue", no_wrap=True)
+    table.add_column("URL", no_wrap=True)
+    table.add_column("Last Used", style="dim", no_wrap=True)
 
     for ep in endpoints:
         last_used = ep.last_used_at[:10] if ep.last_used_at else "never"
-        table.add_row(ep.id, ep.name, ep.type, ep.base_url[:50], last_used)
+        table.add_row(ep.id[:8], ep.name, ep.type, ep.base_url, last_used)
 
     console.print(table)
 

@@ -341,17 +341,17 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
     console.print("═" * 75)
     console.print()
 
-    table = Table()
-    table.add_column("#", style="dim", width=3)
-    table.add_column("Principle", width=20)
-    table.add_column("Rule", width=50)
+    table = Table(show_edge=False)
+    table.add_column("#", style="dim", no_wrap=True)
+    table.add_column("Principle", no_wrap=True)
+    table.add_column("Rule")
 
     for idx, g in enumerate(all_guardrails, 1):
-        short_p = g['principle_id'].split(".")[-1][:18]
+        short_p = g['principle_id'].split(".")[-1]
         table.add_row(
             str(idx),
             short_p,
-            g['rule_text'][:48] + "..." if len(g['rule_text']) > 48 else g['rule_text']
+            g['rule_text'][:70] + "..." if len(g['rule_text']) > 70 else g['rule_text']
         )
 
     console.print(table)
@@ -380,22 +380,22 @@ def list_guardrails(console: Console):
         console.print("[dim]No guardrail sets yet. Use 'srl4c guardrails generate <score-id>' to generate.[/dim]")
         return
 
-    table = Table()
-    table.add_column("Set ID", style="cyan")
-    table.add_column("Endpoint", style="bold")
-    table.add_column("Attack")
-    table.add_column("Score")
-    table.add_column("Model")
-    table.add_column("Rules", justify="right")
-    table.add_column("Date", style="dim")
+    table = Table(show_edge=False)
+    table.add_column("Set ID", style="cyan", no_wrap=True)
+    table.add_column("Endpoint", style="bold", no_wrap=True)
+    table.add_column("Attack", no_wrap=True)
+    table.add_column("Score", no_wrap=True)
+    table.add_column("Model", no_wrap=True)
+    table.add_column("Rules", justify="right", no_wrap=True)
+    table.add_column("Date", style="dim", no_wrap=True)
 
     for row in rows:
         date = row['created_at'][:10] if row['created_at'] else ""
-        model_short = row['model'].split("/")[-1][:15] if row['model'] else ""
+        model_short = row['model'].split("/")[-1] if row['model'] else ""
 
         table.add_row(
-            row['id'],
-            row['endpoint_name'][:12],
+            row['id'][:8],
+            row['endpoint_name'],
             row['attack_id'][:8],
             row['score_id'][:8],
             model_short,

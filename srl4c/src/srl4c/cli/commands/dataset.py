@@ -42,10 +42,10 @@ def list_datasets(console: Console):
     datasets = get_builtin_datasets()
 
     console.print("\n[bold]BUILT-IN[/bold]")
-    table = Table()
-    table.add_column("Name", style="cyan")
-    table.add_column("Prompts", justify="right")
-    table.add_column("Principles")
+    table = Table(show_edge=False)
+    table.add_column("Name", style="cyan", no_wrap=True)
+    table.add_column("Prompts", justify="right", no_wrap=True)
+    table.add_column("Principles", no_wrap=True)
 
     for name, info in sorted(datasets.items()):
         principles_str = f"{len(info['principles'])} principles" if info['principles'] else "—"

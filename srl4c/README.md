@@ -89,11 +89,9 @@ srl4c endpoint add simple --name my-app \
 # List endpoints
 $ srl4c endpoint list
 
-┏━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ ID       ┃ Name        ┃ Type   ┃ URL                        ┃ Last Used  ┃
-┡━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ b86ce636 │ kid-chatbot │ simple │ http://localhost:8080/chat │ 2026-01-09 │
-└──────────┴─────────────┴────────┴────────────────────────────┴────────────┘
+ ID       ┃ Name        ┃ Type   ┃ URL                        ┃ Last Used
+━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━
+ b86ce636 │ kid-chatbot │ simple │ http://localhost:8080/chat │ 2026-01-09
 
 # Test connectivity
 srl4c endpoint test kid-chatbot
@@ -110,14 +108,19 @@ View available attack datasets.
 $ srl4c dataset list
 
 BUILT-IN
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━┓
-┃ Name                             ┃ Prompts ┃ Principles    ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━┩
-│ anthropomorphism_question        │    1600 │ 8 principles  │
-│ anthropomorphism_question_mini   │      80 │ 8 principles  │
-│ basic_safety                     │     225 │ 4 principles  │
-│ master_dataset                   │     514 │ 19 principles │
-└──────────────────────────────────┴─────────┴───────────────┘
+ Name                             ┃ Prompts ┃ Principles
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━
+ anthropomorphism_question        │    1600 │ 8 principles
+ anthropomorphism_question_mini   │      80 │ 8 principles
+ anthropomorphism_question_mini_2 │      21 │ 5 principles
+ basic_safety                     │     225 │ 4 principles
+ master_dataset                   │     514 │ 19 principles
+ test                             │     299 │ 6 principles
+ test_mini                        │       3 │ 1 principles
+ test_single                      │       1 │ 1 principles
+
+CUSTOM (~/.srl4c/datasets/)
+  (none)
 
 # Show dataset contents
 srl4c dataset show basic_safety
@@ -134,11 +137,9 @@ srl4c attack run --endpoint kid-chatbot --dataset anthropomorphism_question_mini
 # List attacks
 $ srl4c attack list
 
-┏━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ ID       ┃ Endpoint    ┃ Dataset          ┃ Status    ┃ Prompts ┃ Date       ┃
-┡━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━┩
-│ c7ea547a │ kid-chatbot │ anthropomorphis… │ completed │   21/21 │ 2026-01-09 │
-└──────────┴─────────────┴──────────────────┴───────────┴─────────┴────────────┘
+ ID       ┃ Endpoint    ┃ Dataset                          ┃ Status    ┃ Prompts ┃ Date
+━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━
+ c7ea547a │ kid-chatbot │ anthropomorphism_question_mini_2 │ completed │   21/21 │ 2026-01-09
 
 # Show attack details (prompts and responses)
 srl4c attack show c7ea547a
@@ -155,11 +156,9 @@ srl4c score run c7ea547a --age child --weights balanced
 # List scores
 $ srl4c score list
 
-┏━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ ID       ┃ Attack   ┃ Age   ┃ Score ┃ Status    ┃ Date       ┃
-┡━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ 16840f2f │ c7ea547a │ child │   0.8 │ completed │ 2026-01-09 │
-└──────────┴──────────┴───────┴───────┴───────────┴────────────┘
+ ID       ┃ Attack   ┃ Age   ┃ Score ┃ Status    ┃ Date
+━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━
+ 16840f2f │ c7ea547a │ child │   0.8 │ completed │ 2026-01-09
 
 # Show score summary
 srl4c score show 16840f2f
@@ -230,11 +229,9 @@ srl4c guardrails generate 16840f2f
 # List guardrail sets
 $ srl4c guardrails list
 
-┏━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━┓
-┃ Set ID   ┃ Endpoint   ┃ Attack   ┃ Score    ┃ Model        ┃ Rules ┃
-┡━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━┩
-│ f9d0620c │ kid-chatbot│ c7ea547a │ 16840f2f │ gpt-oss-120b │     5 │
-└──────────┴────────────┴──────────┴──────────┴──────────────┴───────┘
+ Set ID   ┃ Endpoint    ┃ Attack   ┃ Score    ┃ Model        ┃ Rules ┃ Date
+━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━
+ f9d0620c │ kid-chatbot │ c7ea547a │ 16840f2f │ gpt-oss-120b │     5 │ 2026-01-09
 
 # Show guardrails in a set
 srl4c guardrails show f9d0620c
@@ -265,18 +262,35 @@ View the 22 Design Principles.
 ```bash
 $ srl4c principles list
 
+                               Design Principles
 ┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
 ┃ Category         ┃ Subcategory            ┃ Principle              ┃ Version ┃
 ┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ safety           │ content                │ sexual_content         │ 1.0     │
-│ safety           │ content                │ violence               │ 1.0     │
-│ safety           │ manipulation           │ manipulation           │ 1.0     │
-│ anthropomorphism │ anthropomorphic_lang   │ refers_to_emotions     │ 1.0     │
-│ anthropomorphism │ parasocial_bonds       │ exclusivity_claims     │ 1.0     │
+│ age              │ cognitive              │ abstract_concepts      │ 1.0     │
+│ age              │ readability            │ sentence_complexity    │ 1.0     │
 │ age              │ readability            │ vocabulary_level       │ 1.0     │
+│ anthropomorphism │ anthropomorphic_lang…  │ mirrors_user_language  │ 1.0     │
+│ anthropomorphism │ anthropomorphic_lang…  │ refers_to_agency       │ 1.0     │
+│ anthropomorphism │ anthropomorphic_lang…  │ refers_to_emotions     │ 1.0     │
+│ anthropomorphism │ mechanism_of_engagem…  │ role_playing           │ 1.0     │
+│ anthropomorphism │ mechanism_of_engagem…  │ sycophancy             │ 1.0     │
+│ anthropomorphism │ parasocial_bonds       │ exclusivity_claims     │ 1.0     │
+│ anthropomorphism │ parasocial_bonds       │ humor_boundaries       │ 1.0     │
+│ anthropomorphism │ parasocial_bonds       │ persona_projection     │ 1.0     │
 │ ethics           │ moral                  │ harmful_advice         │ 1.0     │
+│ ethics           │ moral                  │ positive_guidance      │ 1.0     │
+│ ethics           │ social                 │ social_norms           │ 1.0     │
 │ relevance        │ accuracy               │ factual_accuracy       │ 1.0     │
+│ relevance        │ topic                  │ topic_match            │ 1.0     │
+│ safety           │ hate                   │ discriminatory_lang…   │ 1.0     │
+│ safety           │ manipulation           │ emotional_manipulation │ 1.0     │
+│ safety           │ sexual                 │ sensual_manipulation   │ 1.1     │
+│ safety           │ sexual                 │ sexual_content         │ 1.0     │
+│ safety           │ violence               │ physical_violence      │ 1.0     │
+│ safety           │ violence               │ psychological_violence │ 1.0     │
 └──────────────────┴────────────────────────┴────────────────────────┴─────────┘
+
+22 principles total
 
 # Show principle details
 srl4c principles show refers_to_emotions

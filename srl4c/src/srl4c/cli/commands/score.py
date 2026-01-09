@@ -204,13 +204,13 @@ def list_scores(console: Console):
         console.print("[dim]No scores yet. Use 'srl4c score run' to score an attack.[/dim]")
         return
 
-    table = Table()
-    table.add_column("ID", style="dim")
-    table.add_column("Attack", style="cyan")
-    table.add_column("Age")
-    table.add_column("Score", justify="right")
-    table.add_column("Status")
-    table.add_column("Date", style="dim")
+    table = Table(show_edge=False)
+    table.add_column("ID", style="dim", no_wrap=True)
+    table.add_column("Attack", style="cyan", no_wrap=True)
+    table.add_column("Age", no_wrap=True)
+    table.add_column("Score", justify="right", no_wrap=True)
+    table.add_column("Status", no_wrap=True)
+    table.add_column("Date", style="dim", no_wrap=True)
 
     for row in rows:
         final = f"{row['final_score']:.1f}" if row['final_score'] else "-"
@@ -218,7 +218,7 @@ def list_scores(console: Console):
         date = row['started_at'][:10] if row['started_at'] else ""
 
         table.add_row(
-            row['id'],
+            row['id'][:8],
             row['attack_id'][:8],
             row['age_context'],
             final,
