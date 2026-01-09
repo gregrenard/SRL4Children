@@ -71,8 +71,6 @@ An **endpoint** in SRL4C is your app's API—the thing that receives user messag
 ## Installation
 
 ```bash
-cd srl4c/
-
 # Install with uv (recommended)
 uv tool install -e .
 
