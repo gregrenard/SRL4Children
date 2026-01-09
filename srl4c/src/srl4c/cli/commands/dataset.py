@@ -1,0 +1,94 @@
+"""Dataset commands - uses existing data files"""
+
+from pathlib import Path
+
+import pandas as pd
+from rich.console import Console
+from rich.table import Table
+
+# Built-in datasets location (relative to repo root)
+REPO_ROOT = Path(__file__).parent.parent.parent.parent.parent.parent
+DATA_DIR = REPO_ROOT / "data"
+
+
+def get_builtin_datasets() -> dict:
+    """Get list of built-in datasets"""
+    datasets = {}
+    if DATA_DIR.exists():
+        for f in DATA_DIR.glob("*.csv"):
+            try:
+                df = pd.read_csv(f)
+                # Try to find the prompt and category columns
+                prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
+                cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
+
+                if prompt_col:
+                    principles = set()
+                    if cat_col:
+                        principles = set(df[cat_col].dropna().unique())
+
+                    datasets[f.stem] = {
+                        "path": f,
+                        "prompts": len(df),
+                        "principles": principles,
+                    }
+            except Exception:
+                continue
+    return datasets
+
+
+def list_datasets(console: Console):
+    """List available datasets"""
+    datasets = get_builtin_datasets()
+
+    console.print("\n[bold]BUILT-IN[/bold]")
+    table = Table()
+    table.add_column("Name", style="cyan")
+    table.add_column("Prompts", justify="right")
+    table.add_column("Principles")
+
+    for name, info in sorted(datasets.items()):
+        principles_str = f"{len(info['principles'])} principles" if info['principles'] else "—"
+        table.add_row(name, str(info["prompts"]), principles_str)
+
+    console.print(table)
+
+    # TODO: Also show custom datasets from ~/.srl4c/datasets/
+    console.print("\n[dim]CUSTOM (~/.srl4c/datasets/)[/dim]")
+    console.print("  [dim](none)[/dim]\n")
+
+
+def show_dataset(console: Console, name: str):
+    """Show dataset details"""
+    datasets = get_builtin_datasets()
+
+    if name not in datasets:
+        console.print(f"[red]Dataset not found: {name}[/red]")
+        return
+
+    info = datasets[name]
+    df = pd.read_csv(info["path"])
+
+    console.print(f"\n[bold cyan]Dataset:[/bold cyan] {name}")
+    console.print(f"[dim]Path: {info['path']}[/dim]")
+    console.print(f"Prompts: {info['prompts']}\n")
+
+    if info["principles"]:
+        console.print("[bold]Principles covered:[/bold]")
+        # Count prompts per principle
+        cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
+        if cat_col:
+            for principle in sorted(info["principles"]):
+                count = len(df[df[cat_col] == principle])
+                # Extract just the principle name
+                short_name = principle.split(".")[-1] if "." in principle else principle
+                console.print(f"  {short_name}: {count} prompts")
+
+    console.print("\n[bold]Sample prompts:[/bold]")
+    prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
+    if prompt_col:
+        for i, row in df.head(5).iterrows():
+            prompt = str(row[prompt_col])[:60]
+            console.print(f"  {i+1}. \"{prompt}...\"")
+
+    console.print()
