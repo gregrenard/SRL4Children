@@ -237,6 +237,23 @@ def guardrails_transform(
     console.print(f"[yellow]TODO:[/yellow] Transform prompt with guardrails '{guardrails}'")
 
 
+@guardrails_app.command("deploy")
+def guardrails_deploy_cmd(set_id: str = typer.Argument(..., help="Guardrail set ID to deploy")):
+    """Deploy guardrails as a Cloudflare Worker proxy"""
+    from srl4c.cli.commands.guardrails import deploy_guardrails
+    deploy_guardrails(console, set_id)
+
+
+@guardrails_app.command("worker")
+def guardrails_worker(
+    set_id: str = typer.Argument(..., help="Guardrail set ID"),
+    output: str = typer.Option(None, "--output", "-o", help="Output file path"),
+):
+    """Generate Cloudflare Worker code (without deploying)"""
+    from srl4c.cli.commands.guardrails import generate_worker
+    generate_worker(console, set_id, output)
+
+
 # === PRINCIPLES ===
 
 @principles_app.command("list")

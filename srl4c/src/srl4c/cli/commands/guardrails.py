@@ -484,3 +484,219 @@ def export_guardrails(console: Console, set_id: str):
         console.print(f"- {g['rule_text']}")
     console.print()
     console.print("─" * 70)
+
+
+WORKER_TEMPLATE = '''// SRL4C Guardrail Proxy Worker
+// Generated for guardrail set: {set_id}
+// Rules: {rules_count}
+
+const GUARDRAILS = `
+IMPORTANT SAFETY RULES - You MUST follow these:
+{guardrails_text}
+`;
+
+export default {{
+  async fetch(request, env) {{
+    // CORS preflight
+    if (request.method === 'OPTIONS') {{
+      return new Response(null, {{
+        headers: {{
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }},
+      }});
+    }}
+
+    if (request.method !== 'POST') {{
+      return new Response(JSON.stringify({{ error: 'Method not allowed' }}), {{
+        status: 405,
+        headers: {{ 'Content-Type': 'application/json' }},
+      }});
+    }}
+
+    try {{
+      const body = await request.json();
+
+      // Extract target and api_key from body
+      const target = body._target || 'https://api.openai.com/v1';
+      const apiKey = body._api_key;
+
+      delete body._target;
+      delete body._api_key;
+
+      if (!apiKey) {{
+        return new Response(JSON.stringify({{ error: 'No API key provided in _api_key field' }}), {{
+          status: 400,
+          headers: {{ 'Content-Type': 'application/json' }},
+        }});
+      }}
+
+      // Inject guardrails into messages
+      if (body.messages && Array.isArray(body.messages)) {{
+        if (body.messages[0]?.role === 'system') {{
+          body.messages[0].content = GUARDRAILS + '\\n\\n' + body.messages[0].content;
+        }} else {{
+          body.messages.unshift({{ role: 'system', content: GUARDRAILS }});
+        }}
+      }}
+
+      // Forward to target - always use /chat/completions
+      const targetUrl = target.replace(/\\/+$/, '') + '/chat/completions';
+
+      const response = await fetch(targetUrl, {{
+        method: 'POST',
+        headers: {{
+          'Authorization': `Bearer ${{apiKey}}`,
+          'Content-Type': 'application/json',
+        }},
+        body: JSON.stringify(body),
+      }});
+
+      const responseBody = await response.text();
+      return new Response(responseBody, {{
+        status: response.status,
+        headers: {{
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        }},
+      }});
+
+    }} catch (error) {{
+      return new Response(JSON.stringify({{ error: error.message }}), {{
+        status: 500,
+        headers: {{ 'Content-Type': 'application/json' }},
+      }});
+    }}
+  }},
+}};
+'''
+
+
+def generate_worker(console: Console, set_id: str, output_path: str = None):
+    """Generate Cloudflare Worker code with guardrails baked in"""
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+
+    # Get the set
+    gset = conn.execute(
+        "SELECT * FROM guardrail_sets WHERE id = ? OR id LIKE ?",
+        (set_id, f"{set_id}%")
+    ).fetchone()
+
+    if not gset:
+        console.print(f"[red]Guardrail set not found: {set_id}[/red]")
+        conn.close()
+        return None
+
+    # Get guardrails
+    guardrails = conn.execute(
+        "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
+        (gset['id'],)
+    ).fetchall()
+    conn.close()
+
+    if not guardrails:
+        console.print("[yellow]No guardrails in this set[/yellow]")
+        return None
+
+    # Format guardrails as bullet points
+    guardrails_text = "\n".join(f"- {g['rule_text']}" for g in guardrails)
+
+    # Generate worker code
+    worker_code = WORKER_TEMPLATE.format(
+        set_id=gset['id'][:8],
+        rules_count=len(guardrails),
+        guardrails_text=guardrails_text
+    )
+
+    if output_path:
+        Path(output_path).write_text(worker_code)
+        console.print(f"[green]✓[/green] Worker code written to {output_path}")
+    else:
+        console.print(worker_code)
+
+    return worker_code, gset['id']
+
+
+def deploy_guardrails(console: Console, set_id: str):
+    """Deploy guardrails as a Cloudflare Worker"""
+    import subprocess
+    import shutil
+    import tempfile
+
+    # Generate worker code
+    result = generate_worker(console, set_id)
+    if not result:
+        return
+
+    worker_code, full_set_id = result
+    short_id = full_set_id[:8]
+
+    console.print(f"\n[bold]Deploying guardrail set {short_id} to Cloudflare Workers[/bold]\n")
+
+    # Check wrangler
+    if not shutil.which("wrangler") and not shutil.which("npx"):
+        console.print("[red]wrangler not found. Install with: npm install -g wrangler[/red]")
+        return
+
+    wrangler_cmd = ["wrangler"] if shutil.which("wrangler") else ["npx", "wrangler"]
+
+    # Check login
+    try:
+        result = subprocess.run(
+            wrangler_cmd + ["whoami"],
+            capture_output=True, text=True, timeout=10
+        )
+        if "not authenticated" in result.stdout.lower() or result.returncode != 0:
+            console.print("[yellow]Not logged in. Running wrangler login...[/yellow]")
+            subprocess.run(wrangler_cmd + ["login"])
+    except Exception as e:
+        console.print(f"[yellow]Could not check login: {e}[/yellow]")
+
+    console.print("[green]✓[/green] Wrangler ready")
+
+    # Create temp directory with worker files
+    with tempfile.TemporaryDirectory() as tmpdir:
+        worker_path = Path(tmpdir) / "worker.js"
+        toml_path = Path(tmpdir) / "wrangler.toml"
+
+        worker_path.write_text(worker_code)
+        toml_path.write_text(f'''name = "srl4c-guard-{short_id}"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+''')
+
+        console.print("[dim]Deploying...[/dim]")
+
+        try:
+            result = subprocess.run(
+                wrangler_cmd + ["deploy"],
+                cwd=tmpdir,
+                capture_output=True, text=True, timeout=60
+            )
+
+            if result.returncode != 0:
+                console.print(f"[red]Deploy failed:[/red]\n{result.stderr}")
+                return
+
+            # Extract URL
+            import re
+            match = re.search(r'https://[^\s]+workers\.dev', result.stdout)
+            worker_url = match.group(0) if match else f"https://srl4c-guard-{short_id}.<your-subdomain>.workers.dev"
+
+            console.print()
+            console.print("═" * 60)
+            console.print(f"[bold green]✓ Deployed![/bold green]")
+            console.print()
+            console.print(f"  Worker URL: [cyan]{worker_url}[/cyan]")
+            console.print()
+            console.print("  [bold]To use in Python:[/bold]")
+            console.print(f'    [dim]export SRL4C_WORKER_URL="{worker_url}"[/dim]')
+            console.print(f"    [dim]client = srl4c(OpenAI(api_key='sk-...', base_url='...'))[/dim]")
+            console.print("═" * 60)
+
+        except subprocess.TimeoutExpired:
+            console.print("[red]Deployment timed out[/red]")
+        except Exception as e:
+            console.print(f"[red]Deployment failed: {e}[/red]")
