@@ -103,3 +103,11 @@ User configs live in `~/.srl4c/`:
 - Always use `uv`, never `pip`
 - Paths are centralized in `src/srl4c/paths.py`
 - API keys go in `.env` at project root
+- All DB operations must use `db_connection()` context manager from `src/srl4c/db/models.py`:
+  ```python
+  from srl4c.db.models import db_connection
+
+  with db_connection() as conn:
+      conn.execute("SELECT * FROM ...")
+  # Auto-commits on success, auto-closes on exit
+  ```
