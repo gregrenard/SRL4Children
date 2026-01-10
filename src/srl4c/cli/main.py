@@ -348,5 +348,37 @@ def config_edit():
     console.print("[yellow]TODO:[/yellow] Open config in $EDITOR")
 
 
+# === API ===
+
+api_app = typer.Typer(help="API server commands")
+app.add_typer(api_app, name="api")
+
+
+@api_app.command("serve")
+def api_serve(
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Host to bind"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port to bind"),
+    reload: bool = typer.Option(False, "--reload", "-r", help="Enable auto-reload"),
+):
+    """Start the API server"""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]uvicorn not installed. Run: uv add uvicorn[/red]")
+        return
+
+    console.print(f"\n[bold]Starting SRL4C API server[/bold]")
+    console.print(f"  Host: [cyan]{host}[/cyan]")
+    console.print(f"  Port: [cyan]{port}[/cyan]")
+    console.print(f"  Docs: [cyan]http://{host if host != '0.0.0.0' else 'localhost'}:{port}/docs[/cyan]\n")
+
+    uvicorn.run(
+        "srl4c.api.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+    )
+
+
 if __name__ == "__main__":
     app()

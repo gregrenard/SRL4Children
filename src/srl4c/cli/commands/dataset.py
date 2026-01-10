@@ -4,33 +4,21 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from srl4c.paths import DATASETS_DIR
+from srl4c.core.datasets import get_all_datasets
 
 
 def get_builtin_datasets() -> dict:
-    """Get list of built-in datasets"""
-    datasets = {}
-    if DATASETS_DIR.exists():
-        for f in DATASETS_DIR.glob("*.csv"):
-            try:
-                df = pd.read_csv(f)
-                # Try to find the prompt and category columns
-                prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
-                cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
-
-                if prompt_col:
-                    principles = set()
-                    if cat_col:
-                        principles = set(df[cat_col].dropna().unique())
-
-                    datasets[f.stem] = {
-                        "path": f,
-                        "prompts": len(df),
-                        "principles": principles,
-                    }
-            except Exception:
-                continue
-    return datasets
+    """Get list of built-in datasets (wrapper for backwards compatibility)"""
+    datasets = get_all_datasets()
+    # Convert to old format for compatibility
+    return {
+        name: {
+            "path": info["path"],
+            "prompts": info["rows"],
+            "principles": set(info["principles"]),
+        }
+        for name, info in datasets.items()
+    }
 
 
 def list_datasets(console: Console):

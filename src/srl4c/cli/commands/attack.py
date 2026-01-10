@@ -1,106 +1,32 @@
 """Attack commands implementation"""
 
-import time
-from pathlib import Path
-
-import pandas as pd
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-from srl4c.db.models import Attack, Record
-from srl4c.db.repository import (
-    EndpointRepository, AttackRepository, RecordRepository, generate_id
-)
-from srl4c.adapters.openai import OpenAIAdapter
-from srl4c.adapters.simple import SimpleAdapter
-from srl4c.cli.commands.dataset import get_builtin_datasets
-
-
-def get_dataset_path(name: str) -> Path:
-    """Get path to dataset by name"""
-    datasets = get_builtin_datasets()
-    if name in datasets:
-        return datasets[name]["path"]
-    # Check custom datasets
-    custom_dir = Path.home() / ".srl4c" / "datasets"
-    custom_path = custom_dir / f"{name}.csv"
-    if custom_path.exists():
-        return custom_path
-    return None
-
-
-def load_dataset(path: Path) -> pd.DataFrame:
-    """Load dataset and normalize column names"""
-    df = pd.read_csv(path)
-
-    # Find columns
-    prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
-    cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
-    id_col = next((c for c in df.columns if c.lower() in ["promptid", "id", "uid"]), None)
-
-    if not prompt_col:
-        raise ValueError("Dataset must have a 'Prompt' or 'Question' column")
-
-    # Normalize
-    result = pd.DataFrame()
-    result["prompt"] = df[prompt_col]
-    result["principle_id"] = df[cat_col] if cat_col else ""
-    result["id"] = df[id_col] if id_col else range(len(df))
-
-    return result
+from srl4c.db.repository import EndpointRepository, AttackRepository, RecordRepository
 
 
 def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     """Run an attack against an endpoint"""
-    # Get endpoint
+    from srl4c.core.attack import create_attack, run_attack as execute_attack
+
+    # Create attack job (shared with API)
     try:
-        endpoint = EndpointRepository.get_by_id_or_name(endpoint_name)
+        attack_id = create_attack(endpoint_name, dataset_name)
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
         return
 
-    if not endpoint:
-        console.print(f"[red]Endpoint not found: {endpoint_name}[/red]")
-        return
-
-    # Get dataset
-    dataset_path = get_dataset_path(dataset_name)
-    if not dataset_path:
-        console.print(f"[red]Dataset not found: {dataset_name}[/red]")
-        return
-
-    try:
-        df = load_dataset(dataset_path)
-    except Exception as e:
-        console.print(f"[red]Error loading dataset: {e}[/red]")
-        return
+    # Get attack details for display
+    attack = AttackRepository.get_by_id(attack_id)
+    endpoint = EndpointRepository.get_by_id(attack.endpoint_id)
 
     console.print(f"\nStarting attack...")
     console.print(f"  Endpoint: [cyan]{endpoint.name}[/cyan] ({endpoint.id})")
-    console.print(f"  Dataset:  [cyan]{dataset_name}[/cyan] ({len(df)} prompts)\n")
+    console.print(f"  Dataset:  [cyan]{attack.dataset_name}[/cyan] ({attack.total_prompts} prompts)\n")
+    console.print(f"Attack [cyan]{attack_id}[/cyan] created\n")
 
-    # Create attack record
-    attack = Attack(
-        id=generate_id(),
-        endpoint_id=endpoint.id,
-        dataset_name=dataset_name,
-        status="running",
-        total_prompts=len(df),
-        completed_prompts=0,
-    )
-    AttackRepository.create(attack)
-    console.print(f"Attack [cyan]{attack.id}[/cyan] created\n")
-
-    # Create adapter
-    if endpoint.type == "openai":
-        adapter = OpenAIAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
-    else:
-        adapter = SimpleAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
-
-    # Send prompts
-    completed = 0
-    errors = 0
-
+    # Run with progress display
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -108,42 +34,25 @@ def run_attack(console: Console, endpoint_name: str, dataset_name: str):
         TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task("Sending prompts...", total=len(df))
+        task = progress.add_task("Sending prompts...", total=attack.total_prompts)
 
-        for _, row in df.iterrows():
-            prompt = str(row["prompt"])
-            principle_id = str(row["principle_id"]) if row["principle_id"] else ""
+        def on_progress(current: int, total: int):
+            progress.update(task, completed=current, total=total)
 
-            # Create record
-            record = Record(
-                id=generate_id(),
-                attack_id=attack.id,
-                prompt=prompt,
-                principle_id=principle_id,
-            )
-            RecordRepository.create(record)
+        try:
+            execute_attack(attack_id, on_progress=on_progress)
+        except Exception as e:
+            console.print(f"\n[red]✗[/red] Attack failed: {e}")
+            return
 
-            # Send to endpoint
-            try:
-                response = adapter.send_message(prompt)
-                RecordRepository.update_response(record.id, response=response)
-                completed += 1
-            except Exception as e:
-                RecordRepository.update_response(record.id, error=str(e))
-                errors += 1
-
-            progress.update(task, advance=1)
-
-            # Small delay to avoid rate limiting
-            time.sleep(0.1)
-
-    # Update attack status
-    AttackRepository.update_status(attack.id, "completed", completed)
-    EndpointRepository.update_last_used(endpoint.id)
+    # Show result
+    attack = AttackRepository.get_by_id(attack_id)
+    records = RecordRepository.get_by_attack(attack_id)
+    errors = sum(1 for r in records if r.error)
 
     console.print(f"\n[green]✓[/green] Attack completed")
     console.print(f"  ID:        [cyan]{attack.id}[/cyan]")
-    console.print(f"  Prompts:   {completed} sent, {errors} errors")
+    console.print(f"  Prompts:   {attack.completed_prompts} sent, {errors} errors")
     console.print(f"\nNext step: [cyan]srl4c score run {attack.id} --age child --weights balanced[/cyan]\n")
 
 
@@ -170,7 +79,18 @@ def list_attacks(console: Console):
 
     for attack in attacks:
         endpoint_name = endpoints.get(attack.endpoint_id, attack.endpoint_id[:8])
-        status_style = "green" if attack.status == "completed" else "yellow"
+
+        # Status styling
+        status = attack.status
+        if status == "completed":
+            status_style = "green"
+        elif status == "failed":
+            status_style = "red"
+        elif status == "running":
+            status_style = "yellow"
+        else:
+            status_style = "dim"
+
         prompts = f"{attack.completed_prompts}/{attack.total_prompts}"
         date = attack.started_at[:10] if attack.started_at else ""
 
@@ -178,7 +98,7 @@ def list_attacks(console: Console):
             attack.id[:8],
             endpoint_name,
             attack.dataset_name,
-            f"[{status_style}]{attack.status}[/{status_style}]",
+            f"[{status_style}]{status}[/{status_style}]",
             prompts,
             date,
         )
@@ -203,6 +123,8 @@ def show_attack(console: Console, attack_id: str):
 
     console.print(f"\n[bold]Attack:[/bold] {attack.id}")
     console.print(f"[bold]Status:[/bold] {attack.status}")
+    if attack.error_message:
+        console.print(f"[bold]Error:[/bold] [red]{attack.error_message}[/red]")
     console.print(f"[bold]Endpoint:[/bold] {endpoint_name} ({attack.endpoint_id})")
     console.print(f"[bold]Dataset:[/bold] {attack.dataset_name}")
     console.print(f"[bold]Started:[/bold] {attack.started_at}")
