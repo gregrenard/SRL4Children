@@ -526,6 +526,95 @@ $ srl4c principles list
 srl4c principles show refers_to_emotions
 ```
 
+### `srl4c api serve`
+
+Start the REST API server.
+
+```bash
+# Start on default port 8000
+srl4c api serve
+
+# Start on custom port
+srl4c api serve --port 8080
+
+# With auto-reload for development
+srl4c api serve --reload
+```
+
+## REST API
+
+SRL4C includes a REST API that provides the same functionality as the CLI. Both share the same core business logic and database.
+
+### Starting the Server
+
+```bash
+srl4c api serve --port 8000
+```
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| **Endpoints** | | |
+| GET | `/endpoints` | List all endpoints |
+| POST | `/endpoints` | Create endpoint |
+| GET | `/endpoints/{id}` | Get endpoint details |
+| DELETE | `/endpoints/{id}` | Delete endpoint |
+| POST | `/endpoints/{id}/test` | Test endpoint connection |
+| **Attacks** | | |
+| GET | `/attacks` | List all attacks |
+| POST | `/attacks` | Start attack (returns 202) |
+| GET | `/attacks/{id}` | Get attack status/progress |
+| DELETE | `/attacks/{id}` | Delete attack |
+| **Scores** | | |
+| GET | `/scores` | List all scores |
+| POST | `/scores` | Start scoring (returns 202) |
+| GET | `/scores/{id}` | Get score status/progress |
+| GET | `/scores/{id}/failures` | Get failure details |
+| GET | `/scores/{id}/report` | Get Markdown report |
+| DELETE | `/scores/{id}` | Delete score |
+| **Guardrails** | | |
+| GET | `/guardrails` | List guardrail sets |
+| POST | `/guardrails` | Generate guardrails (returns 202) |
+| GET | `/guardrails/{id}` | Get guardrail set details |
+| GET | `/guardrails/{id}/export` | Export as text |
+| DELETE | `/guardrails/{id}` | Delete guardrail set |
+| **Read-only** | | |
+| GET | `/datasets` | List datasets |
+| GET | `/datasets/{name}` | Get dataset info |
+| GET | `/principles` | List principles |
+| GET | `/principles/{id}` | Get principle details |
+
+### Long-Running Operations
+
+POST endpoints for `/attacks`, `/scores`, and `/guardrails` return `202 Accepted` with a job ID. Poll the GET endpoint to check progress:
+
+```bash
+# Start an attack
+curl -X POST http://localhost:8000/attacks \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint": "my-app", "dataset": "test_mini"}'
+# → {"id": "abc123", "status": "pending"}
+
+# Poll for progress
+curl http://localhost:8000/attacks/abc123
+# → {"id": "abc123", "status": "running", "progress": 0.5, ...}
+
+# Final result
+curl http://localhost:8000/attacks/abc123
+# → {"id": "abc123", "status": "completed", "progress": 1.0, ...}
+```
+
+### CLI and API Consistency
+
+The CLI and API share the same:
+- **Database**: Both read/write to `~/.srl4c/srl4c.db`
+- **Core logic**: Both use `src/srl4c/core/` for business logic
+- **Configuration**: Both use `~/.srl4c/` config files
+
+This means you can start a job via API and check its status via CLI (or vice versa).
+
 ## Configuration
 
 ### API Keys
