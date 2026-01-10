@@ -9,6 +9,9 @@ from pathlib import Path
 
 from srl4c.db import DB_PATH
 
+# Jobs running longer than this without progress updates are considered stale
+STALE_TIMEOUT_MINUTES = 90
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS endpoints (
@@ -26,10 +29,14 @@ CREATE TABLE IF NOT EXISTS attacks (
     id TEXT PRIMARY KEY,
     endpoint_id TEXT NOT NULL,
     dataset_name TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'running',
+    status TEXT NOT NULL DEFAULT 'pending',
     total_prompts INTEGER,
     completed_prompts INTEGER DEFAULT 0,
+    progress_current INTEGER DEFAULT 0,
+    progress_total INTEGER DEFAULT 0,
+    error_message TEXT,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     FOREIGN KEY (endpoint_id) REFERENCES endpoints(id)
 );
@@ -53,8 +60,12 @@ CREATE TABLE IF NOT EXISTS scores (
     weights_json TEXT,
     final_score REAL,
     category_scores_json TEXT,
-    status TEXT NOT NULL DEFAULT 'running',
+    status TEXT NOT NULL DEFAULT 'pending',
+    progress_current INTEGER DEFAULT 0,
+    progress_total INTEGER DEFAULT 0,
+    error_message TEXT,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     FOREIGN KEY (attack_id) REFERENCES attacks(id)
 );
@@ -79,7 +90,13 @@ CREATE TABLE IF NOT EXISTS guardrail_sets (
     score_id TEXT NOT NULL,
     model TEXT,
     rules_count INTEGER DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    progress_current INTEGER DEFAULT 0,
+    progress_total INTEGER DEFAULT 0,
+    error_message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
     FOREIGN KEY (score_id) REFERENCES scores(id)
 );
 
@@ -92,6 +109,22 @@ CREATE TABLE IF NOT EXISTS guardrails (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (set_id) REFERENCES guardrail_sets(id)
 );
+
+CREATE TABLE IF NOT EXISTS logs (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    level TEXT NOT NULL,
+    source TEXT NOT NULL,
+    message TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id TEXT,
+    metadata_json TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_entity ON logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
 """
 
 
@@ -112,10 +145,14 @@ class Attack:
     id: str
     endpoint_id: str
     dataset_name: str
-    status: str = "running"
+    status: str = "pending"
     total_prompts: int = 0
     completed_prompts: int = 0
+    progress_current: int = 0
+    progress_total: int = 0
+    error_message: Optional[str] = None
     started_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
 
@@ -135,12 +172,16 @@ class Score:
     id: str
     attack_id: str
     age_context: str
-    status: str = "running"
+    status: str = "pending"
     weights_preset: Optional[str] = None
     weights: Optional[dict] = None
     final_score: Optional[float] = None
     category_scores: Optional[dict] = None
+    progress_current: int = 0
+    progress_total: int = 0
+    error_message: Optional[str] = None
     started_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
 
@@ -163,7 +204,13 @@ class GuardrailSet:
     score_id: str
     model: Optional[str] = None
     rules_count: int = 0
+    status: str = "pending"
+    progress_current: int = 0
+    progress_total: int = 0
+    error_message: Optional[str] = None
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
 
 
 @dataclass
@@ -173,6 +220,19 @@ class Guardrail:
     principle_id: str
     rule_text: str
     rationale: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+@dataclass
+class Log:
+    id: str
+    timestamp: str
+    level: str  # 'info', 'warning', 'error'
+    source: str  # 'endpoint', 'attack', 'score', 'guardrails', 'api'
+    message: str
+    entity_type: Optional[str] = None  # 'endpoint', 'attack', 'score', 'guardrail_set'
+    entity_id: Optional[str] = None
+    metadata: Optional[dict] = None
     created_at: Optional[datetime] = None
 
 

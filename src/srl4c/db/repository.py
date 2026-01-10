@@ -7,7 +7,7 @@ from typing import Optional
 
 from srl4c.db.models import (
     get_connection, init_db, db_connection,
-    Endpoint, Attack, Record, Score, Evaluation, Guardrail
+    Endpoint, Attack, Record, Score, Evaluation, Guardrail, Log
 )
 
 
@@ -39,7 +39,11 @@ def _row_to_attack(row) -> Attack:
         status=row["status"],
         total_prompts=row["total_prompts"],
         completed_prompts=row["completed_prompts"],
+        progress_current=row["progress_current"] or 0,
+        progress_total=row["progress_total"] or 0,
+        error_message=row["error_message"],
         started_at=row["started_at"],
+        updated_at=row["updated_at"],
         completed_at=row["completed_at"],
     )
 
@@ -222,21 +226,44 @@ class AttackRepository:
         return [_row_to_attack(row) for row in rows]
 
     @staticmethod
-    def update_status(id: str, status: str, completed_prompts: int = None):
-        """Update attack status"""
-        conn = get_connection()
-        if completed_prompts is not None:
-            conn.execute(
-                "UPDATE attacks SET status = ?, completed_prompts = ?, completed_at = ? WHERE id = ?",
-                (status, completed_prompts, datetime.now().isoformat() if status == "completed" else None, id)
-            )
-        else:
-            conn.execute(
-                "UPDATE attacks SET status = ?, completed_at = ? WHERE id = ?",
-                (status, datetime.now().isoformat() if status == "completed" else None, id)
-            )
-        conn.commit()
-        conn.close()
+    def update_status(id: str, status: str, completed_prompts: int = None, error_message: str = None):
+        """Update attack status and optionally error message."""
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            if status == "completed":
+                conn.execute(
+                    """UPDATE attacks SET status = ?, completed_prompts = ?,
+                       completed_at = ?, updated_at = ? WHERE id = ?""",
+                    (status, completed_prompts, now, now, id)
+                )
+            elif status == "failed":
+                conn.execute(
+                    """UPDATE attacks SET status = ?, error_message = ?,
+                       updated_at = ? WHERE id = ?""",
+                    (status, error_message, now, id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE attacks SET status = ?, updated_at = ? WHERE id = ?",
+                    (status, now, id)
+                )
+
+    @staticmethod
+    def update_progress(id: str, current: int, total: int = None):
+        """Update attack progress. Also updates updated_at for stale detection."""
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            if total is not None:
+                conn.execute(
+                    """UPDATE attacks SET progress_current = ?, progress_total = ?,
+                       updated_at = ? WHERE id = ?""",
+                    (current, total, now, id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE attacks SET progress_current = ?, updated_at = ? WHERE id = ?",
+                    (current, now, id)
+                )
 
     @staticmethod
     def delete(id: str, cascade: bool = True) -> dict:
@@ -349,6 +376,44 @@ class ScoreRepository:
         return dict(row) if row else None
 
     @staticmethod
+    def update_status(id: str, status: str, error_message: str = None):
+        """Update score status and optionally error message."""
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            if status == "completed":
+                conn.execute(
+                    "UPDATE scores SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?",
+                    (status, now, now, id)
+                )
+            elif status == "failed":
+                conn.execute(
+                    "UPDATE scores SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+                    (status, error_message, now, id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE scores SET status = ?, updated_at = ? WHERE id = ?",
+                    (status, now, id)
+                )
+
+    @staticmethod
+    def update_progress(id: str, current: int, total: int = None):
+        """Update score progress. Also updates updated_at for stale detection."""
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            if total is not None:
+                conn.execute(
+                    """UPDATE scores SET progress_current = ?, progress_total = ?,
+                       updated_at = ? WHERE id = ?""",
+                    (current, total, now, id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE scores SET progress_current = ?, updated_at = ? WHERE id = ?",
+                    (current, now, id)
+                )
+
+    @staticmethod
     def delete(id: str) -> dict:
         """Delete score and its evaluations."""
         score = ScoreRepository.get_by_id(id)
@@ -386,6 +451,44 @@ class GuardrailSetRepository:
         return dict(row) if row else None
 
     @staticmethod
+    def update_status(id: str, status: str, error_message: str = None):
+        """Update guardrail set status and optionally error message."""
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            if status == "completed":
+                conn.execute(
+                    "UPDATE guardrail_sets SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?",
+                    (status, now, now, id)
+                )
+            elif status == "failed":
+                conn.execute(
+                    "UPDATE guardrail_sets SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
+                    (status, error_message, now, id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE guardrail_sets SET status = ?, updated_at = ? WHERE id = ?",
+                    (status, now, id)
+                )
+
+    @staticmethod
+    def update_progress(id: str, current: int, total: int = None):
+        """Update guardrail set progress. Also updates updated_at for stale detection."""
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            if total is not None:
+                conn.execute(
+                    """UPDATE guardrail_sets SET progress_current = ?, progress_total = ?,
+                       updated_at = ? WHERE id = ?""",
+                    (current, total, now, id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE guardrail_sets SET progress_current = ?, updated_at = ? WHERE id = ?",
+                    (current, now, id)
+                )
+
+    @staticmethod
     def delete(id: str) -> dict:
         """Delete guardrail set and its guardrails."""
         gset = GuardrailSetRepository.get_by_id(id)
@@ -403,3 +506,95 @@ class GuardrailSetRepository:
             conn.execute("DELETE FROM guardrail_sets WHERE id = ?", (gset["id"],))
 
         return deleted
+
+
+def _row_to_log(row) -> Log:
+    """Convert a database row to a Log object"""
+    return Log(
+        id=row["id"],
+        timestamp=row["timestamp"],
+        level=row["level"],
+        source=row["source"],
+        message=row["message"],
+        entity_type=row["entity_type"],
+        entity_id=row["entity_id"],
+        metadata=json.loads(row["metadata_json"]) if row["metadata_json"] else None,
+        created_at=row["created_at"],
+    )
+
+
+class LogRepository:
+    """CRUD operations for logs"""
+
+    @staticmethod
+    def create(log: Log) -> Log:
+        """Create a new log entry"""
+        init_db()
+        with db_connection() as conn:
+            conn.execute(
+                """INSERT INTO logs (id, timestamp, level, source, message, entity_type, entity_id, metadata_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    log.id,
+                    log.timestamp,
+                    log.level,
+                    log.source,
+                    log.message,
+                    log.entity_type,
+                    log.entity_id,
+                    json.dumps(log.metadata) if log.metadata else None,
+                )
+            )
+        return log
+
+    @staticmethod
+    def list_all(limit: int = 100, offset: int = 0, level: str = None,
+                 entity_type: str = None, entity_id: str = None) -> list[Log]:
+        """List logs with optional filters, newest first"""
+        init_db()
+        query = "SELECT * FROM logs WHERE 1=1"
+        params = []
+
+        if level:
+            query += " AND level = ?"
+            params.append(level)
+        if entity_type:
+            query += " AND entity_type = ?"
+            params.append(entity_type)
+        if entity_id:
+            query += " AND entity_id = ?"
+            params.append(entity_id)
+
+        query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        with db_connection() as conn:
+            rows = conn.execute(query, params).fetchall()
+        return [_row_to_log(row) for row in rows]
+
+    @staticmethod
+    def count(level: str = None, entity_type: str = None) -> int:
+        """Count logs with optional filters"""
+        init_db()
+        query = "SELECT COUNT(*) FROM logs WHERE 1=1"
+        params = []
+
+        if level:
+            query += " AND level = ?"
+            params.append(level)
+        if entity_type:
+            query += " AND entity_type = ?"
+            params.append(entity_type)
+
+        with db_connection() as conn:
+            return conn.execute(query, params).fetchone()[0]
+
+    @staticmethod
+    def cleanup(days: int = 30) -> int:
+        """Delete logs older than X days. Returns count of deleted logs."""
+        with db_connection() as conn:
+            result = conn.execute(
+                "DELETE FROM logs WHERE timestamp < datetime('now', ?)",
+                (f"-{days} days",)
+            )
+            return result.rowcount
