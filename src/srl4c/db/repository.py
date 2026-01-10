@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from srl4c.db.models import (
-    get_connection, init_db,
+    get_connection, init_db, db_connection,
     Endpoint, Attack, Record, Score, Evaluation, Guardrail
 )
 
@@ -129,16 +129,35 @@ class EndpointRepository:
         return [_row_to_endpoint(row) for row in rows]
 
     @staticmethod
-    def delete(id: str) -> bool:
-        """Delete endpoint by ID"""
+    def delete(id: str, cascade: bool = False) -> dict:
+        """Delete endpoint by ID.
+
+        If cascade=True, deletes all attacks (and their records/scores/evaluations).
+        Returns dict with counts or None if not found.
+        """
         endpoint = EndpointRepository.get_by_id(id)
         if not endpoint:
-            return False
+            return None
+
+        deleted = {"attacks": 0, "records": 0, "scores": 0, "evaluations": 0}
+
+        if cascade:
+            # Delete all attacks for this endpoint (which cascades further)
+            attacks = AttackRepository.get_attacks_for_endpoint(endpoint.id)
+            for attack in attacks:
+                result = AttackRepository.delete(attack.id, cascade=True)
+                if result:
+                    deleted["attacks"] += 1
+                    deleted["records"] += result["records"]
+                    deleted["scores"] += result["scores"]
+                    deleted["evaluations"] += result["evaluations"]
+
         conn = get_connection()
         conn.execute("DELETE FROM endpoints WHERE id = ?", (endpoint.id,))
         conn.commit()
         conn.close()
-        return True
+
+        return deleted
 
     @staticmethod
     def update_last_used(id: str):
@@ -219,6 +238,53 @@ class AttackRepository:
         conn.commit()
         conn.close()
 
+    @staticmethod
+    def delete(id: str, cascade: bool = True) -> dict:
+        """Delete attack and optionally cascade to records, scores, evaluations.
+
+        Returns dict with counts of deleted items.
+        """
+        attack = AttackRepository.get_by_id(id)
+        if not attack:
+            return None
+
+        deleted = {"records": 0, "scores": 0, "evaluations": 0}
+
+        with db_connection() as conn:
+            if cascade:
+                # Get scores for this attack
+                score_ids = [row[0] for row in conn.execute(
+                    "SELECT id FROM scores WHERE attack_id = ?", (attack.id,)
+                ).fetchall()]
+
+                # Delete evaluations for each score
+                for score_id in score_ids:
+                    result = conn.execute("DELETE FROM evaluations WHERE score_id = ?", (score_id,))
+                    deleted["evaluations"] += result.rowcount
+
+                # Delete scores
+                result = conn.execute("DELETE FROM scores WHERE attack_id = ?", (attack.id,))
+                deleted["scores"] = result.rowcount
+
+                # Delete records
+                result = conn.execute("DELETE FROM records WHERE attack_id = ?", (attack.id,))
+                deleted["records"] = result.rowcount
+
+            # Delete attack
+            conn.execute("DELETE FROM attacks WHERE id = ?", (attack.id,))
+
+        return deleted
+
+    @staticmethod
+    def get_attacks_for_endpoint(endpoint_id: str) -> list:
+        """Get all attacks for an endpoint"""
+        conn = get_connection()
+        rows = conn.execute(
+            "SELECT * FROM attacks WHERE endpoint_id = ?", (endpoint_id,)
+        ).fetchall()
+        conn.close()
+        return [_row_to_attack(row) for row in rows]
+
 
 class RecordRepository:
     """CRUD operations for records"""
@@ -258,10 +324,82 @@ class RecordRepository:
     @staticmethod
     def update_response(id: str, response: str = None, error: str = None):
         """Update record with response or error"""
-        conn = get_connection()
-        conn.execute(
-            "UPDATE records SET response = ?, error = ? WHERE id = ?",
-            (response, error, id)
-        )
-        conn.commit()
-        conn.close()
+        with db_connection() as conn:
+            conn.execute(
+                "UPDATE records SET response = ?, error = ? WHERE id = ?",
+                (response, error, id)
+            )
+
+
+class ScoreRepository:
+    """CRUD operations for scores"""
+
+    @staticmethod
+    def get_by_id(id: str):
+        """Get score by ID (supports prefix matching)"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute("SELECT * FROM scores WHERE id = ?", (id,)).fetchone()
+            if not row:
+                rows = conn.execute("SELECT * FROM scores WHERE id LIKE ?", (f"{id}%",)).fetchall()
+                if len(rows) == 1:
+                    row = rows[0]
+                elif len(rows) > 1:
+                    raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
+        return dict(row) if row else None
+
+    @staticmethod
+    def delete(id: str) -> dict:
+        """Delete score and its evaluations."""
+        score = ScoreRepository.get_by_id(id)
+        if not score:
+            return None
+
+        deleted = {"evaluations": 0}
+
+        with db_connection() as conn:
+            # Delete evaluations
+            result = conn.execute("DELETE FROM evaluations WHERE score_id = ?", (score["id"],))
+            deleted["evaluations"] = result.rowcount
+
+            # Delete score
+            conn.execute("DELETE FROM scores WHERE id = ?", (score["id"],))
+
+        return deleted
+
+
+class GuardrailSetRepository:
+    """CRUD operations for guardrail sets"""
+
+    @staticmethod
+    def get_by_id(id: str):
+        """Get guardrail set by ID (supports prefix matching)"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute("SELECT * FROM guardrail_sets WHERE id = ?", (id,)).fetchone()
+            if not row:
+                rows = conn.execute("SELECT * FROM guardrail_sets WHERE id LIKE ?", (f"{id}%",)).fetchall()
+                if len(rows) == 1:
+                    row = rows[0]
+                elif len(rows) > 1:
+                    raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
+        return dict(row) if row else None
+
+    @staticmethod
+    def delete(id: str) -> dict:
+        """Delete guardrail set and its guardrails."""
+        gset = GuardrailSetRepository.get_by_id(id)
+        if not gset:
+            return None
+
+        deleted = {"guardrails": 0}
+
+        with db_connection() as conn:
+            # Delete guardrails
+            result = conn.execute("DELETE FROM guardrails WHERE set_id = ?", (gset["id"],))
+            deleted["guardrails"] = result.rowcount
+
+            # Delete set
+            conn.execute("DELETE FROM guardrail_sets WHERE id = ?", (gset["id"],))
+
+        return deleted

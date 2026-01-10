@@ -108,7 +108,7 @@ def test_endpoint(console: Console, id_or_name: str):
         console.print(f"  [red]✗[/red] Connection failed: {response}")
 
 
-def remove_endpoint(console: Console, id_or_name: str):
+def remove_endpoint(console: Console, id_or_name: str, force: bool = False):
     """Remove an endpoint"""
     try:
         endpoint = EndpointRepository.get_by_id_or_name(id_or_name)
@@ -120,5 +120,16 @@ def remove_endpoint(console: Console, id_or_name: str):
         console.print(f"[red]Endpoint not found: {id_or_name}[/red]")
         return
 
-    EndpointRepository.delete(endpoint.id)
+    # Check for related attacks
+    from srl4c.db.repository import AttackRepository
+    attacks = AttackRepository.get_attacks_for_endpoint(endpoint.id)
+
+    if attacks and not force:
+        console.print(f"[yellow]Endpoint has {len(attacks)} attack(s). Use --force to delete with all related data.[/yellow]")
+        return
+
+    deleted = EndpointRepository.delete(endpoint.id, cascade=force)
     console.print(f"[green]✓[/green] Removed endpoint '[cyan]{endpoint.name}[/cyan]'")
+
+    if force and deleted:
+        console.print(f"  Deleted: {deleted['attacks']} attacks, {deleted['records']} records, {deleted['scores']} scores, {deleted['evaluations']} evaluations")

@@ -13,26 +13,7 @@ from srl4c.db import DB_PATH
 from srl4c.judge.config import load_judge_config
 from srl4c.judge.evaluator import evaluate_records_batch
 
-import sqlite3
-from contextlib import contextmanager
-
-
-@contextmanager
-def _get_conn():
-    """Get a database connection as a context manager.
-
-    Usage:
-        with _get_conn() as conn:
-            conn.execute(...)
-
-    Automatically commits on success, closes on exit.
-    """
-    conn = sqlite3.connect(str(DB_PATH))
-    try:
-        yield conn
-        conn.commit()
-    finally:
-        conn.close()
+from srl4c.db.models import db_connection
 
 
 def run_score(console: Console, attack_id: str, age: str, weights: str, format: str, threshold: float = None):
@@ -72,7 +53,7 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
 
     # Create score record in DB
     score_id = generate_id()
-    with _get_conn() as conn:
+    with db_connection() as conn:
         conn.execute(
             """INSERT INTO scores (id, attack_id, age_context, weights_preset, status, started_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
@@ -97,13 +78,13 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
         )
     except Exception as e:
         console.print(f"[red]Evaluation failed: {e}[/red]")
-        with _get_conn() as conn:
+        with db_connection() as conn:
             conn.execute("UPDATE scores SET status = ? WHERE id = ?", ("failed", score_id))
         return
 
     # Store evaluations in DB
     all_results = []
-    with _get_conn() as conn:
+    with db_connection() as conn:
         for record in valid_records:
             if record.id not in results_by_record:
                 continue
@@ -149,7 +130,7 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
         category_averages = {cat: statistics.mean(scores) for cat, scores in category_scores.items()}
 
         # Update score record
-        with _get_conn() as conn:
+        with db_connection() as conn:
             conn.execute(
                 """UPDATE scores SET final_score = ?, category_scores_json = ?, status = ?, completed_at = ?
                    WHERE id = ?""",
@@ -160,7 +141,7 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
         console.print(f"\n[green]✓[/green] Scoring completed\n")
         display_score_summary(console, score_id, avg_final, category_averages, threshold)
     else:
-        with _get_conn() as conn:
+        with db_connection() as conn:
             conn.execute("UPDATE scores SET status = ? WHERE id = ?", ("failed", score_id))
         console.print(f"\n[red]Scoring failed - no valid results[/red]")
 
@@ -201,8 +182,7 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
 
 def list_scores(console: Console):
     """List all scores"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
         rows = conn.execute("SELECT * FROM scores ORDER BY started_at DESC").fetchall()
 
     if not rows:
@@ -236,8 +216,7 @@ def list_scores(console: Console):
 
 def show_score(console: Console, score_id: str):
     """Show score details"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
         row = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
 
     if not row:
@@ -259,8 +238,7 @@ def show_score(console: Console, score_id: str):
 
 def show_failures(console: Console, score_id: str):
     """Show failures from a score"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
 
         # Get score
         score = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()
@@ -305,8 +283,7 @@ def show_failures(console: Console, score_id: str):
 
 def generate_report(console: Console, score_id: str, output_file: str = None):
     """Generate detailed Markdown report (same format as review UI)"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
 
         # Get score
         score = conn.execute("SELECT * FROM scores WHERE id = ? OR id LIKE ?", (score_id, f"{score_id}%")).fetchone()

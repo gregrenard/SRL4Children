@@ -71,10 +71,13 @@ def endpoint_test(id: str = typer.Argument(..., help="Endpoint ID or name")):
 
 
 @endpoint_app.command("remove")
-def endpoint_remove(id: str = typer.Argument(..., help="Endpoint ID or name")):
+def endpoint_remove(
+    id: str = typer.Argument(..., help="Endpoint ID or name"),
+    force: bool = typer.Option(False, "--force", "-f", help="Delete with all related attacks/scores"),
+):
     """Remove an endpoint"""
     from srl4c.cli.commands.endpoint import remove_endpoint
-    remove_endpoint(console, id)
+    remove_endpoint(console, id, force=force)
 
 
 # === DATASET ===
@@ -134,6 +137,21 @@ def attack_show(id: str = typer.Argument(..., help="Attack ID")):
     show_attack(console, id)
 
 
+@attack_app.command("delete")
+def attack_delete(id: str = typer.Argument(..., help="Attack ID")):
+    """Delete an attack and all its records/scores"""
+    from srl4c.db.repository import AttackRepository
+    try:
+        deleted = AttackRepository.delete(id, cascade=True)
+        if deleted is None:
+            console.print(f"[red]Attack not found: {id}[/red]")
+        else:
+            console.print(f"[green]✓[/green] Deleted attack [cyan]{id}[/cyan]")
+            console.print(f"  Deleted: {deleted['records']} records, {deleted['scores']} scores, {deleted['evaluations']} evaluations")
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+
 # === SCORE ===
 
 @score_app.command("run")
@@ -180,6 +198,21 @@ def score_report(
     generate_report(console, id, output)
 
 
+@score_app.command("delete")
+def score_delete(id: str = typer.Argument(..., help="Score ID")):
+    """Delete a score and its evaluations"""
+    from srl4c.db.repository import ScoreRepository
+    try:
+        deleted = ScoreRepository.delete(id)
+        if deleted is None:
+            console.print(f"[red]Score not found: {id}[/red]")
+        else:
+            console.print(f"[green]✓[/green] Deleted score [cyan]{id}[/cyan]")
+            console.print(f"  Deleted: {deleted['evaluations']} evaluations")
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+
 @score_app.command("compare")
 def score_compare(
     id1: str = typer.Argument(..., help="First score ID"),
@@ -221,6 +254,21 @@ def guardrails_export(set_id: str = typer.Argument(..., help="Guardrail set ID")
     """Export guardrails as text for system prompt"""
     from srl4c.cli.commands.guardrails import export_guardrails
     export_guardrails(console, set_id)
+
+
+@guardrails_app.command("delete")
+def guardrails_delete(set_id: str = typer.Argument(..., help="Guardrail set ID")):
+    """Delete a guardrail set and its rules"""
+    from srl4c.db.repository import GuardrailSetRepository
+    try:
+        deleted = GuardrailSetRepository.delete(set_id)
+        if deleted is None:
+            console.print(f"[red]Guardrail set not found: {set_id}[/red]")
+        else:
+            console.print(f"[green]✓[/green] Deleted guardrail set [cyan]{set_id}[/cyan]")
+            console.print(f"  Deleted: {deleted['guardrails']} guardrails")
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
 
 
 @guardrails_app.command("transform")

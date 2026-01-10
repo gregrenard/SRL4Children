@@ -19,24 +19,10 @@ from json_repair import repair_json
 from srl4c.db.repository import generate_id
 from srl4c.db import DB_PATH
 
-import sqlite3
-from contextlib import contextmanager
-
-
 # Load API keys from .env
 from srl4c.paths import PROJECT_ROOT, TEMPLATES_DIR, USER_CONFIG_DIR, CRITERIA_DIR
+from srl4c.db.models import db_connection
 load_dotenv(PROJECT_ROOT / ".env")
-
-
-@contextmanager
-def _get_conn():
-    """Get a database connection as a context manager."""
-    conn = sqlite3.connect(str(DB_PATH))
-    try:
-        yield conn
-        conn.commit()
-    finally:
-        conn.close()
 
 
 def load_guardrails_config() -> Dict[str, Any]:
@@ -169,8 +155,7 @@ def format_judge_feedback(explanation: str, evidence_json: str, final_score: flo
 def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3, max_total: int = 20):
     """Generate guardrails from score failures"""
     # Phase 1: Read score and evaluations
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
 
         # Get score
         score = conn.execute(
@@ -227,7 +212,7 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
 
     # Phase 2: Create guardrail set
     set_id = generate_id()
-    with _get_conn() as conn:
+    with db_connection() as conn:
         conn.execute(
             """INSERT INTO guardrail_sets (id, score_id, model, rules_count, created_at)
                VALUES (?, ?, ?, ?, ?)""",
@@ -322,12 +307,12 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
     if not all_guardrails:
         console.print("\n[yellow]No guardrails generated[/yellow]")
         # Delete empty set
-        with _get_conn() as conn:
+        with db_connection() as conn:
             conn.execute("DELETE FROM guardrail_sets WHERE id = ?", (set_id,))
         return
 
     # Store guardrails in database
-    with _get_conn() as conn:
+    with db_connection() as conn:
         for g in all_guardrails:
             conn.execute(
                 """INSERT INTO guardrails (id, set_id, principle_id, rule_text, rationale, created_at)
@@ -372,8 +357,7 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
 
 def list_guardrails(console: Console):
     """List all guardrail sets"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
         rows = conn.execute(
             """SELECT gs.*, s.attack_id, e.name as endpoint_name
                FROM guardrail_sets gs
@@ -415,8 +399,7 @@ def list_guardrails(console: Console):
 
 def show_guardrail(console: Console, set_id: str):
     """Show all guardrails in a set"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
 
         # Get the set
         gset = conn.execute(
@@ -455,8 +438,7 @@ def show_guardrail(console: Console, set_id: str):
 
 def export_guardrails(console: Console, set_id: str):
     """Export all guardrails in a set as text for system prompt"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
 
         # Get the set
         gset = conn.execute(
@@ -578,8 +560,7 @@ export default {{
 
 def generate_worker(console: Console, set_id: str, output_path: str = None):
     """Generate Cloudflare Worker code with guardrails baked in"""
-    with _get_conn() as conn:
-        conn.row_factory = sqlite3.Row
+    with db_connection() as conn:
 
         # Get the set
         gset = conn.execute(

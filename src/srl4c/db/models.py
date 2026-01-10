@@ -190,3 +190,23 @@ def init_db():
     conn.executescript(SCHEMA)
     conn.commit()
     conn.close()
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def db_connection():
+    """Database connection context manager.
+
+    Usage:
+        with db_connection() as conn:
+            conn.execute(...)
+
+    Automatically commits on success, closes on exit.
+    """
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
