@@ -74,10 +74,11 @@ def endpoint_test(id: str = typer.Argument(..., help="Endpoint ID or name")):
 def endpoint_remove(
     id: str = typer.Argument(..., help="Endpoint ID or name"),
     force: bool = typer.Option(False, "--force", "-f", help="Delete with all related attacks/scores"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
     """Remove an endpoint"""
     from srl4c.cli.commands.endpoint import remove_endpoint
-    remove_endpoint(console, id, force=force)
+    remove_endpoint(console, id, force=force, yes=yes)
 
 
 # === DATASET ===
@@ -138,16 +139,59 @@ def attack_show(id: str = typer.Argument(..., help="Attack ID")):
 
 
 @attack_app.command("delete")
-def attack_delete(id: str = typer.Argument(..., help="Attack ID")):
+def attack_delete(
+    id: str = typer.Argument(..., help="Attack ID"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
     """Delete an attack and all its records/scores"""
     from srl4c.db.repository import AttackRepository
+    from rich.prompt import Confirm
+
     try:
-        deleted = AttackRepository.delete(id, cascade=True)
-        if deleted is None:
+        preview = AttackRepository.delete_preview(id)
+        if preview is None:
             console.print(f"[red]Attack not found: {id}[/red]")
-        else:
-            console.print(f"[green]✓[/green] Deleted attack [cyan]{id}[/cyan]")
-            console.print(f"  Deleted: {deleted['records']} records, {deleted['scores']} scores, {deleted['evaluations']} evaluations")
+            return
+
+        attack = preview.get("attack", {})
+        has_children = preview.get("has_children", False)
+        will_delete = preview.get("will_delete", {})
+
+        console.print(f"\n[bold]Delete Attack:[/bold] [cyan]{attack.get('id', id)[:8]}[/cyan]")
+        console.print(f"  Dataset: {attack.get('dataset_name', 'unknown')}")
+
+        if has_children:
+            console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")
+            if will_delete.get("records"):
+                console.print(f"  • {will_delete['records']} record(s)")
+            if will_delete.get("scores"):
+                console.print(f"  • {will_delete['scores']} score(s)")
+            if will_delete.get("evaluations"):
+                console.print(f"  • {will_delete['evaluations']} evaluation(s)")
+            if will_delete.get("guardrail_sets"):
+                console.print(f"  • {will_delete['guardrail_sets']} guardrail set(s)")
+            if will_delete.get("guardrails"):
+                console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
+
+        if not yes:
+            confirm_text = "Delete ALL related data" if has_children else "Delete"
+            if not Confirm.ask(f"\n{confirm_text}?"):
+                console.print("[dim]Cancelled[/dim]")
+                return
+
+        deleted = AttackRepository.delete(id, cascade=True)
+        console.print(f"\n[green]✓[/green] Deleted attack [cyan]{id[:8]}[/cyan]")
+
+        if deleted and any(deleted.values()):
+            parts = []
+            if deleted.get("records"): parts.append(f"{deleted['records']} records")
+            if deleted.get("scores"): parts.append(f"{deleted['scores']} scores")
+            if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
+            if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+            if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+            if parts:
+                console.print(f"  Deleted: {', '.join(parts)}")
+
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
 
@@ -199,16 +243,55 @@ def score_report(
 
 
 @score_app.command("delete")
-def score_delete(id: str = typer.Argument(..., help="Score ID")):
+def score_delete(
+    id: str = typer.Argument(..., help="Score ID"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
     """Delete a score and its evaluations"""
     from srl4c.db.repository import ScoreRepository
+    from rich.prompt import Confirm
+
     try:
-        deleted = ScoreRepository.delete(id)
-        if deleted is None:
+        preview = ScoreRepository.delete_preview(id)
+        if preview is None:
             console.print(f"[red]Score not found: {id}[/red]")
-        else:
-            console.print(f"[green]✓[/green] Deleted score [cyan]{id}[/cyan]")
-            console.print(f"  Deleted: {deleted['evaluations']} evaluations")
+            return
+
+        score = preview.get("score", {})
+        has_children = preview.get("has_children", False)
+        will_delete = preview.get("will_delete", {})
+
+        console.print(f"\n[bold]Delete Score:[/bold] [cyan]{score.get('id', id)[:8]}[/cyan]")
+        console.print(f"  Age: {score.get('age_context', 'unknown')}")
+        if score.get('final_score'):
+            console.print(f"  Final score: {score['final_score']:.1f}/5.0")
+
+        if has_children:
+            console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")
+            if will_delete.get("evaluations"):
+                console.print(f"  • {will_delete['evaluations']} evaluation(s)")
+            if will_delete.get("guardrail_sets"):
+                console.print(f"  • {will_delete['guardrail_sets']} guardrail set(s)")
+            if will_delete.get("guardrails"):
+                console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
+
+        if not yes:
+            confirm_text = "Delete ALL related data" if has_children else "Delete"
+            if not Confirm.ask(f"\n{confirm_text}?"):
+                console.print("[dim]Cancelled[/dim]")
+                return
+
+        deleted = ScoreRepository.delete(id)
+        console.print(f"\n[green]✓[/green] Deleted score [cyan]{id[:8]}[/cyan]")
+
+        if deleted and any(deleted.values()):
+            parts = []
+            if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
+            if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+            if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+            if parts:
+                console.print(f"  Deleted: {', '.join(parts)}")
+
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
 
@@ -257,16 +340,45 @@ def guardrails_export(set_id: str = typer.Argument(..., help="Guardrail set ID")
 
 
 @guardrails_app.command("delete")
-def guardrails_delete(set_id: str = typer.Argument(..., help="Guardrail set ID")):
+def guardrails_delete(
+    set_id: str = typer.Argument(..., help="Guardrail set ID"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
     """Delete a guardrail set and its rules"""
     from srl4c.db.repository import GuardrailSetRepository
+    from rich.prompt import Confirm
+
     try:
-        deleted = GuardrailSetRepository.delete(set_id)
-        if deleted is None:
+        preview = GuardrailSetRepository.delete_preview(set_id)
+        if preview is None:
             console.print(f"[red]Guardrail set not found: {set_id}[/red]")
-        else:
-            console.print(f"[green]✓[/green] Deleted guardrail set [cyan]{set_id}[/cyan]")
+            return
+
+        gset = preview.get("guardrail_set", {})
+        has_children = preview.get("has_children", False)
+        will_delete = preview.get("will_delete", {})
+
+        console.print(f"\n[bold]Delete Guardrail Set:[/bold] [cyan]{gset.get('id', set_id)[:8]}[/cyan]")
+        if gset.get('rules_count'):
+            console.print(f"  Rules: {gset['rules_count']}")
+
+        if has_children:
+            console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")
+            if will_delete.get("guardrails"):
+                console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
+
+        if not yes:
+            confirm_text = "Delete ALL related data" if has_children else "Delete"
+            if not Confirm.ask(f"\n{confirm_text}?"):
+                console.print("[dim]Cancelled[/dim]")
+                return
+
+        deleted = GuardrailSetRepository.delete(set_id)
+        console.print(f"\n[green]✓[/green] Deleted guardrail set [cyan]{set_id[:8]}[/cyan]")
+
+        if deleted and deleted.get("guardrails"):
             console.print(f"  Deleted: {deleted['guardrails']} guardrails")
+
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
 

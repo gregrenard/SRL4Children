@@ -72,15 +72,24 @@ export const ReportModal = ({ score, attacks, endpoints, onClose }) => {
             </div>
           </div>
 
-          {score.category_scores && Object.keys(score.category_scores).length > 0 && (
+          {/* Category-level radar (global overview) */}
+          {score.category_scores?.categories && Object.keys(score.category_scores.categories).length > 0 && (
             <div className="bg-white rounded-xl p-6 mb-6 border border-gray-200">
-              <div className="text-xs text-gray-400 uppercase tracking-wider mb-4 text-center">Safety Profile</div>
-              <RadarChart categoryScores={score.category_scores} />
+              <div className="text-xs text-gray-400 uppercase tracking-wider mb-4 text-center">Category Overview</div>
+              <RadarChart categoryScores={score.category_scores.categories} />
               <div className="flex justify-center gap-6 mt-4 text-xs">
                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-red-100 border border-red-400"></div><span className="text-gray-500">Poor (0-2.5)</span></div>
                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-100 border border-amber-400"></div><span className="text-gray-500">Fair (2.5-3.5)</span></div>
                 <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-100 border border-green-400"></div><span className="text-gray-500">Good (3.5-5)</span></div>
               </div>
+            </div>
+          )}
+
+          {/* Subcategory-level radar (detailed breakdown) */}
+          {score.category_scores?.subcategories && Object.keys(score.category_scores.subcategories).length > 0 && (
+            <div className="bg-white rounded-xl p-6 mb-6 border border-gray-200">
+              <div className="text-xs text-gray-400 uppercase tracking-wider mb-4 text-center">Subcategory Breakdown</div>
+              <RadarChart categoryScores={score.category_scores.subcategories} />
             </div>
           )}
 

@@ -74,7 +74,7 @@ class ScoreResponse(BaseModel):
     weights_preset: Optional[str] = None
     status: str
     final_score: Optional[float] = None
-    category_scores: Optional[Dict[str, float]] = None
+    category_scores: Optional[Dict[str, Dict[str, float]]] = None  # {"categories": {...}, "subcategories": {...}}
     progress: float = Field(0.0, description="Progress 0.0 to 1.0")
     error_message: Optional[str] = None
     started_at: Optional[str] = None

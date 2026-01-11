@@ -133,17 +133,45 @@ class EndpointRepository:
         return [_row_to_endpoint(row) for row in rows]
 
     @staticmethod
+    def delete_preview(id: str) -> dict:
+        """Preview what will be deleted if this endpoint is cascade deleted."""
+        endpoint = EndpointRepository.get_by_id(id)
+        if not endpoint:
+            return None
+
+        counts = {"attacks": 0, "records": 0, "scores": 0, "evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
+
+        with db_connection() as conn:
+            attacks = conn.execute("SELECT id FROM attacks WHERE endpoint_id = ?", (endpoint.id,)).fetchall()
+            counts["attacks"] = len(attacks)
+
+            for attack in attacks:
+                counts["records"] += conn.execute("SELECT COUNT(*) FROM records WHERE attack_id = ?", (attack["id"],)).fetchone()[0]
+
+                scores = conn.execute("SELECT id FROM scores WHERE attack_id = ?", (attack["id"],)).fetchall()
+                counts["scores"] += len(scores)
+
+                for score in scores:
+                    counts["evaluations"] += conn.execute("SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)).fetchone()[0]
+                    gsets = conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
+                    counts["guardrail_sets"] += len(gsets)
+                    for gset in gsets:
+                        counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+
+        return {"endpoint": {"id": endpoint.id, "name": endpoint.name}, "will_delete": counts, "has_children": counts["attacks"] > 0}
+
+    @staticmethod
     def delete(id: str, cascade: bool = False) -> dict:
         """Delete endpoint by ID.
 
-        If cascade=True, deletes all attacks (and their records/scores/evaluations).
+        If cascade=True, deletes all attacks (and their records/scores/evaluations/guardrails).
         Returns dict with counts or None if not found.
         """
         endpoint = EndpointRepository.get_by_id(id)
         if not endpoint:
             return None
 
-        deleted = {"attacks": 0, "records": 0, "scores": 0, "evaluations": 0}
+        deleted = {"attacks": 0, "records": 0, "scores": 0, "evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
 
         if cascade:
             # Delete all attacks for this endpoint (which cascades further)
@@ -152,9 +180,11 @@ class EndpointRepository:
                 result = AttackRepository.delete(attack.id, cascade=True)
                 if result:
                     deleted["attacks"] += 1
-                    deleted["records"] += result["records"]
-                    deleted["scores"] += result["scores"]
-                    deleted["evaluations"] += result["evaluations"]
+                    deleted["records"] += result.get("records", 0)
+                    deleted["scores"] += result.get("scores", 0)
+                    deleted["evaluations"] += result.get("evaluations", 0)
+                    deleted["guardrail_sets"] += result.get("guardrail_sets", 0)
+                    deleted["guardrails"] += result.get("guardrails", 0)
 
         conn = get_connection()
         conn.execute("DELETE FROM endpoints WHERE id = ?", (endpoint.id,))
@@ -266,8 +296,33 @@ class AttackRepository:
                 )
 
     @staticmethod
+    def delete_preview(id: str) -> dict:
+        """Preview what will be deleted if this attack is cascade deleted."""
+        attack = AttackRepository.get_by_id(id)
+        if not attack:
+            return None
+
+        counts = {"records": 0, "scores": 0, "evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
+
+        with db_connection() as conn:
+            counts["records"] = conn.execute("SELECT COUNT(*) FROM records WHERE attack_id = ?", (attack.id,)).fetchone()[0]
+
+            scores = conn.execute("SELECT id FROM scores WHERE attack_id = ?", (attack.id,)).fetchall()
+            counts["scores"] = len(scores)
+
+            for score in scores:
+                counts["evaluations"] += conn.execute("SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)).fetchone()[0]
+                gsets = conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
+                counts["guardrail_sets"] += len(gsets)
+                for gset in gsets:
+                    counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+
+        has_children = counts["records"] > 0 or counts["scores"] > 0
+        return {"attack": {"id": attack.id, "dataset": attack.dataset_name}, "will_delete": counts, "has_children": has_children}
+
+    @staticmethod
     def delete(id: str, cascade: bool = True) -> dict:
-        """Delete attack and optionally cascade to records, scores, evaluations.
+        """Delete attack and optionally cascade to records, scores, evaluations, guardrails.
 
         Returns dict with counts of deleted items.
         """
@@ -275,7 +330,7 @@ class AttackRepository:
         if not attack:
             return None
 
-        deleted = {"records": 0, "scores": 0, "evaluations": 0}
+        deleted = {"records": 0, "scores": 0, "evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
 
         with db_connection() as conn:
             if cascade:
@@ -284,8 +339,20 @@ class AttackRepository:
                     "SELECT id FROM scores WHERE attack_id = ?", (attack.id,)
                 ).fetchall()]
 
-                # Delete evaluations for each score
                 for score_id in score_ids:
+                    # Delete guardrails for guardrail_sets of this score
+                    gset_ids = [row[0] for row in conn.execute(
+                        "SELECT id FROM guardrail_sets WHERE score_id = ?", (score_id,)
+                    ).fetchall()]
+                    for gset_id in gset_ids:
+                        result = conn.execute("DELETE FROM guardrails WHERE set_id = ?", (gset_id,))
+                        deleted["guardrails"] += result.rowcount
+
+                    # Delete guardrail_sets
+                    result = conn.execute("DELETE FROM guardrail_sets WHERE score_id = ?", (score_id,))
+                    deleted["guardrail_sets"] += result.rowcount
+
+                    # Delete evaluations
                     result = conn.execute("DELETE FROM evaluations WHERE score_id = ?", (score_id,))
                     deleted["evaluations"] += result.rowcount
 
@@ -414,15 +481,46 @@ class ScoreRepository:
                 )
 
     @staticmethod
-    def delete(id: str) -> dict:
-        """Delete score and its evaluations."""
+    def delete_preview(id: str) -> dict:
+        """Preview what will be deleted if this score is deleted."""
         score = ScoreRepository.get_by_id(id)
         if not score:
             return None
 
-        deleted = {"evaluations": 0}
+        counts = {"evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
 
         with db_connection() as conn:
+            counts["evaluations"] = conn.execute("SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)).fetchone()[0]
+            gsets = conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
+            counts["guardrail_sets"] = len(gsets)
+            for gset in gsets:
+                counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+
+        has_children = counts["evaluations"] > 0 or counts["guardrail_sets"] > 0
+        return {"score": {"id": score["id"], "final_score": score.get("final_score")}, "will_delete": counts, "has_children": has_children}
+
+    @staticmethod
+    def delete(id: str) -> dict:
+        """Delete score and its evaluations and guardrail_sets."""
+        score = ScoreRepository.get_by_id(id)
+        if not score:
+            return None
+
+        deleted = {"evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
+
+        with db_connection() as conn:
+            # Delete guardrails for guardrail_sets of this score
+            gset_ids = [row[0] for row in conn.execute(
+                "SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)
+            ).fetchall()]
+            for gset_id in gset_ids:
+                result = conn.execute("DELETE FROM guardrails WHERE set_id = ?", (gset_id,))
+                deleted["guardrails"] += result.rowcount
+
+            # Delete guardrail_sets
+            result = conn.execute("DELETE FROM guardrail_sets WHERE score_id = ?", (score["id"],))
+            deleted["guardrail_sets"] = result.rowcount
+
             # Delete evaluations
             result = conn.execute("DELETE FROM evaluations WHERE score_id = ?", (score["id"],))
             deleted["evaluations"] = result.rowcount
@@ -487,6 +585,21 @@ class GuardrailSetRepository:
                     "UPDATE guardrail_sets SET progress_current = ?, updated_at = ? WHERE id = ?",
                     (current, now, id)
                 )
+
+    @staticmethod
+    def delete_preview(id: str) -> dict:
+        """Preview what will be deleted if this guardrail set is deleted."""
+        gset = GuardrailSetRepository.get_by_id(id)
+        if not gset:
+            return None
+
+        counts = {"guardrails": 0}
+
+        with db_connection() as conn:
+            counts["guardrails"] = conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+
+        has_children = counts["guardrails"] > 0
+        return {"guardrail_set": {"id": gset["id"], "rules_count": gset.get("rules_count")}, "will_delete": counts, "has_children": has_children}
 
     @staticmethod
     def delete(id: str) -> dict:

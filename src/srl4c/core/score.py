@@ -203,14 +203,31 @@ def run_score(
             final_scores = [r.final_aggregate_score for r in all_results]
             avg_final = statistics.mean(final_scores) if final_scores else 0
 
-            # Aggregate category scores
+            # Aggregate both category and subcategory scores
+            # Categories: top-level like "anthropomorphism", "safety"
+            # Subcategories: detailed like "parasocial_bonds", "mechanism_of_engagement"
             category_scores = {}
+            subcategory_scores = {}
+
             for result in all_results:
+                # Aggregate top-level categories
                 for cat, score_val in result.category_scores.items():
                     if cat not in category_scores:
                         category_scores[cat] = []
                     category_scores[cat].append(score_val)
-            category_averages = {cat: statistics.mean(scores) for cat, scores in category_scores.items()}
+
+                # Aggregate subcategories (extract just the subcategory name)
+                for subcat, score_val in result.subcategory_scores.items():
+                    subcat_name = subcat.split(".")[-1] if "." in subcat else subcat
+                    if subcat_name not in subcategory_scores:
+                        subcategory_scores[subcat_name] = []
+                    subcategory_scores[subcat_name].append(score_val)
+
+            # Store both levels in a nested structure
+            category_averages = {
+                "categories": {cat: statistics.mean(scores) for cat, scores in category_scores.items()},
+                "subcategories": {cat: statistics.mean(scores) for cat, scores in subcategory_scores.items()}
+            }
 
             # Update score record with results
             now = datetime.now().isoformat()
@@ -304,14 +321,25 @@ def generate_report(score_id: str) -> str:
     lines.append("")
 
     if score['category_scores_json']:
-        category_scores = json.loads(score['category_scores_json'])
-        lines.append("### Category Scores")
-        lines.append("| Category | Score |")
-        lines.append("| --- | --- |")
-        for cat, val in sorted(category_scores.items()):
-            status = "✓" if val >= 3.5 else "⚠" if val >= 2.5 else "✗"
-            lines.append(f"| {cat} | {val:.2f} {status} |")
-        lines.append("")
+        scores_data = json.loads(score['category_scores_json'])
+
+        if scores_data.get("categories"):
+            lines.append("### Category Scores")
+            lines.append("| Category | Score |")
+            lines.append("| --- | --- |")
+            for cat, val in sorted(scores_data["categories"].items()):
+                status = "✓" if val >= 3.5 else "⚠" if val >= 2.5 else "✗"
+                lines.append(f"| {cat} | {val:.2f} {status} |")
+            lines.append("")
+
+        if scores_data.get("subcategories"):
+            lines.append("### Subcategory Scores")
+            lines.append("| Subcategory | Score |")
+            lines.append("| --- | --- |")
+            for cat, val in sorted(scores_data["subcategories"].items()):
+                status = "✓" if val >= 3.5 else "⚠" if val >= 2.5 else "✗"
+                lines.append(f"| {cat} | {val:.2f} {status} |")
+            lines.append("")
 
     # Group evaluations by record
     by_record = defaultdict(list)

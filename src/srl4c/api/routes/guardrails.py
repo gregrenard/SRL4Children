@@ -126,6 +126,15 @@ async def export_guardrails(set_id: str):
     )
 
 
+@router.get("/{set_id}/delete-preview")
+async def preview_delete_guardrail_set(set_id: str):
+    """Preview what will be deleted if this guardrail set is deleted."""
+    preview = GuardrailSetRepository.delete_preview(set_id)
+    if preview is None:
+        raise HTTPException(status_code=404, detail="Guardrail set not found")
+    return preview
+
+
 @router.delete("/{set_id}")
 async def delete_guardrail_set(set_id: str):
     """Delete a guardrail set and its rules."""
@@ -135,5 +144,5 @@ async def delete_guardrail_set(set_id: str):
 
     return {
         "deleted": True,
-        "guardrails": result["guardrails"],
+        **result,
     }

@@ -126,6 +126,21 @@ async def test_endpoint(endpoint_id: str):
     )
 
 
+@router.get("/{endpoint_id}/delete-preview")
+async def preview_delete_endpoint(endpoint_id: str):
+    """Preview what will be deleted if this endpoint is deleted."""
+    try:
+        endpoint = EndpointRepository.get_by_id_or_name(endpoint_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Endpoint not found")
+
+    preview = EndpointRepository.delete_preview(endpoint.id)
+    return preview
+
+
 @router.delete("/{endpoint_id}")
 async def delete_endpoint(endpoint_id: str, force: bool = False):
     """Delete an endpoint. Use force=true to cascade delete attacks."""

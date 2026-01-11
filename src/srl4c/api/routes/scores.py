@@ -129,14 +129,23 @@ async def get_score_report(score_id: str):
     return {"score_id": score_id, "report": markdown}
 
 
+@router.get("/{score_id}/delete-preview")
+async def preview_delete_score(score_id: str):
+    """Preview what will be deleted if this score is deleted."""
+    preview = ScoreRepository.delete_preview(score_id)
+    if preview is None:
+        raise HTTPException(status_code=404, detail="Score not found")
+    return preview
+
+
 @router.delete("/{score_id}")
 async def delete_score(score_id: str):
-    """Delete a score and its evaluations."""
+    """Delete a score and its evaluations and guardrail sets."""
     result = ScoreRepository.delete(score_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Score not found")
 
     return {
         "deleted": True,
-        "evaluations": result["evaluations"],
+        **result,
     }

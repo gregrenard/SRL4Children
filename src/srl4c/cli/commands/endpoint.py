@@ -108,7 +108,7 @@ def test_endpoint(console: Console, id_or_name: str):
         console.print(f"  [red]✗[/red] Connection failed: {response}")
 
 
-def remove_endpoint(console: Console, id_or_name: str, force: bool = False):
+def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes: bool = False):
     """Remove an endpoint"""
     try:
         endpoint = EndpointRepository.get_by_id_or_name(id_or_name)
@@ -120,16 +120,51 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False):
         console.print(f"[red]Endpoint not found: {id_or_name}[/red]")
         return
 
-    # Check for related attacks
-    from srl4c.db.repository import AttackRepository
-    attacks = AttackRepository.get_attacks_for_endpoint(endpoint.id)
+    # Get preview of what will be deleted
+    preview = EndpointRepository.delete_preview(endpoint.id)
+    has_children = preview.get("has_children", False)
 
-    if attacks and not force:
-        console.print(f"[yellow]Endpoint has {len(attacks)} attack(s). Use --force to delete with all related data.[/yellow]")
-        return
+    # Show confirmation
+    console.print(f"\n[bold]Delete Endpoint:[/bold] [cyan]{endpoint.name}[/cyan] ({endpoint.id[:8]})")
 
-    deleted = EndpointRepository.delete(endpoint.id, cascade=force)
-    console.print(f"[green]✓[/green] Removed endpoint '[cyan]{endpoint.name}[/cyan]'")
+    if has_children:
+        will_delete = preview.get("will_delete", {})
+        console.print(f"\n[yellow]⚠ Warning: This endpoint has related data that will also be deleted:[/yellow]")
+        if will_delete.get("attacks"):
+            console.print(f"  • {will_delete['attacks']} attack(s)")
+        if will_delete.get("records"):
+            console.print(f"  • {will_delete['records']} record(s)")
+        if will_delete.get("scores"):
+            console.print(f"  • {will_delete['scores']} score(s)")
+        if will_delete.get("evaluations"):
+            console.print(f"  • {will_delete['evaluations']} evaluation(s)")
+        if will_delete.get("guardrail_sets"):
+            console.print(f"  • {will_delete['guardrail_sets']} guardrail set(s)")
+        if will_delete.get("guardrails"):
+            console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
 
-    if force and deleted:
-        console.print(f"  Deleted: {deleted['attacks']} attacks, {deleted['records']} records, {deleted['scores']} scores, {deleted['evaluations']} evaluations")
+        if not force:
+            console.print(f"\n[dim]Use --force to delete with all related data.[/dim]")
+            return
+
+    # Confirm unless --yes
+    if not yes:
+        confirm_text = "Delete ALL related data" if has_children else "Delete"
+        from rich.prompt import Confirm
+        if not Confirm.ask(f"\n{confirm_text}?"):
+            console.print("[dim]Cancelled[/dim]")
+            return
+
+    deleted = EndpointRepository.delete(endpoint.id, cascade=force or has_children)
+    console.print(f"\n[green]✓[/green] Removed endpoint '[cyan]{endpoint.name}[/cyan]'")
+
+    if deleted and any(deleted.values()):
+        parts = []
+        if deleted.get("attacks"): parts.append(f"{deleted['attacks']} attacks")
+        if deleted.get("records"): parts.append(f"{deleted['records']} records")
+        if deleted.get("scores"): parts.append(f"{deleted['scores']} scores")
+        if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
+        if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+        if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+        if parts:
+            console.print(f"  Deleted: {', '.join(parts)}")

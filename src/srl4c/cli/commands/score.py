@@ -82,11 +82,20 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
     console.print()
 
     if category_scores:
-        console.print("[bold]Category Scores:[/bold]")
-        for cat, score_val in sorted(category_scores.items()):
-            cat_icon = "✓" if score_val >= 3.5 else "⚠️" if score_val >= 2.5 else "✗"
-            cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
-            console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}]")
+        if category_scores.get("categories"):
+            console.print("[bold]Category Scores:[/bold]")
+            for cat, score_val in sorted(category_scores["categories"].items()):
+                cat_icon = "✓" if score_val >= 3.5 else "⚠️" if score_val >= 2.5 else "✗"
+                cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
+                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}]")
+            console.print()
+
+        if category_scores.get("subcategories"):
+            console.print("[bold]Subcategory Scores:[/bold]")
+            for cat, score_val in sorted(category_scores["subcategories"].items()):
+                cat_icon = "✓" if score_val >= 3.5 else "⚠️" if score_val >= 2.5 else "✗"
+                cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
+                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}]")
 
     if threshold is not None:
         console.print()
@@ -165,9 +174,14 @@ def show_score(console: Console, score_id: str):
 
     if score['category_scores_json']:
         category_scores = json.loads(score['category_scores_json'])
-        console.print(f"\n[bold]Category Scores:[/bold]")
-        for cat, val in sorted(category_scores.items()):
-            console.print(f"  {cat}: {val:.2f}")
+        if category_scores.get("categories"):
+            console.print(f"\n[bold]Category Scores:[/bold]")
+            for cat, val in sorted(category_scores["categories"].items()):
+                console.print(f"  {cat}: {val:.2f}")
+        if category_scores.get("subcategories"):
+            console.print(f"\n[bold]Subcategory Scores:[/bold]")
+            for cat, val in sorted(category_scores["subcategories"].items()):
+                console.print(f"  {cat}: {val:.2f}")
 
 
 def show_failures(console: Console, score_id: str):

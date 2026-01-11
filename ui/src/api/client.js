@@ -17,7 +17,8 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }).then(handleResponse),
-  deleteEndpoint: (id) => fetch(`${API_BASE}/endpoints/${id}`, { method: 'DELETE' }).then(handleResponse),
+  previewDeleteEndpoint: (id) => fetch(`${API_BASE}/endpoints/${id}/delete-preview`).then(handleResponse),
+  deleteEndpoint: (id, force = false) => fetch(`${API_BASE}/endpoints/${id}?force=${force}`, { method: 'DELETE' }).then(handleResponse),
   testEndpoint: (id) => fetch(`${API_BASE}/endpoints/${id}/test`, { method: 'POST' }).then(handleResponse),
 
   // Attacks
@@ -28,6 +29,7 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   }).then(handleResponse),
+  previewDeleteAttack: (id) => fetch(`${API_BASE}/attacks/${id}/delete-preview`).then(handleResponse),
   deleteAttack: (id) => fetch(`${API_BASE}/attacks/${id}`, { method: 'DELETE' }).then(handleResponse),
 
   // Scores
@@ -40,6 +42,7 @@ export const api = {
   }).then(handleResponse),
   getScoreReport: (id) => fetch(`${API_BASE}/scores/${id}/report`).then(handleResponse),
   getScoreFailures: (id) => fetch(`${API_BASE}/scores/${id}/failures`).then(handleResponse),
+  previewDeleteScore: (id) => fetch(`${API_BASE}/scores/${id}/delete-preview`).then(handleResponse),
   deleteScore: (id) => fetch(`${API_BASE}/scores/${id}`, { method: 'DELETE' }).then(handleResponse),
 
   // Guardrails
@@ -51,6 +54,7 @@ export const api = {
     body: JSON.stringify(data)
   }).then(handleResponse),
   exportGuardrail: (id) => fetch(`${API_BASE}/guardrails/${id}/export`).then(handleResponse),
+  previewDeleteGuardrail: (id) => fetch(`${API_BASE}/guardrails/${id}/delete-preview`).then(handleResponse),
   deleteGuardrail: (id) => fetch(`${API_BASE}/guardrails/${id}`, { method: 'DELETE' }).then(handleResponse),
 
   // Reference data

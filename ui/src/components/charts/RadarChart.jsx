@@ -1,9 +1,58 @@
+const getScoreColor = (score) => {
+  if (score < 2.5) return '#e53e3e';
+  if (score < 3.5) return '#d69e2e';
+  return '#38a169';
+};
+
+// Simple bar display for 1-2 categories
+const CategoryBars = ({ categoryScores }) => {
+  const categories = Object.entries(categoryScores);
+
+  return (
+    <div className="w-full max-w-sm mx-auto space-y-4 py-4">
+      {categories.map(([cat, score]) => (
+        <div key={cat} className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium text-gray-700 capitalize">{cat}</span>
+            <span
+              className="text-lg font-bold"
+              style={{ color: getScoreColor(score) }}
+            >
+              {score.toFixed(1)}/5.0
+            </span>
+          </div>
+          <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${(score / 5) * 100}%`,
+                backgroundColor: getScoreColor(score)
+              }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>Poor</span>
+            <span>Fair</span>
+            <span>Good</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const RadarChart = ({ categoryScores }) => {
   if (!categoryScores || Object.keys(categoryScores).length === 0) {
     return <div className="text-center text-gray-400 py-8">No category scores available</div>;
   }
 
   const categories = Object.keys(categoryScores);
+
+  // For 1-2 categories, show bar chart instead of radar
+  if (categories.length < 3) {
+    return <CategoryBars categoryScores={categoryScores} />;
+  }
+
   const size = 280;
   const center = size / 2;
   const maxRadius = 100;
@@ -73,7 +122,7 @@ export const RadarChart = ({ categoryScores }) => {
             <text
               x={labelPos.x} y={labelPos.y + 10} textAnchor="middle"
               className="text-sm font-semibold"
-              style={{ fill: score < 2.5 ? '#e53e3e' : score < 3.5 ? '#d69e2e' : '#38a169' }}
+              style={{ fill: getScoreColor(score) }}
             >
               {score.toFixed(1)}
             </text>

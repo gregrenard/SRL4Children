@@ -69,6 +69,15 @@ async def get_attack(attack_id: str):
     return _attack_to_response(attack)
 
 
+@router.get("/{attack_id}/delete-preview")
+async def preview_delete_attack(attack_id: str):
+    """Preview what will be deleted if this attack is deleted."""
+    preview = AttackRepository.delete_preview(attack_id)
+    if preview is None:
+        raise HTTPException(status_code=404, detail="Attack not found")
+    return preview
+
+
 @router.delete("/{attack_id}")
 async def delete_attack(attack_id: str):
     """Delete an attack and all related data."""
@@ -78,7 +87,5 @@ async def delete_attack(attack_id: str):
 
     return {
         "deleted": True,
-        "records": result["records"],
-        "scores": result["scores"],
-        "evaluations": result["evaluations"],
+        **result,
     }

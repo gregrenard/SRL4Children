@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import api from '../../api/client';
 import { shortId, getStatusIcon, getStatusColor, getScoreColor, isJobRunning, formatDate } from '../../utils/helpers';
 import { ProgressBar } from '../common';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints, attacks, scores }) => {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [guardrailDetails, setGuardrailDetails] = useState(null);
 
   useEffect(() => {
@@ -29,19 +30,13 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Delete this ${type}?`)) return;
-    setDeleting(true);
-    try {
-      const deleteFn = { endpoint: api.deleteEndpoint, attack: api.deleteAttack, score: api.deleteScore, guardrail: api.deleteGuardrail }[type];
-      await deleteFn(item.id);
-      onDelete();
-      onClose();
-    } catch (err) {
-      alert(`Delete failed: ${err.message}`);
-    } finally {
-      setDeleting(false);
-    }
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirmed = () => {
+    onDelete();
+    onClose();
   };
 
   const handleCopyRules = async () => {
@@ -86,8 +81,8 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                 {testing && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
                 Test Connection
               </button>
-              <button onClick={handleDelete} disabled={deleting} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
-                {deleting ? 'Deleting...' : 'Delete Endpoint'}
+              <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
+                Delete Endpoint
               </button>
             </div>
           </>
@@ -121,8 +116,8 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
               </div>
             </div>
             <div className="mt-6">
-              <button onClick={handleDelete} disabled={deleting} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
-                {deleting ? 'Deleting...' : 'Delete Attack'}
+              <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
+                Delete Attack
               </button>
             </div>
           </>
@@ -157,13 +152,31 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                       <span className="text-lg text-gray-400 font-normal ml-1">/5.0</span>
                     </div>
                   </div>
-                  {item.category_scores && (
+                  {item.category_scores?.categories && Object.keys(item.category_scores.categories).length > 0 && (
                     <div>
-                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Category Breakdown</div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Categories</div>
                       <div className="space-y-2">
-                        {Object.entries(item.category_scores).map(([cat, score]) => (
+                        {Object.entries(item.category_scores.categories).map(([cat, score]) => (
                           <div key={cat} className="flex items-center gap-3">
                             <div className="flex-1 text-sm text-gray-600 capitalize">{cat}</div>
+                            <div className={`font-mono text-sm ${getScoreColor(score)}`}>{score.toFixed(1)}</div>
+                            <div className="w-20">
+                              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${score < 2.5 ? 'bg-red-500' : score < 3.5 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${(score / 5) * 100}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {item.category_scores?.subcategories && Object.keys(item.category_scores.subcategories).length > 0 && (
+                    <div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Subcategories</div>
+                      <div className="space-y-2">
+                        {Object.entries(item.category_scores.subcategories).map(([cat, score]) => (
+                          <div key={cat} className="flex items-center gap-3">
+                            <div className="flex-1 text-sm text-gray-600 capitalize">{cat.replace(/_/g, ' ')}</div>
                             <div className={`font-mono text-sm ${getScoreColor(score)}`}>{score.toFixed(1)}</div>
                             <div className="w-20">
                               <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -198,8 +211,8 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                   View Full Report
                 </button>
               )}
-              <button onClick={handleDelete} disabled={deleting} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
-                {deleting ? 'Deleting...' : 'Delete Score'}
+              <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
+                Delete Score
               </button>
             </div>
           </>
@@ -253,8 +266,8 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                   Copy Rules
                 </button>
               )}
-              <button onClick={handleDelete} disabled={deleting} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
-                {deleting ? 'Deleting...' : 'Delete Set'}
+              <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
+                Delete Set
               </button>
             </div>
           </>
@@ -266,19 +279,30 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
   };
 
   return (
-    <div className="h-full bg-white border border-gray-200 rounded-2xl shadow-lg animate-fade-in flex flex-col">
-      <div className="flex items-center justify-between p-4 border-b border-gray-100">
-        <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">{type} Details</div>
-        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <>
+      <div className="h-full bg-white border border-gray-200 rounded-2xl shadow-lg animate-fade-in flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">{type} Details</div>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto custom-scroll flex-1">
+          {renderContent()}
+        </div>
       </div>
-      <div className="p-4 overflow-y-auto custom-scroll flex-1">
-        {renderContent()}
-      </div>
-    </div>
+
+      {showDeleteModal && (
+        <DeleteConfirmationModal
+          type={type}
+          item={item}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={handleDeleteConfirmed}
+        />
+      )}
+    </>
   );
 };
 
