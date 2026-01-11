@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-export const FormModal = ({ title, fields, onSubmit, onClose, loading }) => {
-  const [values, setValues] = useState({});
+export const FormModal = ({ title, fields, onSubmit, onClose, loading, initialValues = {} }) => {
+  const [values, setValues] = useState(initialValues);
 
   const handleSubmit = (e) => {
     e.preventDefault();

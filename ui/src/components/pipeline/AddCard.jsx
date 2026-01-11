@@ -13,7 +13,7 @@ const ICONS = {
   ),
 };
 
-export const AddCard = ({ label, onClick, icon }) => {
+export const AddCard = ({ label, onClick, icon, description }) => {
   // Try to detect icon from label if not provided
   const iconKey = icon || (
     label.toLowerCase().includes('endpoint') ? 'endpoint' :
@@ -26,16 +26,21 @@ export const AddCard = ({ label, onClick, icon }) => {
   return (
     <button
       onClick={onClick}
-      className="w-full p-4 bg-everyone-blue/5 hover:bg-everyone-blue/10 border-2 border-dashed border-everyone-blue/30 hover:border-everyone-blue/50 rounded-xl text-everyone-blue text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+      className="w-full p-3 bg-everyone-blue/5 hover:bg-everyone-blue/10 border-2 border-dashed border-everyone-blue/30 hover:border-everyone-blue/50 rounded-xl text-left transition-all duration-200 cursor-pointer"
     >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-      </svg>
-      {label}
-      {iconKey && (
-        <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {ICONS[iconKey]}
+      <div className="flex items-center justify-center gap-2 text-everyone-blue text-sm font-medium">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
+        {label}
+        {iconKey && (
+          <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {ICONS[iconKey]}
+          </svg>
+        )}
+      </div>
+      {description && (
+        <p className="mt-2 text-xs text-gray-500 leading-relaxed text-center">{description}</p>
       )}
     </button>
   );

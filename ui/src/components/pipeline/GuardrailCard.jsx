@@ -4,7 +4,7 @@ import { ProgressBar } from '../common';
 export const GuardrailCard = ({ guardrail, selected, onClick }) => (
   <div
     onClick={onClick}
-    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'ring-2 ring-everyone-blue bg-everyone-blue/5' : ''}`}
+    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'selected' : ''}`}
   >
     <div className="font-mono text-sm text-gray-800">{shortId(guardrail.id)}</div>
     <div className="text-xs text-gray-400 mt-0.5">from {shortId(guardrail.score_id)}</div>

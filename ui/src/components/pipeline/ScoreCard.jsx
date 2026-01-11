@@ -1,10 +1,11 @@
 import { shortId, getStatusIcon, getStatusColor, getScoreColor, isJobRunning } from '../../utils/helpers';
 import { ProgressBar } from '../common';
 
-export const ScoreCard = ({ score, selected, onClick, onReport }) => (
+export const ScoreCard = ({ score, selected, onClick, onReport, onNewGuardrail }) => (
   <div
     onClick={onClick}
-    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'ring-2 ring-everyone-blue bg-everyone-blue/5' : ''}`}
+    onContextMenu={(e) => { e.preventDefault(); onNewGuardrail?.(score); }}
+    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'selected' : ''}`}
   >
     <div className="flex items-center justify-between">
       <div className="font-mono text-sm text-gray-800">{shortId(score.id)}</div>

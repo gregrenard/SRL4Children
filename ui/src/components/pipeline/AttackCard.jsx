@@ -1,10 +1,11 @@
 import { shortId, getStatusIcon, getStatusColor, isJobRunning } from '../../utils/helpers';
 import { ProgressBar } from '../common';
 
-export const AttackCard = ({ attack, selected, onClick }) => (
+export const AttackCard = ({ attack, selected, onClick, onNewScore }) => (
   <div
     onClick={onClick}
-    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'ring-2 ring-everyone-blue bg-everyone-blue/5' : ''}`}
+    onContextMenu={(e) => { e.preventDefault(); onNewScore?.(attack); }}
+    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'selected' : ''}`}
   >
     <div className="font-mono text-sm text-gray-800">{shortId(attack.id)}</div>
     <div className="text-xs text-gray-400 truncate mt-0.5">{attack.dataset_name}</div>

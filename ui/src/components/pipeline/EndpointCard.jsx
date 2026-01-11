@@ -1,9 +1,10 @@
 import { getStatusIcon, getStatusColor } from '../../utils/helpers';
 
-export const EndpointCard = ({ endpoint, selected, onClick }) => (
+export const EndpointCard = ({ endpoint, selected, onClick, onNewAttack }) => (
   <div
     onClick={onClick}
-    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'ring-2 ring-everyone-blue bg-everyone-blue/5' : ''}`}
+    onContextMenu={(e) => { e.preventDefault(); onNewAttack?.(endpoint); }}
+    className={`card p-3 cursor-pointer transition-all duration-200 ${selected ? 'selected' : ''}`}
   >
     <div className="font-medium text-gray-800 truncate">{endpoint.name}</div>
     <div className="text-xs text-gray-400 truncate mt-0.5">

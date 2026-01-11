@@ -72,7 +72,7 @@ body {
 
 .card {
   background: white;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 2px solid transparent;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
 }
@@ -80,6 +80,12 @@ body {
 .card:hover {
   box-shadow: 0 4px 12px rgba(119,143,191,0.15);
   border-color: rgba(119,143,191,0.3);
+}
+
+.card.selected {
+  border-color: #0066FF;
+  background: rgba(0, 102, 255, 0.05);
+  box-shadow: 0 0 0 1px rgba(0, 102, 255, 0.2);
 }
 
 .glass {
