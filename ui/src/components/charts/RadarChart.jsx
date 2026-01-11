@@ -41,6 +41,9 @@ const CategoryBars = ({ categoryScores }) => {
   );
 };
 
+// Format label for display
+const formatLabel = (label) => label.replace(/_/g, ' ');
+
 export const RadarChart = ({ categoryScores }) => {
   if (!categoryScores || Object.keys(categoryScores).length === 0) {
     return <div className="text-center text-gray-400 py-8">No category scores available</div>;
@@ -53,9 +56,9 @@ export const RadarChart = ({ categoryScores }) => {
     return <CategoryBars categoryScores={categoryScores} />;
   }
 
-  const size = 280;
+  const size = 240;
   const center = size / 2;
-  const maxRadius = 100;
+  const maxRadius = 90;
   const angleStep = (2 * Math.PI) / categories.length;
 
   const getPoint = (value, index) => {
@@ -66,7 +69,7 @@ export const RadarChart = ({ categoryScores }) => {
 
   const getLabelPoint = (index) => {
     const angle = index * angleStep - Math.PI / 2;
-    const radius = maxRadius + 35;
+    const radius = maxRadius + 20;
     return { x: center + radius * Math.cos(angle), y: center + radius * Math.sin(angle) };
   };
 
@@ -91,44 +94,60 @@ export const RadarChart = ({ categoryScores }) => {
   });
 
   return (
-    <svg width={size} height={size} className="mx-auto">
-      <path d={getZonePath(maxRadius)} className="radar-zone-green" />
-      <path d={getZonePath((3.5/5) * maxRadius)} className="radar-zone-yellow" />
-      <path d={getZonePath((2.5/5) * maxRadius)} className="radar-zone-red" />
+    <div className="flex flex-col items-center">
+      <svg width={size} height={size} className="mx-auto">
+        <path d={getZonePath(maxRadius)} className="radar-zone-green" />
+        <path d={getZonePath((3.5/5) * maxRadius)} className="radar-zone-yellow" />
+        <path d={getZonePath((2.5/5) * maxRadius)} className="radar-zone-red" />
 
-      {gridLines.map((path, i) => (
-        <path key={i} d={path} fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="1" />
-      ))}
+        {gridLines.map((path, i) => (
+          <path key={i} d={path} fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="1" />
+        ))}
 
-      {categories.map((_, i) => {
-        const end = getPoint(5, i);
-        return <line key={i} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(0,0,0,0.1)" strokeWidth="1" />;
-      })}
+        {categories.map((_, i) => {
+          const end = getPoint(5, i);
+          return <line key={i} x1={center} y1={center} x2={end.x} y2={end.y} stroke="rgba(0,0,0,0.1)" strokeWidth="1" />;
+        })}
 
-      <path d={dataPath} fill="rgba(119,143,191,0.3)" stroke="#778fbf" strokeWidth="2" />
+        <path d={dataPath} fill="rgba(119,143,191,0.3)" stroke="#778fbf" strokeWidth="2" />
 
-      {dataPoints.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="4" fill="#778fbf" stroke="white" strokeWidth="2" />
-      ))}
+        {dataPoints.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="4" fill="#778fbf" stroke="white" strokeWidth="2" />
+        ))}
 
-      {categories.map((cat, i) => {
-        const labelPos = getLabelPoint(i);
-        const score = categoryScores[cat] || 0;
-        return (
-          <g key={i}>
-            <text x={labelPos.x} y={labelPos.y - 6} textAnchor="middle" className="fill-gray-600 text-xs font-medium capitalize">
-              {cat}
-            </text>
+        {/* Show only score numbers at each point */}
+        {categories.map((cat, i) => {
+          const labelPos = getLabelPoint(i);
+          const score = categoryScores[cat] || 0;
+          return (
             <text
-              x={labelPos.x} y={labelPos.y + 10} textAnchor="middle"
-              className="text-sm font-semibold"
+              key={i}
+              x={labelPos.x}
+              y={labelPos.y + 4}
+              textAnchor="middle"
+              className="text-xs font-bold"
               style={{ fill: getScoreColor(score) }}
             >
               {score.toFixed(1)}
             </text>
-          </g>
-        );
-      })}
-    </svg>
+          );
+        })}
+      </svg>
+
+      {/* Legend below */}
+      <div className="mt-4 w-full max-w-xs">
+        {categories.map((cat, i) => {
+          const score = categoryScores[cat] || 0;
+          return (
+            <div key={i} className="flex items-center justify-between py-1 border-b border-gray-100 last:border-0">
+              <span className="text-xs text-gray-600 capitalize">{formatLabel(cat)}</span>
+              <span className="text-xs font-semibold" style={{ color: getScoreColor(score) }}>
+                {score.toFixed(1)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 };
