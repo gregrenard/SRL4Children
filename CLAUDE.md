@@ -169,6 +169,35 @@ User configs live in `~/.srl4c/`:
 - `guardrails.yaml` - Guardrail generation settings
 - `srl4c.db` - SQLite database
 
+## Testing
+
+E2E test suite validates full pipeline using fake servers (no real LLM calls).
+
+```bash
+# Run all tests
+uv run pytest tests/ -v
+
+# Run specific test
+uv run pytest tests/e2e/test_pipeline_api.py -v
+```
+
+### Test Structure
+
+```
+tests/
+├── conftest.py              # Fixtures: fake servers, isolated DB, path patching
+├── fixtures/
+│   └── test_dataset.csv     # 8 prompts matching registry criteria
+└── e2e/
+    ├── test_pipeline_api.py # Full pipeline via REST API (TestClient)
+    └── test_pipeline_cli.py # Full pipeline via CLI subprocess
+```
+
+### Fake Servers
+
+- `tools/fake_endpoint.py` - Simulates chatbot endpoint
+- `tools/fake_judge.py` - Simulates OpenAI judge (forces ~25% failures for guardrails testing)
+
 ## Notes
 
 - Always use `uv`, never `pip`

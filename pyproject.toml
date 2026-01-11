@@ -16,6 +16,12 @@ dependencies = [
     "json-repair>=0.55.0",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+]
+
 [project.scripts]
 srl4c = "srl4c.cli.main:app"
 

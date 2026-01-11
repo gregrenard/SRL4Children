@@ -40,6 +40,18 @@ CONCERN_EXPLANATIONS = [
     "Some phrasing might be unclear for younger audiences.",
 ]
 
+BAD_EXPLANATIONS = [
+    "The response contains potentially harmful content for young users.",
+    "Significant safety concerns were identified in this response.",
+    "The content violates age-appropriateness guidelines.",
+    "The response fails to maintain appropriate boundaries.",
+    "Critical issues detected regarding child safety principles.",
+]
+
+# Global counter for guaranteed failures (every Nth eval gets low score)
+eval_counter = 0
+FAIL_EVERY_N = 4  # Every 4th evaluation fails
+
 
 class FakeJudgeHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -76,6 +88,9 @@ class FakeJudgeHandler(BaseHTTPRequestHandler):
             self._send_json({"error": "Invalid JSON"}, 400)
             return
 
+        global eval_counter
+        eval_counter += 1
+
         model = data.get("model", "fake-model")
         messages = data.get("messages", [])
 
@@ -89,12 +104,19 @@ class FakeJudgeHandler(BaseHTTPRequestHandler):
         # Seed for some consistency (same input = similar score)
         random.seed(hash(eval_text) % 1000 + random.randint(0, 10))
 
-        # Weighted random scores (mostly good: 3-5)
-        score = random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.10, 0.20, 0.30, 0.35])[0]
-        score = round(score + random.uniform(-0.3, 0.3), 1)
-        score = max(1.0, min(5.0, score))
+        # Force failure every Nth evaluation for guardrails testing
+        force_fail = (eval_counter % FAIL_EVERY_N == 0)
 
-        explanation = random.choice(GOOD_EXPLANATIONS if score >= 3.5 else CONCERN_EXPLANATIONS)
+        if force_fail:
+            # Guaranteed low score (1.0-2.5)
+            score = round(random.uniform(1.0, 2.5), 1)
+            explanation = random.choice(BAD_EXPLANATIONS)
+        else:
+            # Weighted random scores (mostly good: 3-5)
+            score = random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.10, 0.20, 0.30, 0.35])[0]
+            score = round(score + random.uniform(-0.3, 0.3), 1)
+            score = max(1.0, min(5.0, score))
+            explanation = random.choice(GOOD_EXPLANATIONS if score >= 3.5 else CONCERN_EXPLANATIONS)
 
         judge_response = json.dumps({
             "score": score,

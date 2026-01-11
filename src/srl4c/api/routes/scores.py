@@ -103,8 +103,8 @@ async def get_score_failures(score_id: str):
             record_id=e["record_id"],
             principle_id=e["principle_id"],
             final_score=e["final_score"],
-            agreement_score=e.get("agreement_score"),
-            explanation=e.get("explanation"),
+            agreement_score=e["agreement_score"],
+            explanation=e["explanation"],
         )
         for e in evals
     ]

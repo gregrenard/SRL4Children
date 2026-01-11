@@ -78,6 +78,30 @@ uv tool install -e .
 uv run python -m srl4c.cli.main --help
 ```
 
+## Testing
+
+SRL4C includes an end-to-end test suite that validates the full pipeline using fake servers (no real LLM calls required).
+
+### Running Tests
+
+```bash
+# Install test dependencies
+uv pip install -e ".[test]"
+
+# Run all tests
+uv run pytest tests/ -v
+
+# Run specific test file
+uv run pytest tests/e2e/test_pipeline_api.py -v
+uv run pytest tests/e2e/test_pipeline_cli.py -v
+```
+
+### Fake Servers
+
+Tests use fake servers from `tools/` that simulate real components:
+- `tools/fake_endpoint.py` - Simulates a chatbot endpoint
+- `tools/fake_judge.py` - Simulates an OpenAI-compatible judge (with guaranteed failures for guardrails testing)
+
 ## Quick Start
 
 ```bash
