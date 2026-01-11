@@ -65,6 +65,16 @@ export const api = {
 
   // Logs
   getLogs: (limit = 50) => fetch(`${API_BASE}/logs?limit=${limit}`).then(handleResponse),
+
+  // Judges
+  getJudges: () => fetch(`${API_BASE}/judges`).then(handleResponse),
+  getActiveJudges: () => fetch(`${API_BASE}/judges/active`).then(handleResponse),
+  setActiveJudges: (name) => fetch(`${API_BASE}/judges/active`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  }).then(handleResponse),
+  getJudgeContent: (name) => fetch(`${API_BASE}/judges/${name}`).then(handleResponse),
 };
 
 export default api;

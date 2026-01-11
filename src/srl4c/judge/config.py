@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import yaml
 from dotenv import load_dotenv
@@ -52,17 +52,84 @@ class JudgeSystemConfig:
         return self.hyperparameters.get(pass_idx, {"temperature": 0.1, "top_p": 0.9})
 
 
-def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
-    """Load judge configuration from YAML file"""
-    if config_path is None:
-        # Try ~/.srl4c/judges.yaml first, then fall back to template
-        user_config = USER_CONFIG_DIR / "judges.yaml"
-        template_config = TEMPLATES_DIR / "judges.yaml"
+def get_settings() -> Dict[str, Any]:
+    """Load settings from ~/.srl4c/settings.yaml"""
+    settings_path = USER_CONFIG_DIR / "settings.yaml"
+    if settings_path.exists():
+        with open(settings_path) as f:
+            return yaml.safe_load(f) or {}
+    return {"active_judges": "default.judges"}
 
+
+def set_active_judges(filename: str) -> None:
+    """Set the active judges file in settings"""
+    settings = get_settings()
+    settings["active_judges"] = filename
+    settings_path = USER_CONFIG_DIR / "settings.yaml"
+    settings_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(settings_path, "w") as f:
+        yaml.dump(settings, f)
+
+
+def get_active_judges_file() -> str:
+    """Get the currently active judges filename"""
+    return get_settings().get("active_judges", "default.judges")
+
+
+def list_judge_files() -> List[Dict[str, Any]]:
+    """List all available .judges files with metadata"""
+    judge_files = []
+
+    # Check user config directory
+    if USER_CONFIG_DIR.exists():
+        for f in USER_CONFIG_DIR.glob("*.judges"):
+            try:
+                with open(f) as fp:
+                    data = yaml.safe_load(fp) or {}
+                judge_count = len(data.get("judges", {}))
+                n_passes = data.get("n_passes", 1)
+                judge_files.append({
+                    "name": f.name,
+                    "path": str(f),
+                    "judges_count": judge_count,
+                    "n_passes": n_passes,
+                    "is_active": f.name == get_active_judges_file(),
+                })
+            except Exception:
+                judge_files.append({
+                    "name": f.name,
+                    "path": str(f),
+                    "judges_count": 0,
+                    "n_passes": 0,
+                    "is_active": f.name == get_active_judges_file(),
+                    "error": "Failed to parse",
+                })
+
+    return sorted(judge_files, key=lambda x: x["name"])
+
+
+def get_judge_file_content(filename: str) -> Optional[str]:
+    """Get the raw content of a judges file"""
+    path = USER_CONFIG_DIR / filename
+    if path.exists() and path.suffix == ".judges":
+        return path.read_text()
+    return None
+
+
+def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
+    """Load judge configuration from .judges file"""
+    if config_path is None:
+        # Get active judges file from settings
+        active_file = get_active_judges_file()
+        user_config = USER_CONFIG_DIR / active_file
+
+        # Fallback chain: active file -> default.judges -> template
         if user_config.exists():
             config_path = user_config
-        elif template_config.exists():
-            config_path = template_config
+        elif (USER_CONFIG_DIR / "default.judges").exists():
+            config_path = USER_CONFIG_DIR / "default.judges"
+        elif (TEMPLATES_DIR / "default.judges").exists():
+            config_path = TEMPLATES_DIR / "default.judges"
         else:
             return get_default_config()
 

@@ -1,0 +1,9 @@
+# Fake Judge Configuration
+# For testing without real LLMs - uses tools/fake_judge.py server
+
+n_passes: 1
+
+judges:
+  fake_judge:
+    provider_openai_base_url: http://localhost:8081/v1
+    model: fake-model

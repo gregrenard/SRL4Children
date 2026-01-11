@@ -4,7 +4,7 @@ import { shortId, isJobRunning } from '../utils/helpers';
 import { Topbar, LogsPanel } from '../components/layout';
 import { EmptyState, LoadingSpinner } from '../components/common';
 import { PipelineColumn, EndpointCard, AttackCard, ScoreCard, GuardrailCard } from '../components/pipeline';
-import { FormModal, DetailPanel, ReportModal } from '../components/modals';
+import { FormModal, DetailPanel, ReportModal, JudgesModal } from '../components/modals';
 
 export const Dashboard = () => {
   // Data state
@@ -27,6 +27,7 @@ export const Dashboard = () => {
   const [reportModal, setReportModal] = useState(null);
   const [formModal, setFormModal] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [showJudgesModal, setShowJudgesModal] = useState(false);
 
   // Check if any jobs are running (for polling)
   const hasRunningJobs = [...attacks, ...scores, ...guardrails].some(isJobRunning);
@@ -219,7 +220,8 @@ export const Dashboard = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Topbar />
+      <Topbar onSettingsClick={() => setShowJudgesModal(true)} />
+      {showJudgesModal && <JudgesModal onClose={() => setShowJudgesModal(false)} />}
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Main Content Area - 70% */}

@@ -19,6 +19,7 @@ attack_app = typer.Typer(help="Run attacks against endpoints")
 score_app = typer.Typer(help="Score attack results")
 guardrails_app = typer.Typer(help="Generate and manage guardrails")
 principles_app = typer.Typer(help="View and manage design principles")
+judges_app = typer.Typer(help="Manage judge configurations")
 config_app = typer.Typer(help="Manage configuration")
 
 app.add_typer(endpoint_app, name="endpoint")
@@ -27,6 +28,7 @@ app.add_typer(attack_app, name="attack")
 app.add_typer(score_app, name="score")
 app.add_typer(guardrails_app, name="guardrails")
 app.add_typer(principles_app, name="principles")
+app.add_typer(judges_app, name="judges")
 app.add_typer(config_app, name="config")
 
 
@@ -435,6 +437,80 @@ def principles_add(file: Path = typer.Argument(..., help="Path to .prompt file")
 def principles_validate(file: Path = typer.Argument(..., help="Path to .prompt file")):
     """Validate a principle file"""
     console.print(f"[yellow]TODO:[/yellow] Validate principle '{file}'")
+
+
+# === JUDGES ===
+
+@judges_app.command("list")
+def judges_list():
+    """List available judge configurations"""
+    from rich.table import Table
+    from srl4c.judge.config import list_judge_files
+
+    files = list_judge_files()
+
+    if not files:
+        console.print("[dim]No judge configurations found. Run 'srl4c init' first.[/dim]")
+        return
+
+    table = Table(show_header=True)
+    table.add_column("Name", style="cyan")
+    table.add_column("Judges")
+    table.add_column("Passes")
+    table.add_column("Active")
+
+    for f in files:
+        active = "[green]✓[/green]" if f["is_active"] else ""
+        table.add_row(
+            f["name"],
+            str(f["judges_count"]),
+            str(f["n_passes"]),
+            active,
+        )
+
+    console.print(table)
+
+
+@judges_app.command("use")
+def judges_use(name: str = typer.Argument(..., help="Judge config filename (e.g. default.judges)")):
+    """Switch to a different judge configuration"""
+    from srl4c.judge.config import list_judge_files, set_active_judges
+
+    # Ensure .judges extension
+    if not name.endswith(".judges"):
+        name = f"{name}.judges"
+
+    # Check if file exists
+    files = list_judge_files()
+    names = [f["name"] for f in files]
+
+    if name not in names:
+        console.print(f"[red]Judge config not found: {name}[/red]")
+        console.print(f"[dim]Available: {', '.join(names)}[/dim]")
+        return
+
+    set_active_judges(name)
+    console.print(f"[green]✓[/green] Now using [cyan]{name}[/cyan]")
+
+
+@judges_app.command("show")
+def judges_show(name: str = typer.Argument(None, help="Judge config filename (default: active config)")):
+    """Show contents of a judge configuration"""
+    from srl4c.judge.config import get_active_judges_file, get_judge_file_content
+
+    if name is None:
+        name = get_active_judges_file()
+    elif not name.endswith(".judges"):
+        name = f"{name}.judges"
+
+    content = get_judge_file_content(name)
+
+    if content is None:
+        console.print(f"[red]Judge config not found: {name}[/red]")
+        return
+
+    console.print(f"[bold]Judge Config: {name}[/bold]\n")
+    console.print(content)
 
 
 # === CONFIG ===
