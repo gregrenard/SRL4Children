@@ -7,6 +7,8 @@ export const JudgesModal = ({ onClose }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResults, setTestResults] = useState(null);
 
   useEffect(() => {
     loadJudges();
@@ -53,6 +55,21 @@ export const JudgesModal = ({ onClose }) => {
       console.error('Failed to switch judges:', err);
     } finally {
       setSwitching(false);
+    }
+  };
+
+  const handleTest = async () => {
+    if (!selectedJudge) return;
+    setTesting(true);
+    setTestResults(null);
+    try {
+      const results = await api.testJudges(selectedJudge);
+      setTestResults(results);
+    } catch (err) {
+      console.error('Failed to test judges:', err);
+      setTestResults([{ name: 'Error', model: '', success: false, error: err.message }]);
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -114,6 +131,31 @@ export const JudgesModal = ({ onClose }) => {
                 </pre>
               </div>
 
+              {/* Test results */}
+              {testResults && (
+                <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Test Results</div>
+                  <div className="space-y-1">
+                    {testResults.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        {r.success ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-red-500">✗</span>
+                        )}
+                        <span className="font-medium">{r.name}</span>
+                        <span className="text-gray-400">{r.model}</span>
+                        {r.success ? (
+                          <span className="text-gray-400 text-xs">{r.response_time_ms}ms</span>
+                        ) : (
+                          <span className="text-red-500 text-xs">{r.error}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Help text */}
               <p className="text-xs text-gray-400">
                 Judge configs are stored in ~/.srl4c/*.judges. Add your own by creating a new .judges file.
@@ -123,6 +165,15 @@ export const JudgesModal = ({ onClose }) => {
         </div>
 
         <div className="flex items-center gap-3 p-4 border-t border-gray-100">
+          <button
+            onClick={handleTest}
+            disabled={testing || !selectedJudge}
+            className="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 rounded-xl text-gray-700 text-sm font-medium transition-colors flex items-center gap-2"
+            title={selectedJudge ? `Test ${selectedJudge}` : 'Select a config first'}
+          >
+            {testing && <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>}
+            {testing ? 'Testing...' : `Test ${selectedJudge?.replace('.judges', '') || ''}`}
+          </button>
           <button
             onClick={onClose}
             className="flex-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 text-sm font-medium transition-colors"

@@ -9,6 +9,7 @@ from srl4c.judge.config import (
     get_active_judges_file,
     set_active_judges,
     get_judge_file_content,
+    test_all_judges,
 )
 
 router = APIRouter(prefix="/judges", tags=["judges"])
@@ -78,3 +79,23 @@ async def get_judge_content(name: str):
         content=content,
         is_active=(name == get_active_judges_file()),
     )
+
+
+class JudgeTestResult(BaseModel):
+    name: str
+    model: str
+    base_url: str
+    success: bool
+    error: Optional[str] = None
+    response_time_ms: Optional[int] = None
+
+
+class TestRequest(BaseModel):
+    config: Optional[str] = None
+
+
+@router.post("/test", response_model=List[JudgeTestResult])
+async def test_judges(request: TestRequest = None):
+    """Test connectivity to judges in a config file."""
+    config_name = request.config if request else None
+    return test_all_judges(config_name)

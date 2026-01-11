@@ -167,6 +167,74 @@ def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
     )
 
 
+def test_judge(judge: JudgeConfig) -> Dict[str, Any]:
+    """Test if a judge is reachable and responding"""
+    import httpx
+
+    result = {
+        "name": judge.name,
+        "model": judge.model,
+        "base_url": judge.provider_openai_base_url,
+        "success": False,
+        "error": None,
+        "response_time_ms": None,
+    }
+
+    try:
+        import time
+        start = time.time()
+
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(
+                f"{judge.provider_openai_base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {judge.get_api_key() or 'unused'}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": judge.model,
+                    "messages": [{"role": "user", "content": "Say OK"}],
+                    "max_tokens": 10,
+                },
+            )
+
+        elapsed_ms = int((time.time() - start) * 1000)
+        result["response_time_ms"] = elapsed_ms
+
+        if response.status_code == 200:
+            result["success"] = True
+        else:
+            result["error"] = f"HTTP {response.status_code}: {response.text[:100]}"
+
+    except httpx.ConnectError:
+        result["error"] = "Connection refused - is the server running?"
+    except httpx.TimeoutException:
+        result["error"] = "Timeout - server took too long to respond"
+    except Exception as e:
+        result["error"] = str(e)
+
+    return result
+
+
+def test_all_judges(config_name: str = None) -> List[Dict[str, Any]]:
+    """Test all judges in a config file (default: active config)"""
+    if config_name:
+        # Load specific config
+        if not config_name.endswith(".judges"):
+            config_name = f"{config_name}.judges"
+        config_path = USER_CONFIG_DIR / config_name
+        if not config_path.exists():
+            return [{"name": "Error", "model": "", "base_url": "", "success": False, "error": f"Config not found: {config_name}"}]
+        config = load_judge_config(config_path)
+    else:
+        config = load_judge_config()
+
+    results = []
+    for judge in config.judges:
+        results.append(test_judge(judge))
+    return results
+
+
 def get_default_config() -> JudgeSystemConfig:
     """Get default judge configuration (single OpenAI judge)"""
     return JudgeSystemConfig(
