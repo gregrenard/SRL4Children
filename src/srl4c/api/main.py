@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from srl4c.api.schemas import HealthResponse
-from srl4c.api.routes import attacks, scores, guardrails, endpoints, datasets, principles, logs, judges
+from srl4c.api.routes import attacks, scores, guardrails, endpoints, datasets, principles, logs, judges, generators
 
 app = FastAPI(
     title="SRL4C API",
@@ -30,6 +30,7 @@ app.include_router(datasets.router)
 app.include_router(principles.router)
 app.include_router(logs.router)
 app.include_router(judges.router)
+app.include_router(generators.router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["health"])

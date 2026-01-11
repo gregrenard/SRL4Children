@@ -1,0 +1,9 @@
+# SRL4C Guardrail Generator Configuration
+# This model is used to generate guardrail rules from scoring failures
+
+name: default
+provider_openai_base_url: https://api.deepinfra.com/v1/openai
+model: openai/gpt-oss-120b
+api_key_env: DEEPINFRA_API_KEY
+temperature: 0.15
+max_tokens: 16384

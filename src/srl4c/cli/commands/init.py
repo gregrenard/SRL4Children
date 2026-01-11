@@ -48,10 +48,24 @@ def run_init(console: Console):
         elif dst.exists():
             console.print(f"  [dim]✓ Exists {dst}[/dim]")
 
-    # Create settings.yaml with default judge selection
+    # Copy generator config files (.generators)
+    generator_files = ["default.generators", "fake.generators"]
+    for gf in generator_files:
+        src = TEMPLATES_DIR / gf
+        dst = USER_CONFIG_DIR / gf
+        if src.exists() and not dst.exists():
+            shutil.copy(src, dst)
+            console.print(f"  [green]✓[/green] Created {dst}")
+        elif dst.exists():
+            console.print(f"  [dim]✓ Exists {dst}[/dim]")
+
+    # Create settings.yaml with defaults
     settings_path = USER_CONFIG_DIR / "settings.yaml"
     if not settings_path.exists():
-        settings = {"active_judges": "default.judges"}
+        settings = {
+            "active_judges": "default.judges",
+            "active_generators": "default.generators",
+        }
         with open(settings_path, "w") as f:
             yaml.dump(settings, f)
         console.print(f"  [green]✓[/green] Created {settings_path}")

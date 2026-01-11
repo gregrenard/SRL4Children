@@ -20,6 +20,7 @@ score_app = typer.Typer(help="Score attack results")
 guardrails_app = typer.Typer(help="Generate and manage guardrails")
 principles_app = typer.Typer(help="View and manage design principles")
 judges_app = typer.Typer(help="Manage judge configurations")
+generators_app = typer.Typer(help="Manage guardrail generator configurations")
 config_app = typer.Typer(help="Manage configuration")
 
 app.add_typer(endpoint_app, name="endpoint")
@@ -29,6 +30,7 @@ app.add_typer(score_app, name="score")
 app.add_typer(guardrails_app, name="guardrails")
 app.add_typer(principles_app, name="principles")
 app.add_typer(judges_app, name="judges")
+app.add_typer(generators_app, name="generators")
 app.add_typer(config_app, name="config")
 
 
@@ -511,6 +513,132 @@ def judges_show(name: str = typer.Argument(None, help="Judge config filename (de
 
     console.print(f"[bold]Judge Config: {name}[/bold]\n")
     console.print(content)
+
+
+@judges_app.command("test")
+def judges_test():
+    """Test connectivity to all configured judges"""
+    from rich.table import Table
+    from srl4c.judge.config import test_all_judges, get_active_judges_file
+
+    console.print(f"Testing judges from [cyan]{get_active_judges_file()}[/cyan]...\n")
+
+    results = test_all_judges()
+
+    if not results:
+        console.print("[yellow]No judges configured[/yellow]")
+        return
+
+    table = Table(show_edge=False)
+    table.add_column("Judge", style="bold")
+    table.add_column("Model")
+    table.add_column("Status")
+    table.add_column("Response Time")
+
+    for r in results:
+        if r["success"]:
+            status = "[green]✓ OK[/green]"
+            time_str = f"{r['response_time_ms']}ms"
+        else:
+            status = f"[red]✗ {r['error']}[/red]"
+            time_str = "-"
+
+        table.add_row(r["name"], r["model"], status, time_str)
+
+    console.print(table)
+
+
+# === GENERATORS ===
+
+@generators_app.command("list")
+def generators_list():
+    """List available generator configurations"""
+    from rich.table import Table
+    from srl4c.generator.config import list_generator_files
+
+    files = list_generator_files()
+
+    if not files:
+        console.print("[dim]No generator configurations found. Run 'srl4c init' first.[/dim]")
+        return
+
+    table = Table(show_edge=False)
+    table.add_column("Name", style="bold")
+    table.add_column("Model")
+    table.add_column("Active")
+
+    for f in files:
+        active = "[green]✓[/green]" if f["is_active"] else ""
+        table.add_row(f["name"], f["model"], active)
+
+    console.print(table)
+
+
+@generators_app.command("use")
+def generators_use(name: str = typer.Argument(..., help="Generator config filename (e.g. default.generators)")):
+    """Switch to a different generator configuration"""
+    from srl4c.generator.config import list_generator_files, set_active_generators
+
+    if not name.endswith(".generators"):
+        name = f"{name}.generators"
+
+    files = list_generator_files()
+    names = [f["name"] for f in files]
+
+    if name not in names:
+        console.print(f"[red]Generator config not found: {name}[/red]")
+        console.print(f"[dim]Available: {', '.join(names)}[/dim]")
+        return
+
+    set_active_generators(name)
+    console.print(f"[green]✓[/green] Now using [cyan]{name}[/cyan]")
+
+
+@generators_app.command("show")
+def generators_show(name: str = typer.Argument(None, help="Generator config filename (default: active config)")):
+    """Show contents of a generator configuration"""
+    from srl4c.generator.config import get_active_generators_file, get_generator_file_content
+
+    if name is None:
+        name = get_active_generators_file()
+    elif not name.endswith(".generators"):
+        name = f"{name}.generators"
+
+    content = get_generator_file_content(name)
+
+    if content is None:
+        console.print(f"[red]Generator config not found: {name}[/red]")
+        return
+
+    console.print(f"[bold]Generator Config: {name}[/bold]\n")
+    console.print(content)
+
+
+@generators_app.command("test")
+def generators_test():
+    """Test connectivity to the active generator"""
+    from rich.table import Table
+    from srl4c.generator.config import test_active_generator, get_active_generators_file
+
+    console.print(f"Testing generator from [cyan]{get_active_generators_file()}[/cyan]...\n")
+
+    r = test_active_generator()
+
+    table = Table(show_edge=False)
+    table.add_column("Generator", style="bold")
+    table.add_column("Model")
+    table.add_column("Status")
+    table.add_column("Response Time")
+
+    if r["success"]:
+        status = "[green]✓ OK[/green]"
+        time_str = f"{r['response_time_ms']}ms"
+    else:
+        status = f"[red]✗ {r['error']}[/red]"
+        time_str = "-"
+
+    table.add_row(r["name"], r["model"], status, time_str)
+    console.print(table)
 
 
 # === CONFIG ===

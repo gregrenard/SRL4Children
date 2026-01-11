@@ -26,24 +26,18 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 
 def load_guardrails_config() -> Dict[str, Any]:
-    """Load guardrails config from YAML"""
-    user_config = USER_CONFIG_DIR / "guardrails.yaml"
-    template_config = TEMPLATES_DIR / "guardrails.yaml"
+    """Load guardrails config from .generators file"""
+    from srl4c.generator.config import load_generator_config
 
-    config_path = user_config if user_config.exists() else template_config
+    generator = load_generator_config()
 
-    if not config_path.exists():
-        return {
-            "provider": "openai",
-            "model": "gpt-4o-mini",
-            "api_key_env": "OPENAI_API_KEY",
-            "max_rules_per_principle": 3,
-            "max_total_guardrails": 20,
-            "temperature": 0.15,
-        }
-
-    with open(config_path) as f:
-        return yaml.safe_load(f)
+    return {
+        "provider_openai_base_url": generator.provider_openai_base_url,
+        "model": generator.model,
+        "api_key_env": generator.api_key_env,
+        "temperature": generator.temperature,
+        "max_tokens": generator.max_tokens,
+    }
 
 
 # Guardrail generation prompt template - EXACT COPY from tools/generate_guardrails.py
@@ -322,13 +316,17 @@ def run_guardrails(
         config = load_guardrails_config()
         model = config.get("model", "gpt-4o-mini")
         base_url = config.get("provider_openai_base_url")
-        api_key = os.environ.get(config.get("api_key_env", "OPENAI_API_KEY"))
+        api_key_env = config.get("api_key_env")
+        api_key = os.environ.get(api_key_env) if api_key_env else None
 
-        if not api_key:
-            raise ValueError(f"API key not found. Set {config.get('api_key_env')} in .env")
+        # Only require API key if api_key_env is configured (fake servers don't need one)
+        if api_key_env and not api_key:
+            raise ValueError(f"API key not found. Set {api_key_env} in .env")
 
         from openai import OpenAI
-        client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
+        # Use dummy key for fake servers that don't validate
+        effective_key = api_key or "fake-key"
+        client = OpenAI(api_key=effective_key, base_url=base_url) if base_url else OpenAI(api_key=effective_key)
 
         all_guardrails = []
         total_generated = 0

@@ -75,6 +75,26 @@ export const api = {
     body: JSON.stringify({ name })
   }).then(handleResponse),
   getJudgeContent: (name) => fetch(`${API_BASE}/judges/${name}`).then(handleResponse),
+  testJudges: (config) => fetch(`${API_BASE}/judges/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ config })
+  }).then(handleResponse),
+
+  // Generators
+  getGenerators: () => fetch(`${API_BASE}/generators`).then(handleResponse),
+  getActiveGenerators: () => fetch(`${API_BASE}/generators/active`).then(handleResponse),
+  setActiveGenerators: (name) => fetch(`${API_BASE}/generators/active`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  }).then(handleResponse),
+  getGeneratorContent: (name) => fetch(`${API_BASE}/generators/${name}`).then(handleResponse),
+  testGenerator: (config) => fetch(`${API_BASE}/generators/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ config })
+  }).then(handleResponse),
 };
 
 export default api;

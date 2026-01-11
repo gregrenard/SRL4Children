@@ -1,0 +1,9 @@
+# Fake Generator for Testing
+# Use with: python tools/fake_generator.py --port 18082
+
+name: fake
+provider_openai_base_url: http://localhost:18082/v1
+model: fake-generator
+api_key_env: null
+temperature: 0.1
+max_tokens: 500
