@@ -4,7 +4,7 @@ import { shortId, isJobRunning } from '../utils/helpers';
 import { Topbar, LogsPanel } from '../components/layout';
 import { EmptyState, LoadingSpinner } from '../components/common';
 import { PipelineColumn, EndpointCard, AttackCard, ScoreCard, GuardrailCard } from '../components/pipeline';
-import { FormModal, DetailPanel, ReportModal, JudgesModal } from '../components/modals';
+import { FormModal, DetailPanel, ReportModal, JudgesModal, GeneratorsModal } from '../components/modals';
 
 export const Dashboard = () => {
   // Data state
@@ -28,6 +28,7 @@ export const Dashboard = () => {
   const [formModal, setFormModal] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [showJudgesModal, setShowJudgesModal] = useState(false);
+  const [showGeneratorsModal, setShowGeneratorsModal] = useState(false);
 
   // Check if any jobs are running (for polling)
   const hasRunningJobs = [...attacks, ...scores, ...guardrails].some(isJobRunning);
@@ -220,8 +221,12 @@ export const Dashboard = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Topbar onSettingsClick={() => setShowJudgesModal(true)} />
+      <Topbar
+        onJudgesClick={() => setShowJudgesModal(true)}
+        onGeneratorsClick={() => setShowGeneratorsModal(true)}
+      />
       {showJudgesModal && <JudgesModal onClose={() => setShowJudgesModal(false)} />}
+      {showGeneratorsModal && <GeneratorsModal onClose={() => setShowGeneratorsModal(false)} />}
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Main Content Area - 70% */}
@@ -230,12 +235,20 @@ export const Dashboard = () => {
           <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
             {/* Flow Stepper */}
             <div className={`flex items-center transition-all duration-300 flex-shrink-0 ${detailPanel.item ? 'pr-[396px]' : ''}`}>
-              {['Endpoints', 'Attacks', 'Scores', 'Guardrails'].map((step, i, arr) => (
-                <div key={step} className="flex items-center gap-3 flex-1">
+              {[
+                { name: 'Endpoints', subtitle: null },
+                { name: 'Attacks', subtitle: selectedEndpoint?.name },
+                { name: 'Scores', subtitle: selectedAttack ? shortId(selectedAttack.id) : null },
+                { name: 'Guardrails', subtitle: selectedScore ? shortId(selectedScore.id) : null },
+              ].map((step, i, arr) => (
+                <div key={step.name} className="flex items-center gap-3 flex-1">
                   <div className="w-7 h-7 rounded-full bg-everyone-blue flex items-center justify-center flex-shrink-0 shadow-sm">
                     <span className="text-sm text-white font-bold">{i + 1}</span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">{step}</span>
+                  <span className="text-sm font-semibold text-gray-700">{step.name}</span>
+                  {step.subtitle && (
+                    <span className="text-xs text-everyone-blue truncate max-w-[100px]">for {step.subtitle}</span>
+                  )}
                   {i < arr.length - 1 && (
                     <div className="flex-1 h-0.5 bg-gradient-to-r from-everyone-blue/50 to-everyone-blue/10 ml-2 rounded-full" />
                   )}
@@ -256,7 +269,7 @@ export const Dashboard = () => {
                 >
                   {endpoints.length === 0 ? <EmptyState message="No endpoints yet" /> :
                     endpoints.map(endpoint => (
-                      <EndpointCard key={endpoint.id} endpoint={endpoint} selected={selectedEndpoint?.id === endpoint.id} onClick={() => handleCardClick(endpoint, 'endpoint')} />
+                      <EndpointCard key={endpoint.id} endpoint={endpoint} selected={selectedEndpoint?.id === endpoint.id} onClick={() => handleCardClick(endpoint, 'endpoint')} onNewAttack={(ep) => setFormModal({ type: 'attack', initialValues: { endpoint: ep.name } })} />
                     ))
                   }
                 </PipelineColumn>
@@ -264,14 +277,13 @@ export const Dashboard = () => {
                 <PipelineColumn
                   addLabel="New Attack"
                   onAdd={() => setFormModal({ type: 'attack' })}
-                  subtitle={selectedEndpoint?.name}
                   description="Send adversarial prompts to test how an endpoint responds to challenging scenarios designed to probe safety boundaries."
                   loading={loading.attacks}
                   error={error.attacks}
                 >
                   {filteredAttacks.length === 0 ? <EmptyState message="No attacks yet" /> :
                     filteredAttacks.map(attack => (
-                      <AttackCard key={attack.id} attack={attack} selected={selectedAttack?.id === attack.id} onClick={() => handleCardClick(attack, 'attack')} />
+                      <AttackCard key={attack.id} attack={attack} selected={selectedAttack?.id === attack.id} onClick={() => handleCardClick(attack, 'attack')} onNewScore={(atk) => atk.status === 'completed' && setFormModal({ type: 'score', initialValues: { attack_id: atk.id } })} />
                     ))
                   }
                 </PipelineColumn>
@@ -279,14 +291,13 @@ export const Dashboard = () => {
                 <PipelineColumn
                   addLabel="New Score"
                   onAdd={() => setFormModal({ type: 'score' })}
-                  subtitle={selectedAttack ? shortId(selectedAttack.id) : null}
                   description="Evaluate attack responses against 22 child safety principles. Each response gets a 0-5 score across categories like safety, age-appropriateness, and ethics."
                   loading={loading.scores}
                   error={error.scores}
                 >
                   {filteredScores.length === 0 ? <EmptyState message="No scores yet" /> :
                     filteredScores.map(score => (
-                      <ScoreCard key={score.id} score={score} selected={selectedScore?.id === score.id} onClick={() => handleCardClick(score, 'score')} onReport={openReport} />
+                      <ScoreCard key={score.id} score={score} selected={selectedScore?.id === score.id} onClick={() => handleCardClick(score, 'score')} onReport={openReport} onNewGuardrail={(sc) => sc.status === 'completed' && setFormModal({ type: 'guardrail', initialValues: { score_id: sc.id } })} />
                     ))
                   }
                 </PipelineColumn>
@@ -294,7 +305,6 @@ export const Dashboard = () => {
                 <PipelineColumn
                   addLabel="Generate Rules"
                   onAdd={() => setFormModal({ type: 'guardrail' })}
-                  subtitle={selectedScore ? shortId(selectedScore.id) : null}
                   description="Auto-generate guardrail rules based on scoring failures. These rules can be added to your AI system prompt to prevent future issues."
                   loading={loading.guardrails}
                   error={error.guardrails}
@@ -338,11 +348,13 @@ export const Dashboard = () => {
           {/* Form Modal */}
           {formModal && (
             <FormModal
+              key={`${formModal.type}-${JSON.stringify(formModal.initialValues || {})}`}
               title={formConfigs[formModal.type].title}
               fields={formConfigs[formModal.type].fields}
               onSubmit={handleFormSubmit}
               onClose={() => setFormModal(null)}
               loading={formLoading}
+              initialValues={formModal.initialValues || {}}
             />
           )}
         </div>

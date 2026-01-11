@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import { Topbar } from '../components/layout';
-import { JudgesModal } from '../components/modals';
+import { JudgesModal, GeneratorsModal } from '../components/modals';
 
 const PAGE_SIZE = 50;
 
@@ -26,6 +26,7 @@ export const Datasets = () => {
   const [sortOrder, setSortOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showJudgesModal, setShowJudgesModal] = useState(false);
+  const [showGeneratorsModal, setShowGeneratorsModal] = useState(false);
 
   const totalPages = Math.ceil(totalPrompts / PAGE_SIZE) || 1;
 
@@ -154,8 +155,12 @@ export const Datasets = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Topbar onSettingsClick={() => setShowJudgesModal(true)} />
+      <Topbar
+        onJudgesClick={() => setShowJudgesModal(true)}
+        onGeneratorsClick={() => setShowGeneratorsModal(true)}
+      />
       {showJudgesModal && <JudgesModal onClose={() => setShowJudgesModal(false)} />}
+      {showGeneratorsModal && <GeneratorsModal onClose={() => setShowGeneratorsModal(false)} />}
 
       <div className="flex-1 max-w-7xl mx-auto px-4 py-6 w-full">
         {/* Dataset Selector */}
