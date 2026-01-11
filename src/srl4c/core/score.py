@@ -162,14 +162,16 @@ def run_score(
         # Store evaluations in DB
         all_results = []
         current = 0
-        with db_connection() as conn:
-            for record in valid_records:
-                if record.id not in results_by_record:
-                    continue
 
-                result = results_by_record[record.id]
-                all_results.append(result)
+        for record in valid_records:
+            if record.id not in results_by_record:
+                continue
 
+            result = results_by_record[record.id]
+            all_results.append(result)
+
+            # Insert all evaluations for this record in one transaction
+            with db_connection() as conn:
                 for crit_result in result.detailed_criteria:
                     eval_id = generate_id()
                     # Get explanation from first judge's first pass
@@ -193,10 +195,11 @@ def run_score(
                         )
                     )
 
-                current += 1
-                ScoreRepository.update_progress(score_id, current, total)
-                if on_progress:
-                    on_progress(current, total)
+            # Update progress AFTER the connection is closed to avoid nested connections
+            current += 1
+            ScoreRepository.update_progress(score_id, current, total)
+            if on_progress:
+                on_progress(current, total)
 
         # Calculate aggregate results
         if all_results:
