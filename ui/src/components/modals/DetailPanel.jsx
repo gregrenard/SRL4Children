@@ -131,6 +131,18 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                 <div className="text-gray-700 mb-2">{item.completed_prompts || 0} / {item.total_prompts || 0} prompts</div>
                 <ProgressBar progress={item.progress} animated={isJobRunning(item)} />
               </div>
+              {item.started_at && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Started</div>
+                  <div className="text-gray-700">{formatDate(item.started_at)}</div>
+                </div>
+              )}
+              {item.completed_at && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Completed</div>
+                  <div className="text-gray-700">{formatDate(item.completed_at)}</div>
+                </div>
+              )}
             </div>
             <div className="mt-6">
               <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
@@ -218,6 +230,18 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                   </div>
                 </div>
               )}
+              {item.started_at && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Started</div>
+                  <div className="text-gray-700">{formatDate(item.started_at)}</div>
+                </div>
+              )}
+              {item.completed_at && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Completed</div>
+                  <div className="text-gray-700">{formatDate(item.completed_at)}</div>
+                </div>
+              )}
             </div>
             <div className="mt-6 space-y-2">
               {item.status === 'completed' && (
@@ -273,6 +297,18 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                   </div>
                 </div>
               )}
+              {item.created_at && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Created</div>
+                  <div className="text-gray-700">{formatDate(item.created_at)}</div>
+                </div>
+              )}
+              {item.completed_at && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Completed</div>
+                  <div className="text-gray-700">{formatDate(item.completed_at)}</div>
+                </div>
+              )}
             </div>
             <div className="mt-6 space-y-2">
               {item.status === 'completed' && (
@@ -307,7 +343,29 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
     <>
       <div className="h-full bg-white border border-gray-200 rounded-2xl shadow-lg animate-fade-in flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">{type} Details</div>
+          <div className="flex items-center gap-2 text-xs text-gray-500 uppercase tracking-wider font-medium">
+            {type === 'endpoint' && (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+              </svg>
+            )}
+            {type === 'attack' && (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
+            {type === 'score' && (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            )}
+            {type === 'guardrail' && (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            )}
+            {type} Details
+          </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
             <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

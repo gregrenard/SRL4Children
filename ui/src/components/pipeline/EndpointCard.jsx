@@ -1,4 +1,4 @@
-import { getStatusIcon, getStatusColor } from '../../utils/helpers';
+import { getStatusIcon, getStatusColor, formatDate } from '../../utils/helpers';
 
 export const EndpointCard = ({ endpoint, selected, onClick, onNewAttack }) => (
   <div
@@ -14,6 +14,9 @@ export const EndpointCard = ({ endpoint, selected, onClick, onNewAttack }) => (
       <span className="text-[10px]">{getStatusIcon(endpoint.status || 'untested')}</span>
       {endpoint.status || 'untested'}
     </div>
+    {endpoint.created_at && (
+      <div className="text-xs text-gray-400 mt-2">Created {formatDate(endpoint.created_at)}</div>
+    )}
   </div>
 );
 

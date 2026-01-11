@@ -51,12 +51,21 @@ export const isJobRunning = (item) => item?.status === 'running' || item?.status
 export const formatTime = (timestamp) => {
   if (!timestamp) return '';
   const date = new Date(timestamp);
-  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const offset = -date.getTimezoneOffset();
+  const offsetHours = Math.floor(Math.abs(offset) / 60);
+  const offsetMins = Math.abs(offset) % 60;
+  const offsetStr = `UTC${offset >= 0 ? '+' : '-'}${offsetHours}${offsetMins ? ':' + String(offsetMins).padStart(2, '0') : ''}`;
+  return `${dateStr} ${timeStr} (${offsetStr})`;
 };
 
 export const formatDate = (timestamp) => {
   if (!timestamp) return 'Unknown';
-  return new Date(timestamp).toLocaleDateString();
+  const date = new Date(timestamp);
+  const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${dateStr} ${timeStr}`;
 };
 
 export const formatDateTime = (timestamp) => {

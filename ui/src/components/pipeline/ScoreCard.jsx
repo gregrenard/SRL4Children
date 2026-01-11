@@ -1,4 +1,4 @@
-import { shortId, getStatusIcon, getStatusColor, getScoreColor, isJobRunning } from '../../utils/helpers';
+import { shortId, getStatusIcon, getStatusColor, getScoreColor, isJobRunning, formatDate } from '../../utils/helpers';
 import { ProgressBar } from '../common';
 
 export const ScoreCard = ({ score, selected, onClick, onReport, onNewGuardrail }) => (
@@ -37,6 +37,9 @@ export const ScoreCard = ({ score, selected, onClick, onReport, onNewGuardrail }
         </div>
         <ProgressBar progress={score.progress} animated={isJobRunning(score)} />
       </div>
+    )}
+    {score.started_at && (
+      <div className="text-xs text-gray-400 mt-2">Started {formatDate(score.started_at)}</div>
     )}
   </div>
 );

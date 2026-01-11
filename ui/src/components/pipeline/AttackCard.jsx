@@ -1,4 +1,4 @@
-import { shortId, getStatusIcon, getStatusColor, isJobRunning } from '../../utils/helpers';
+import { shortId, getStatusIcon, getStatusColor, isJobRunning, formatDate } from '../../utils/helpers';
 import { ProgressBar } from '../common';
 
 export const AttackCard = ({ attack, selected, onClick, onNewScore }) => (
@@ -17,6 +17,9 @@ export const AttackCard = ({ attack, selected, onClick, onNewScore }) => (
       <div className="mt-2">
         <ProgressBar progress={attack.progress} animated />
       </div>
+    )}
+    {attack.started_at && (
+      <div className="text-xs text-gray-400 mt-2">Started {formatDate(attack.started_at)}</div>
     )}
   </div>
 );

@@ -1,4 +1,4 @@
-import { shortId, getStatusIcon, getStatusColor, isJobRunning } from '../../utils/helpers';
+import { shortId, getStatusIcon, getStatusColor, isJobRunning, formatDate } from '../../utils/helpers';
 import { ProgressBar } from '../common';
 
 export const GuardrailCard = ({ guardrail, selected, onClick }) => (
@@ -16,6 +16,9 @@ export const GuardrailCard = ({ guardrail, selected, onClick }) => (
       <div className="mt-2">
         <ProgressBar progress={guardrail.progress} animated />
       </div>
+    )}
+    {guardrail.created_at && (
+      <div className="text-xs text-gray-400 mt-2">Created {formatDate(guardrail.created_at)}</div>
     )}
   </div>
 );

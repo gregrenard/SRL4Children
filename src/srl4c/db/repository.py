@@ -69,6 +69,7 @@ class EndpointRepository:
         """Create a new endpoint"""
         init_db()
         conn = get_connection()
+        created_at = datetime.now().isoformat()
         conn.execute(
             """INSERT INTO endpoints (id, name, type, base_url, api_key_env, config_json, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -79,11 +80,12 @@ class EndpointRepository:
                 endpoint.base_url,
                 endpoint.api_key_env,
                 json.dumps(endpoint.config) if endpoint.config else None,
-                datetime.now().isoformat(),
+                created_at,
             )
         )
         conn.commit()
         conn.close()
+        endpoint.created_at = created_at
         return endpoint
 
     @staticmethod
@@ -213,6 +215,7 @@ class AttackRepository:
         """Create a new attack"""
         init_db()
         conn = get_connection()
+        started_at = datetime.now().isoformat()
         conn.execute(
             """INSERT INTO attacks (id, endpoint_id, dataset_name, status, total_prompts, completed_prompts, started_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -223,11 +226,12 @@ class AttackRepository:
                 attack.status,
                 attack.total_prompts,
                 attack.completed_prompts,
-                datetime.now().isoformat(),
+                started_at,
             )
         )
         conn.commit()
         conn.close()
+        attack.started_at = started_at
         return attack
 
     @staticmethod
