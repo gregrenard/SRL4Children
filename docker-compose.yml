@@ -1,0 +1,16 @@
+services:
+  srl4c:
+    build: .
+    ports:
+      - "7860:7860"
+    volumes:
+      - srl4c-data:/data
+    environment:
+      - SRL4C_HOME=/data
+      # Add your API keys here or use .env file
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPINFRA_API_KEY=${DEEPINFRA_API_KEY:-}
+    restart: unless-stopped
+
+volumes:
+  srl4c-data:

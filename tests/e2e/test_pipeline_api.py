@@ -14,7 +14,7 @@ class TestPipelineAPI:
 
     def test_health_check(self, api_client):
         """Verify API is running"""
-        response = api_client.get("/health")
+        response = api_client.get("/api/health")
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
 
@@ -26,14 +26,14 @@ class TestPipelineAPI:
         assert endpoint_id is not None
 
         # Verify endpoint exists
-        response = api_client.get(f"/endpoints/{endpoint_id}")
+        response = api_client.get(f"/api/endpoints/{endpoint_id}")
         assert response.status_code == 200
         endpoint_data = response.json()
         assert endpoint_data["name"] == "test-bot"
         assert endpoint_data["type"] == "simple"
 
         # Step 2: Create attack
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "test-bot",
             "dataset": "test_mini",
         })
@@ -43,7 +43,7 @@ class TestPipelineAPI:
         assert attack_data["status"] == "pending"
 
         # Step 3: Poll until attack completes
-        attack_result = poll_status(api_client, f"/attacks/{attack_id}", "completed", timeout=60)
+        attack_result = poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
         assert attack_result["status"] == "completed"
 
         # Verify attack processed all prompts
@@ -51,7 +51,7 @@ class TestPipelineAPI:
         assert attack_result["total_prompts"] == 8
 
         # Step 4: Create score
-        response = api_client.post("/scores", json={
+        response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
             "weights": "balanced",
@@ -61,7 +61,7 @@ class TestPipelineAPI:
         score_id = score_data["id"]
 
         # Step 5: Poll until score completes
-        score_result = poll_status(api_client, f"/scores/{score_id}", "completed", timeout=120)
+        score_result = poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
         assert score_result["status"] == "completed"
 
         # Verify final score exists and is valid
@@ -73,14 +73,14 @@ class TestPipelineAPI:
         assert len(score_result["category_scores"]) > 0
 
         # Verify failures endpoint works (fake judge guarantees some failures)
-        response = api_client.get(f"/scores/{score_id}/failures")
+        response = api_client.get(f"/api/scores/{score_id}/failures")
         assert response.status_code == 200
         failures = response.json()
         # Should have at least one failure (fake judge forces ~25% low scores)
         assert failures["count"] >= 1, "Expected at least 1 failure from fake judge"
 
         # Step 6: Generate guardrails (fake judge ensures some low scores)
-        response = api_client.post("/guardrails", json={
+        response = api_client.post("/api/guardrails", json={
             "score_id": score_id,
             "max_rules": 3,
             "max_total": 10,
@@ -90,7 +90,7 @@ class TestPipelineAPI:
         set_id = guardrails_data["id"]
 
         # Step 7: Poll until guardrails complete
-        guardrails_result = poll_status(api_client, f"/guardrails/{set_id}", "completed", timeout=120)
+        guardrails_result = poll_status(api_client, f"/api/guardrails/{set_id}", "completed", timeout=120)
         assert guardrails_result["status"] == "completed"
 
         # Verify guardrails were generated (fake judge ensures failures exist)
@@ -111,20 +111,20 @@ class TestPipelineAPI:
         """Verify data relationships are consistent across all entities"""
 
         # Attack references correct endpoint
-        attack = client.get(f"/attacks/{attack_id}").json()
+        attack = client.get(f"/api/attacks/{attack_id}").json()
         assert attack["endpoint_id"] == endpoint_id
 
         # Score references correct attack
-        score = client.get(f"/scores/{score_id}").json()
+        score = client.get(f"/api/scores/{score_id}").json()
         assert score["attack_id"] == attack_id
 
         # Guardrail set references correct score
-        guardrails = client.get(f"/guardrails/{set_id}").json()
+        guardrails = client.get(f"/api/guardrails/{set_id}").json()
         assert guardrails["score_id"] == score_id
 
     def test_attack_with_nonexistent_endpoint(self, api_client, temp_db):
         """Verify error handling for missing endpoint"""
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "nonexistent-endpoint",
             "dataset": "test_mini",
         })
@@ -132,7 +132,7 @@ class TestPipelineAPI:
 
     def test_score_with_nonexistent_attack(self, api_client, temp_db):
         """Verify error handling for missing attack"""
-        response = api_client.post("/scores", json={
+        response = api_client.post("/api/scores", json={
             "attack_id": "nonexistent-attack-id",
             "age": "child",
         })
@@ -141,23 +141,23 @@ class TestPipelineAPI:
     def test_report_generation(self, api_client, test_endpoint, temp_db):
         """Test score report generation"""
         # Create attack
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "test-bot",
             "dataset": "test_mini",
         })
         attack_id = response.json()["id"]
-        poll_status(api_client, f"/attacks/{attack_id}", "completed", timeout=60)
+        poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
         # Create score
-        response = api_client.post("/scores", json={
+        response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
         })
         score_id = response.json()["id"]
-        poll_status(api_client, f"/scores/{score_id}", "completed", timeout=120)
+        poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
         # Get report
-        response = api_client.get(f"/scores/{score_id}/report")
+        response = api_client.get(f"/api/scores/{score_id}/report")
         assert response.status_code == 200
         report = response.json()
         assert "report" in report
@@ -168,32 +168,32 @@ class TestPipelineAPI:
     def test_guardrails_export(self, api_client, test_endpoint, temp_db):
         """Test guardrails export"""
         # Create attack
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "test-bot",
             "dataset": "test_mini",
         })
         attack_id = response.json()["id"]
-        poll_status(api_client, f"/attacks/{attack_id}", "completed", timeout=60)
+        poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
         # Create score
-        response = api_client.post("/scores", json={
+        response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
         })
         score_id = response.json()["id"]
-        poll_status(api_client, f"/scores/{score_id}", "completed", timeout=120)
+        poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
         # Generate guardrails
-        response = api_client.post("/guardrails", json={
+        response = api_client.post("/api/guardrails", json={
             "score_id": score_id,
             "max_rules": 3,
             "max_total": 10,
         })
         set_id = response.json()["id"]
-        poll_status(api_client, f"/guardrails/{set_id}", "completed", timeout=120)
+        poll_status(api_client, f"/api/guardrails/{set_id}", "completed", timeout=120)
 
         # Export guardrails
-        response = api_client.get(f"/guardrails/{set_id}/export")
+        response = api_client.get(f"/api/guardrails/{set_id}/export")
         assert response.status_code == 200
         export = response.json()
         assert "text" in export
@@ -203,98 +203,98 @@ class TestPipelineAPI:
     def test_delete_guardrail_set(self, api_client, test_endpoint, temp_db):
         """Test guardrail set deletion"""
         # Create full pipeline
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "test-bot",
             "dataset": "test_mini",
         })
         attack_id = response.json()["id"]
-        poll_status(api_client, f"/attacks/{attack_id}", "completed", timeout=60)
+        poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
-        response = api_client.post("/scores", json={
+        response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
         })
         score_id = response.json()["id"]
-        poll_status(api_client, f"/scores/{score_id}", "completed", timeout=120)
+        poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
-        response = api_client.post("/guardrails", json={
+        response = api_client.post("/api/guardrails", json={
             "score_id": score_id,
         })
         set_id = response.json()["id"]
-        poll_status(api_client, f"/guardrails/{set_id}", "completed", timeout=120)
+        poll_status(api_client, f"/api/guardrails/{set_id}", "completed", timeout=120)
 
         # Delete preview
-        response = api_client.get(f"/guardrails/{set_id}/delete-preview")
+        response = api_client.get(f"/api/guardrails/{set_id}/delete-preview")
         assert response.status_code == 200
         preview = response.json()
         assert "will_delete" in preview
 
         # Delete
-        response = api_client.delete(f"/guardrails/{set_id}")
+        response = api_client.delete(f"/api/guardrails/{set_id}")
         assert response.status_code == 200
         assert response.json()["deleted"] is True
 
         # Verify deleted
-        response = api_client.get(f"/guardrails/{set_id}")
+        response = api_client.get(f"/api/guardrails/{set_id}")
         assert response.status_code == 404
 
     def test_delete_score(self, api_client, test_endpoint, temp_db):
         """Test score deletion (cascades to guardrails)"""
         # Create attack and score
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "test-bot",
             "dataset": "test_mini",
         })
         attack_id = response.json()["id"]
-        poll_status(api_client, f"/attacks/{attack_id}", "completed", timeout=60)
+        poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
-        response = api_client.post("/scores", json={
+        response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
         })
         score_id = response.json()["id"]
-        poll_status(api_client, f"/scores/{score_id}", "completed", timeout=120)
+        poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
         # Delete preview
-        response = api_client.get(f"/scores/{score_id}/delete-preview")
+        response = api_client.get(f"/api/scores/{score_id}/delete-preview")
         assert response.status_code == 200
 
         # Delete
-        response = api_client.delete(f"/scores/{score_id}")
+        response = api_client.delete(f"/api/scores/{score_id}")
         assert response.status_code == 200
         assert response.json()["deleted"] is True
 
         # Verify deleted
-        response = api_client.get(f"/scores/{score_id}")
+        response = api_client.get(f"/api/scores/{score_id}")
         assert response.status_code == 404
 
     def test_delete_attack(self, api_client, test_endpoint, temp_db):
         """Test attack deletion (cascades to scores)"""
         # Create attack
-        response = api_client.post("/attacks", json={
+        response = api_client.post("/api/attacks", json={
             "endpoint": "test-bot",
             "dataset": "test_mini",
         })
         attack_id = response.json()["id"]
-        poll_status(api_client, f"/attacks/{attack_id}", "completed", timeout=60)
+        poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
         # Delete preview
-        response = api_client.get(f"/attacks/{attack_id}/delete-preview")
+        response = api_client.get(f"/api/attacks/{attack_id}/delete-preview")
         assert response.status_code == 200
 
         # Delete
-        response = api_client.delete(f"/attacks/{attack_id}")
+        response = api_client.delete(f"/api/attacks/{attack_id}")
         assert response.status_code == 200
         assert response.json()["deleted"] is True
 
         # Verify deleted
-        response = api_client.get(f"/attacks/{attack_id}")
+        response = api_client.get(f"/api/attacks/{attack_id}")
         assert response.status_code == 404
 
     def test_delete_endpoint(self, api_client, fake_endpoint_server, temp_db):
         """Test endpoint deletion (cascades to attacks)"""
         # Create endpoint
-        response = api_client.post("/endpoints", json={
+        response = api_client.post("/api/endpoints", json={
             "name": "delete-test-bot",
             "type": "simple",
             "base_url": fake_endpoint_server["url"],
@@ -302,14 +302,14 @@ class TestPipelineAPI:
         endpoint_id = response.json()["id"]
 
         # Delete preview
-        response = api_client.get(f"/endpoints/{endpoint_id}/delete-preview")
+        response = api_client.get(f"/api/endpoints/{endpoint_id}/delete-preview")
         assert response.status_code == 200
 
         # Delete
-        response = api_client.delete(f"/endpoints/{endpoint_id}")
+        response = api_client.delete(f"/api/endpoints/{endpoint_id}")
         assert response.status_code == 200
         assert response.json()["deleted"] is True
 
         # Verify deleted
-        response = api_client.get(f"/endpoints/{endpoint_id}")
+        response = api_client.get(f"/api/endpoints/{endpoint_id}")
         assert response.status_code == 404

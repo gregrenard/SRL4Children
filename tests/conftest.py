@@ -183,7 +183,7 @@ def api_client(temp_db):
 @pytest.fixture
 def test_endpoint(api_client, fake_endpoint_server):
     """Create a test endpoint and return its info"""
-    response = api_client.post("/endpoints", json={
+    response = api_client.post("/api/endpoints", json={
         "name": "test-bot",
         "type": "simple",
         "base_url": fake_endpoint_server["url"],
