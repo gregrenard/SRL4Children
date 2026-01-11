@@ -5,9 +5,9 @@ Fake Endpoint Server for SRL4C Testing
 Simulates a target chatbot for running attacks without a real LLM.
 
 Usage:
-    python tools/fake_endpoint.py --port 8080
+    python tools/fake_endpoint.py --port 18080
 
-    srl4c endpoint add simple --name fake-bot --url http://localhost:8080/chat
+    srl4c endpoint add simple --name fake-bot --url http://localhost:18080/chat
     srl4c attack run --endpoint fake-bot --dataset test_single
 """
 
@@ -77,7 +77,7 @@ class FakeEndpointHandler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="Fake endpoint server")
-    parser.add_argument("--port", "-p", type=int, default=8080)
+    parser.add_argument("--port", "-p", type=int, default=18080)
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
 

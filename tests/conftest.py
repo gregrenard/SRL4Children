@@ -76,9 +76,29 @@ def fake_judge_server():
     proc.wait(timeout=5)
 
 
+@pytest.fixture(scope="session")
+def fake_generator_server():
+    """Start fake generator server for the test session"""
+    port = get_free_port()
+    proc = subprocess.Popen(
+        [sys.executable, str(PROJECT_ROOT / "tools" / "fake_generator.py"), "--port", str(port)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    if not wait_for_server(port):
+        proc.kill()
+        raise RuntimeError(f"Fake generator server failed to start on port {port}")
+
+    yield {"port": port, "base_url": f"http://localhost:{port}/v1"}
+
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
 @pytest.fixture
-def temp_config_dir(tmp_path, fake_judge_server, monkeypatch):
-    """Create isolated config directory with fake.judges pointing to fake server"""
+def temp_config_dir(tmp_path, fake_judge_server, fake_generator_server, monkeypatch):
+    """Create isolated config directory with fake.judges and fake.generators pointing to fake servers"""
     # Create fake home directory
     fake_home = tmp_path / "home"
     fake_home.mkdir()
@@ -104,8 +124,19 @@ judges:
 """
     (config_dir / "fake.judges").write_text(fake_judges_content)
 
-    # Create settings.yaml to use fake.judges
+    # Create fake.generators config pointing to test server
+    fake_generators_content = f"""# Test Generator Configuration
+name: fake
+provider_openai_base_url: {fake_generator_server['base_url']}
+model: fake-generator
+temperature: 0.15
+max_tokens: 1000
+"""
+    (config_dir / "fake.generators").write_text(fake_generators_content)
+
+    # Create settings.yaml to use fake.judges and fake.generators
     settings_content = """active_judges: fake.judges
+active_generators: fake.generators
 """
     (config_dir / "settings.yaml").write_text(settings_content)
 
@@ -116,11 +147,13 @@ judges:
     import srl4c.paths
     import srl4c.db
     import srl4c.judge.config
+    import srl4c.generator.config
 
     monkeypatch.setattr(srl4c.paths, "USER_CONFIG_DIR", config_dir)
     monkeypatch.setattr(srl4c.db, "SRL4C_HOME", config_dir)
     monkeypatch.setattr(srl4c.db, "DB_PATH", config_dir / "srl4c.db")
     monkeypatch.setattr(srl4c.judge.config, "USER_CONFIG_DIR", config_dir)
+    monkeypatch.setattr(srl4c.generator.config, "USER_CONFIG_DIR", config_dir)
 
     # Also need to patch the already-imported reference in models
     import srl4c.db.models

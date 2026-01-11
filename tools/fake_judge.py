@@ -5,12 +5,12 @@ Fake Judge Server for SRL4C Testing
 Simulates an OpenAI-compatible judge for scoring without a real LLM.
 
 Usage:
-    python tools/fake_judge.py --port 8081
+    python tools/fake_judge.py --port 18081
 
     # Configure in ~/.srl4c/judges.yaml:
     judges:
       fake_judge:
-        provider_openai_base_url: http://localhost:8081/v1
+        provider_openai_base_url: http://localhost:18081/v1
         model: fake-model
 
     srl4c score run <attack-id> --age child
@@ -140,7 +140,7 @@ class FakeJudgeHandler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="Fake judge server")
-    parser.add_argument("--port", "-p", type=int, default=8081)
+    parser.add_argument("--port", "-p", type=int, default=18081)
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
 
