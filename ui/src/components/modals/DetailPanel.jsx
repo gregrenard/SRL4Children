@@ -49,6 +49,23 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
     }
   };
 
+  const handleDownloadRules = async () => {
+    try {
+      const result = await api.exportGuardrail(item.id);
+      const blob = new Blob([result.text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `guardrails-${shortId(item.id)}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Failed to download: ${err.message}`);
+    }
+  };
+
   const renderContent = () => {
     switch (type) {
       case 'endpoint':
@@ -259,12 +276,20 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
             </div>
             <div className="mt-6 space-y-2">
               {item.status === 'completed' && (
-                <button onClick={handleCopyRules} className="w-full py-2 px-4 bg-everyone-blue hover:bg-everyone-blue-dark rounded-xl text-white text-sm font-medium transition-colors flex items-center justify-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy Rules
-                </button>
+                <>
+                  <button onClick={handleDownloadRules} className="w-full py-2 px-4 bg-everyone-blue hover:bg-everyone-blue-dark rounded-xl text-white text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Guardrails
+                  </button>
+                  <button onClick={handleCopyRules} className="w-full py-2 px-4 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy to Clipboard
+                  </button>
+                </>
               )}
               <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
                 Delete Set
