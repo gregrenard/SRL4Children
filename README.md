@@ -606,6 +606,45 @@ curl http://localhost:8000/attacks/abc123
 # → {"id": "abc123", "status": "completed", "progress": 1.0, ...}
 ```
 
+## Web UI
+
+SRL4C includes a web dashboard for visual management of the evaluation workflow.
+
+### Starting the UI
+
+The UI requires both the API server and the Vite dev server:
+
+```bash
+# Terminal 1: Start the API server
+srl4c api serve --port 8000
+
+# Terminal 2: Start the UI dev server
+cd ui
+npm install    # First time only
+npm run dev
+```
+
+Then open http://localhost:5173 in your browser.
+
+### Features
+
+- **Dashboard** (`/`) - Visual pipeline view with 4 columns: Endpoints → Attacks → Scores → Guardrails
+- **Datasets Browser** (`/datasets`) - Browse attack prompts with filtering and search
+- **Real-time Updates** - Automatic polling shows job progress
+- **Detail Panels** - Click any card to see full details, test connections, view reports
+- **Activity Log** - Live feed of system events at bottom of dashboard
+
+### Production Build
+
+To build the UI for production:
+
+```bash
+cd ui
+npm run build
+```
+
+The built files will be in `ui/dist/`. You can serve these with any static file server.
+
 ### CLI and API Consistency
 
 The CLI and API share the same:
