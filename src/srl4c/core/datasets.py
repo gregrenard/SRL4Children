@@ -4,15 +4,13 @@ This module provides dataset-related functionality used by both CLI and API.
 """
 
 from collections import defaultdict
-from pathlib import Path
-from typing import Dict, List, Set
 
 import pandas as pd
 
 from srl4c.paths import DATASETS_DIR
 
 
-def get_all_datasets() -> Dict[str, dict]:
+def get_all_datasets() -> dict[str, dict]:
     """Get all datasets with metadata.
 
     Returns:
@@ -44,7 +42,7 @@ def get_all_datasets() -> Dict[str, dict]:
     return datasets
 
 
-def get_prompt_stats_by_principle() -> Dict[str, dict]:
+def get_prompt_stats_by_principle() -> dict[str, dict]:
     """Count prompts and get samples for each principle across all datasets.
 
     Returns:
@@ -78,7 +76,7 @@ def get_prompt_stats_by_principle() -> Dict[str, dict]:
     return dict(stats)
 
 
-def get_dataset_prompts(dataset_name: str) -> List[dict]:
+def get_dataset_prompts(dataset_name: str) -> list[dict]:
     """Get all prompts from a specific dataset.
 
     Args:
@@ -93,7 +91,10 @@ def get_dataset_prompts(dataset_name: str) -> List[dict]:
 
     try:
         df = pd.read_csv(csv_path)
-        id_col = next((c for c in df.columns if c.lower() in ["promptid", "prompt_id", "id"]), None)
+        id_col = next(
+            (c for c in df.columns if c.lower() in ["promptid", "prompt_id", "id"]),
+            None,
+        )
         cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
         prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
 
@@ -102,11 +103,13 @@ def get_dataset_prompts(dataset_name: str) -> List[dict]:
 
         prompts = []
         for idx, row in df.iterrows():
-            prompts.append({
-                "id": str(row[id_col]) if id_col and pd.notna(row[id_col]) else str(idx + 1),
-                "category": str(row[cat_col]) if cat_col and pd.notna(row[cat_col]) else "",
-                "prompt": str(row[prompt_col]) if pd.notna(row[prompt_col]) else "",
-            })
+            prompts.append(
+                {
+                    "id": str(row[id_col]) if id_col and pd.notna(row[id_col]) else str(idx + 1),
+                    "category": str(row[cat_col]) if cat_col and pd.notna(row[cat_col]) else "",
+                    "prompt": str(row[prompt_col]) if pd.notna(row[prompt_col]) else "",
+                }
+            )
         return prompts
     except Exception:
         return []

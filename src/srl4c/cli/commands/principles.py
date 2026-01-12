@@ -3,8 +3,8 @@
 from rich.console import Console
 from rich.table import Table
 
-from srl4c.criteria import get_criteria_loader
 from srl4c.core.datasets import get_prompt_stats_by_principle
+from srl4c.criteria import get_criteria_loader
 
 
 def list_principles(console: Console):

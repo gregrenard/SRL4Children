@@ -36,14 +36,62 @@ app.add_typer(config_app, name="config")
 
 # === INIT ===
 
+
 @app.command()
 def init():
     """Initialize SRL4C - create ~/.srl4c/ directory structure"""
     from srl4c.cli.commands.init import run_init
+
     run_init(console)
 
 
+# === PIPELINE ===
+
+
+@app.command(name="run-pipeline")
+def pipeline_run(
+    name: str = typer.Argument(..., help="Friendly name for the endpoint"),
+    endpoint_type: str = typer.Option("simple", "--type", "-t", help="Endpoint type: 'openai' or 'simple'"),
+    endpoint_url: str = typer.Option(
+        ..., "--url", "-u", help="Endpoint URL (base URL for openai, full URL for simple)"
+    ),
+    api_key_env: str = typer.Option(None, "--api-key-env", "-k", help="Env var with API key"),
+    base_url: str = typer.Option(None, "--base-url", help="Base URL (for openai type)"),
+    dataset: str = typer.Option("anthropomorphism_question_mini", "--dataset", "-d", help="Dataset to use for attack"),
+    age: str = typer.Option("child", "--age", "-a", help="Age context: child, teen, young_adult"),
+    weights: str = typer.Option("balanced", "--weights", "-w", help="Weight preset"),
+    request_field: str = typer.Option("message", "--request-field", help="Request field (simple type)"),
+    response_field: str = typer.Option("response", "--response-field", help="Response field (simple type)"),
+    max_rules: int = typer.Option(3, "--max-rules", help="Max guardrails per criterion"),
+    max_total: int = typer.Option(20, "--max-total", help="Max total guardrails"),
+    deploy_worker: bool = typer.Option(False, "--deploy-worker", help="Deploy Cloudflare Worker"),
+):
+    """Run the full SRL4C pipeline in one command.
+
+    Creates endpoint → runs attack → scores results → generates guardrails.
+    """
+    from srl4c.cli.commands.pipeline import run_pipeline
+
+    run_pipeline(
+        console,
+        name,
+        endpoint_type,
+        endpoint_url,
+        api_key_env=api_key_env,
+        dataset=dataset,
+        age=age,
+        weights=weights,
+        request_field=request_field,
+        response_field=response_field,
+        base_url=base_url,
+        max_rules=max_rules,
+        max_total=max_total,
+        deploy_worker=deploy_worker,
+    )
+
+
 # === ENDPOINT ===
+
 
 @endpoint_app.command("add")
 def endpoint_add(
@@ -57,6 +105,7 @@ def endpoint_add(
 ):
     """Add a new endpoint to test"""
     from srl4c.cli.commands.endpoint import add_endpoint
+
     add_endpoint(console, type, name, base_url, url, api_key_env, request_field, response_field)
 
 
@@ -64,6 +113,7 @@ def endpoint_add(
 def endpoint_list():
     """List configured endpoints"""
     from srl4c.cli.commands.endpoint import list_endpoints
+
     list_endpoints(console)
 
 
@@ -71,6 +121,7 @@ def endpoint_list():
 def endpoint_test(id: str = typer.Argument(..., help="Endpoint ID or name")):
     """Test endpoint connectivity"""
     from srl4c.cli.commands.endpoint import test_endpoint
+
     test_endpoint(console, id)
 
 
@@ -82,15 +133,18 @@ def endpoint_remove(
 ):
     """Remove an endpoint"""
     from srl4c.cli.commands.endpoint import remove_endpoint
+
     remove_endpoint(console, id, force=force, yes=yes)
 
 
 # === DATASET ===
 
+
 @dataset_app.command("list")
 def dataset_list():
     """List available datasets (built-in and custom)"""
     from srl4c.cli.commands.dataset import list_datasets
+
     list_datasets(console)
 
 
@@ -98,6 +152,7 @@ def dataset_list():
 def dataset_show(name: str = typer.Argument(..., help="Dataset name")):
     """Show dataset details"""
     from srl4c.cli.commands.dataset import show_dataset
+
     show_dataset(console, name)
 
 
@@ -118,6 +173,7 @@ def dataset_add(
 
 # === ATTACK ===
 
+
 @attack_app.command("run")
 def attack_run(
     endpoint: str = typer.Option(..., "--endpoint", "-e", help="Endpoint name or ID"),
@@ -125,6 +181,7 @@ def attack_run(
 ):
     """Run an attack against an endpoint"""
     from srl4c.cli.commands.attack import run_attack
+
     run_attack(console, endpoint, dataset)
 
 
@@ -132,6 +189,7 @@ def attack_run(
 def attack_list():
     """List attacks"""
     from srl4c.cli.commands.attack import list_attacks
+
     list_attacks(console)
 
 
@@ -139,6 +197,7 @@ def attack_list():
 def attack_show(id: str = typer.Argument(..., help="Attack ID")):
     """Show attack details"""
     from srl4c.cli.commands.attack import show_attack
+
     show_attack(console, id)
 
 
@@ -148,8 +207,9 @@ def attack_delete(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
     """Delete an attack and all its records/scores"""
-    from srl4c.db.repository import AttackRepository
     from rich.prompt import Confirm
+
+    from srl4c.db.repository import AttackRepository
 
     try:
         preview = AttackRepository.delete_preview(id)
@@ -165,7 +225,7 @@ def attack_delete(
         console.print(f"  Dataset: {attack.get('dataset_name', 'unknown')}")
 
         if has_children:
-            console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")
+            console.print("\n[yellow]⚠ This will also delete:[/yellow]")
             if will_delete.get("records"):
                 console.print(f"  • {will_delete['records']} record(s)")
             if will_delete.get("scores"):
@@ -188,11 +248,16 @@ def attack_delete(
 
         if deleted and any(deleted.values()):
             parts = []
-            if deleted.get("records"): parts.append(f"{deleted['records']} records")
-            if deleted.get("scores"): parts.append(f"{deleted['scores']} scores")
-            if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
-            if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
-            if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+            if deleted.get("records"):
+                parts.append(f"{deleted['records']} records")
+            if deleted.get("scores"):
+                parts.append(f"{deleted['scores']} scores")
+            if deleted.get("evaluations"):
+                parts.append(f"{deleted['evaluations']} evaluations")
+            if deleted.get("guardrail_sets"):
+                parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+            if deleted.get("guardrails"):
+                parts.append(f"{deleted['guardrails']} guardrails")
             if parts:
                 console.print(f"  Deleted: {', '.join(parts)}")
 
@@ -201,6 +266,7 @@ def attack_delete(
 
 
 # === SCORE ===
+
 
 @score_app.command("run")
 def score_run(
@@ -212,6 +278,7 @@ def score_run(
 ):
     """Score an attack's results"""
     from srl4c.cli.commands.score import run_score
+
     run_score(console, attack, age, weights, format, threshold)
 
 
@@ -219,6 +286,7 @@ def score_run(
 def score_list():
     """List score runs"""
     from srl4c.cli.commands.score import list_scores
+
     list_scores(console)
 
 
@@ -226,6 +294,7 @@ def score_list():
 def score_show(id: str = typer.Argument(..., help="Score ID")):
     """Show score details"""
     from srl4c.cli.commands.score import show_score
+
     show_score(console, id)
 
 
@@ -233,6 +302,7 @@ def score_show(id: str = typer.Argument(..., help="Score ID")):
 def score_failures(id: str = typer.Argument(..., help="Score ID")):
     """Show failures from a score run"""
     from srl4c.cli.commands.score import show_failures
+
     show_failures(console, id)
 
 
@@ -243,6 +313,7 @@ def score_report(
 ):
     """Generate detailed Markdown report"""
     from srl4c.cli.commands.score import generate_report
+
     generate_report(console, id, output)
 
 
@@ -252,8 +323,9 @@ def score_delete(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
     """Delete a score and its evaluations"""
-    from srl4c.db.repository import ScoreRepository
     from rich.prompt import Confirm
+
+    from srl4c.db.repository import ScoreRepository
 
     try:
         preview = ScoreRepository.delete_preview(id)
@@ -267,11 +339,11 @@ def score_delete(
 
         console.print(f"\n[bold]Delete Score:[/bold] [cyan]{score.get('id', id)[:8]}[/cyan]")
         console.print(f"  Age: {score.get('age_context', 'unknown')}")
-        if score.get('final_score'):
+        if score.get("final_score"):
             console.print(f"  Final score: {score['final_score']:.1f}/5.0")
 
         if has_children:
-            console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")
+            console.print("\n[yellow]⚠ This will also delete:[/yellow]")
             if will_delete.get("evaluations"):
                 console.print(f"  • {will_delete['evaluations']} evaluation(s)")
             if will_delete.get("guardrail_sets"):
@@ -290,9 +362,12 @@ def score_delete(
 
         if deleted and any(deleted.values()):
             parts = []
-            if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
-            if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
-            if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+            if deleted.get("evaluations"):
+                parts.append(f"{deleted['evaluations']} evaluations")
+            if deleted.get("guardrail_sets"):
+                parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+            if deleted.get("guardrails"):
+                parts.append(f"{deleted['guardrails']} guardrails")
             if parts:
                 console.print(f"  Deleted: {', '.join(parts)}")
 
@@ -311,6 +386,7 @@ def score_compare(
 
 # === GUARDRAILS ===
 
+
 @guardrails_app.command("generate")
 def guardrails_generate(
     score: str = typer.Argument(..., help="Score ID"),
@@ -319,6 +395,7 @@ def guardrails_generate(
 ):
     """Generate guardrails from score failures"""
     from srl4c.cli.commands.guardrails import generate_guardrails_cmd
+
     generate_guardrails_cmd(console, score, max_rules, max_total)
 
 
@@ -326,6 +403,7 @@ def guardrails_generate(
 def guardrails_list():
     """List generated guardrails"""
     from srl4c.cli.commands.guardrails import list_guardrails
+
     list_guardrails(console)
 
 
@@ -333,6 +411,7 @@ def guardrails_list():
 def guardrails_show(set_id: str = typer.Argument(..., help="Guardrail set ID")):
     """Show all guardrails in a set"""
     from srl4c.cli.commands.guardrails import show_guardrail
+
     show_guardrail(console, set_id)
 
 
@@ -340,6 +419,7 @@ def guardrails_show(set_id: str = typer.Argument(..., help="Guardrail set ID")):
 def guardrails_export(set_id: str = typer.Argument(..., help="Guardrail set ID")):
     """Export guardrails as text for system prompt"""
     from srl4c.cli.commands.guardrails import export_guardrails
+
     export_guardrails(console, set_id)
 
 
@@ -349,8 +429,9 @@ def guardrails_delete(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
 ):
     """Delete a guardrail set and its rules"""
-    from srl4c.db.repository import GuardrailSetRepository
     from rich.prompt import Confirm
+
+    from srl4c.db.repository import GuardrailSetRepository
 
     try:
         preview = GuardrailSetRepository.delete_preview(set_id)
@@ -363,11 +444,11 @@ def guardrails_delete(
         will_delete = preview.get("will_delete", {})
 
         console.print(f"\n[bold]Delete Guardrail Set:[/bold] [cyan]{gset.get('id', set_id)[:8]}[/cyan]")
-        if gset.get('rules_count'):
+        if gset.get("rules_count"):
             console.print(f"  Rules: {gset['rules_count']}")
 
         if has_children:
-            console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")
+            console.print("\n[yellow]⚠ This will also delete:[/yellow]")
             if will_delete.get("guardrails"):
                 console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
 
@@ -397,9 +478,12 @@ def guardrails_transform(
 
 
 @guardrails_app.command("deploy")
-def guardrails_deploy_cmd(set_id: str = typer.Argument(..., help="Guardrail set ID to deploy")):
+def guardrails_deploy_cmd(
+    set_id: str = typer.Argument(..., help="Guardrail set ID to deploy"),
+):
     """Deploy guardrails as a Cloudflare Worker proxy"""
     from srl4c.cli.commands.guardrails import deploy_guardrails
+
     deploy_guardrails(console, set_id)
 
 
@@ -410,15 +494,18 @@ def guardrails_worker(
 ):
     """Generate Cloudflare Worker code (without deploying)"""
     from srl4c.cli.commands.guardrails import generate_worker
+
     generate_worker(console, set_id, output)
 
 
 # === PRINCIPLES ===
 
+
 @principles_app.command("list")
 def principles_list():
     """List all design principles"""
     from srl4c.cli.commands.principles import list_principles
+
     list_principles(console)
 
 
@@ -426,6 +513,7 @@ def principles_list():
 def principles_show(id: str = typer.Argument(..., help="Principle ID or name")):
     """Show principle details"""
     from srl4c.cli.commands.principles import show_principle
+
     show_principle(console, id)
 
 
@@ -443,10 +531,12 @@ def principles_validate(file: Path = typer.Argument(..., help="Path to .prompt f
 
 # === JUDGES ===
 
+
 @judges_app.command("list")
 def judges_list():
     """List available judge configurations"""
     from rich.table import Table
+
     from srl4c.judge.config import list_judge_files
 
     files = list_judge_files()
@@ -474,7 +564,9 @@ def judges_list():
 
 
 @judges_app.command("use")
-def judges_use(name: str = typer.Argument(..., help="Judge config filename (e.g. default.judges)")):
+def judges_use(
+    name: str = typer.Argument(..., help="Judge config filename (e.g. default.judges)"),
+):
     """Switch to a different judge configuration"""
     from srl4c.judge.config import list_judge_files, set_active_judges
 
@@ -496,7 +588,9 @@ def judges_use(name: str = typer.Argument(..., help="Judge config filename (e.g.
 
 
 @judges_app.command("show")
-def judges_show(name: str = typer.Argument(None, help="Judge config filename (default: active config)")):
+def judges_show(
+    name: str = typer.Argument(None, help="Judge config filename (default: active config)"),
+):
     """Show contents of a judge configuration"""
     from srl4c.judge.config import get_active_judges_file, get_judge_file_content
 
@@ -519,7 +613,8 @@ def judges_show(name: str = typer.Argument(None, help="Judge config filename (de
 def judges_test():
     """Test connectivity to all configured judges"""
     from rich.table import Table
-    from srl4c.judge.config import test_all_judges, get_active_judges_file
+
+    from srl4c.judge.config import get_active_judges_file, test_all_judges
 
     console.print(f"Testing judges from [cyan]{get_active_judges_file()}[/cyan]...\n")
 
@@ -550,10 +645,12 @@ def judges_test():
 
 # === GENERATORS ===
 
+
 @generators_app.command("list")
 def generators_list():
     """List available generator configurations"""
     from rich.table import Table
+
     from srl4c.generator.config import list_generator_files
 
     files = list_generator_files()
@@ -575,7 +672,9 @@ def generators_list():
 
 
 @generators_app.command("use")
-def generators_use(name: str = typer.Argument(..., help="Generator config filename (e.g. default.generators)")):
+def generators_use(
+    name: str = typer.Argument(..., help="Generator config filename (e.g. default.generators)"),
+):
     """Switch to a different generator configuration"""
     from srl4c.generator.config import list_generator_files, set_active_generators
 
@@ -595,9 +694,14 @@ def generators_use(name: str = typer.Argument(..., help="Generator config filena
 
 
 @generators_app.command("show")
-def generators_show(name: str = typer.Argument(None, help="Generator config filename (default: active config)")):
+def generators_show(
+    name: str = typer.Argument(None, help="Generator config filename (default: active config)"),
+):
     """Show contents of a generator configuration"""
-    from srl4c.generator.config import get_active_generators_file, get_generator_file_content
+    from srl4c.generator.config import (
+        get_active_generators_file,
+        get_generator_file_content,
+    )
 
     if name is None:
         name = get_active_generators_file()
@@ -618,7 +722,8 @@ def generators_show(name: str = typer.Argument(None, help="Generator config file
 def generators_test():
     """Test connectivity to the active generator"""
     from rich.table import Table
-    from srl4c.generator.config import test_active_generator, get_active_generators_file
+
+    from srl4c.generator.config import get_active_generators_file, test_active_generator
 
     console.print(f"Testing generator from [cyan]{get_active_generators_file()}[/cyan]...\n")
 
@@ -642,6 +747,7 @@ def generators_test():
 
 
 # === CONFIG ===
+
 
 @config_app.command("show")
 def config_show():
@@ -683,7 +789,7 @@ def api_serve(
         console.print("[red]uvicorn not installed. Run: uv add uvicorn[/red]")
         return
 
-    console.print(f"\n[bold]Starting SRL4C API server[/bold]")
+    console.print("\n[bold]Starting SRL4C API server[/bold]")
     console.print(f"  Host: [cyan]{host}[/cyan]")
     console.print(f"  Port: [cyan]{port}[/cyan]")
     console.print(f"  Docs: [cyan]http://{host if host != '0.0.0.0' else 'localhost'}:{port}/docs[/cyan]\n")

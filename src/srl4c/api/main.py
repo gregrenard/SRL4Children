@@ -1,15 +1,25 @@
 """SRL4C REST API - FastAPI Application"""
 
-import os
 from pathlib import Path
 
-from fastapi import FastAPI, APIRouter
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+from srl4c.api.routes import (
+    attacks,
+    datasets,
+    endpoints,
+    generators,
+    guardrails,
+    judges,
+    logs,
+    pipeline,
+    principles,
+    scores,
+)
 from srl4c.api.schemas import HealthResponse
-from srl4c.api.routes import attacks, scores, guardrails, endpoints, datasets, principles, logs, judges, generators
 
 app = FastAPI(
     title="SRL4C API",
@@ -37,6 +47,7 @@ api_router.include_router(principles.router)
 api_router.include_router(logs.router)
 api_router.include_router(judges.router)
 api_router.include_router(generators.router)
+api_router.include_router(pipeline.router)
 
 app.include_router(api_router)
 

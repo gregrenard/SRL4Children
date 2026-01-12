@@ -138,6 +138,26 @@ srl4c score report <new-score-id> --output improved.md
 diff baseline.md improved.md
 ```
 
+### One-Shot Pipeline
+
+Run the full pipeline from endpoint creation through guardrail generation in a single command:
+
+```bash
+# CLI: Run everything in one shot
+srl4c run-pipeline my-app \
+  --url https://my-app.com/chat \
+  --deploy-worker
+
+# API: Same thing via REST
+curl -X POST http://localhost:8000/api/pipeline \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-app",
+    "endpoint_url": "https://my-app.com/chat",
+    "deploy_worker": true
+  }'
+```
+
 ## The Workflow
 
 ```

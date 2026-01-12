@@ -1,18 +1,18 @@
 """Pydantic schemas for API request/response models"""
 
-from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-
 # === Endpoints ===
+
 
 class EndpointCreate(BaseModel):
     name: str = Field(..., description="Friendly name for this endpoint")
     type: str = Field(..., description="Endpoint type: 'openai' or 'simple'")
     base_url: str = Field(..., description="Base URL for the endpoint")
-    api_key_env: Optional[str] = Field(None, description="Environment variable name for API key")
-    config: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional config")
+    api_key_env: str | None = Field(None, description="Environment variable name for API key")
+    config: dict[str, Any] | None = Field(default_factory=dict, description="Additional config")
 
 
 class EndpointResponse(BaseModel):
@@ -20,20 +20,21 @@ class EndpointResponse(BaseModel):
     name: str
     type: str
     base_url: str
-    api_key_env: Optional[str] = None
-    config: Dict[str, Any] = Field(default_factory=dict)
-    created_at: Optional[str] = None
-    last_used_at: Optional[str] = None
+    api_key_env: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    created_at: str | None = None
+    last_used_at: str | None = None
 
 
 class EndpointTestResponse(BaseModel):
     success: bool
-    response: Optional[str] = None
-    latency_ms: Optional[int] = None
-    error: Optional[str] = None
+    response: str | None = None
+    latency_ms: int | None = None
+    error: str | None = None
 
 
 # === Attacks ===
+
 
 class AttackCreate(BaseModel):
     endpoint: str = Field(..., description="Endpoint ID or name")
@@ -48,10 +49,10 @@ class AttackResponse(BaseModel):
     total_prompts: int = 0
     completed_prompts: int = 0
     progress: float = Field(0.0, description="Progress 0.0 to 1.0")
-    error_message: Optional[str] = None
-    started_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    error_message: str | None = None
+    started_at: str | None = None
+    updated_at: str | None = None
+    completed_at: str | None = None
 
 
 class AttackCreateResponse(BaseModel):
@@ -60,6 +61,7 @@ class AttackCreateResponse(BaseModel):
 
 
 # === Scores ===
+
 
 class ScoreCreate(BaseModel):
     attack_id: str = Field(..., description="Attack ID to score")
@@ -71,15 +73,15 @@ class ScoreResponse(BaseModel):
     id: str
     attack_id: str
     age_context: str
-    weights_preset: Optional[str] = None
+    weights_preset: str | None = None
     status: str
-    final_score: Optional[float] = None
-    category_scores: Optional[Dict[str, Dict[str, float]]] = None  # {"categories": {...}, "subcategories": {...}}
+    final_score: float | None = None
+    category_scores: dict[str, dict[str, float]] | None = None  # {"categories": {...}, "subcategories": {...}}
     progress: float = Field(0.0, description="Progress 0.0 to 1.0")
-    error_message: Optional[str] = None
-    started_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    error_message: str | None = None
+    started_at: str | None = None
+    updated_at: str | None = None
+    completed_at: str | None = None
 
 
 class ScoreCreateResponse(BaseModel):
@@ -91,17 +93,18 @@ class FailureItem(BaseModel):
     record_id: str
     principle_id: str
     final_score: float
-    agreement_score: Optional[float] = None
-    explanation: Optional[str] = None
+    agreement_score: float | None = None
+    explanation: str | None = None
 
 
 class ScoreFailuresResponse(BaseModel):
     score_id: str
-    failures: List[FailureItem]
+    failures: list[FailureItem]
     count: int
 
 
 # === Guardrails ===
+
 
 class GuardrailsCreate(BaseModel):
     score_id: str = Field(..., description="Score ID to generate guardrails from")
@@ -113,21 +116,21 @@ class GuardrailItem(BaseModel):
     id: str
     principle_id: str
     rule_text: str
-    rationale: Optional[str] = None
+    rationale: str | None = None
 
 
 class GuardrailSetResponse(BaseModel):
     id: str
     score_id: str
-    model: Optional[str] = None
+    model: str | None = None
     rules_count: int = 0
     status: str
     progress: float = Field(0.0, description="Progress 0.0 to 1.0")
-    error_message: Optional[str] = None
-    guardrails: Optional[List[GuardrailItem]] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    error_message: str | None = None
+    guardrails: list[GuardrailItem] | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    completed_at: str | None = None
 
 
 class GuardrailsCreateResponse(BaseModel):
@@ -141,13 +144,44 @@ class GuardrailsExportResponse(BaseModel):
     text: str
 
 
+# === Pipeline ===
+
+
+class PipelineRequest(BaseModel):
+    name: str = Field(..., description="Friendly name for the endpoint")
+    endpoint_type: str = Field("simple", description="Endpoint type: 'openai' or 'simple'")
+    endpoint_url: str = Field(..., description="Endpoint URL")
+    api_key_env: str | None = Field(None, description="Env var with API key")
+    base_url: str | None = Field(None, description="Base URL (openai type)")
+    dataset: str = Field("anthropomorphism_question_mini", description="Dataset for attack")
+    age: str = Field("child", description="Age context: child, teen, young_adult")
+    weights: str = Field("balanced", description="Weight preset")
+    request_field: str = Field("message", description="Request field (simple type)")
+    response_field: str = Field("response", description="Response field (simple type)")
+    max_rules: int = Field(3, description="Max guardrails per criterion")
+    max_total: int = Field(20, description="Max total guardrails")
+    deploy_worker: bool = Field(False, description="Deploy Cloudflare Worker")
+
+
+class PipelineResponse(BaseModel):
+    endpoint_id: str
+    attack_id: str
+    score_id: str
+    guardrail_set_id: str | None = None
+    status: str
+    final_score: float | None = None
+    worker_url: str | None = None
+    message: str | None = None
+
+
 # === Datasets ===
+
 
 class DatasetResponse(BaseModel):
     name: str
     path: str
     rows: int
-    principles: List[str] = Field(default_factory=list, description="Principles covered by this dataset")
+    principles: list[str] = Field(default_factory=list, description="Principles covered by this dataset")
 
 
 class DatasetPrompt(BaseModel):
@@ -161,28 +195,30 @@ class DatasetPromptsResponse(BaseModel):
     total: int
     page: int
     page_size: int
-    prompts: List[DatasetPrompt]
+    prompts: list[DatasetPrompt]
 
 
 # === Principles ===
+
 
 class PrincipleResponse(BaseModel):
     id: str
     name: str
     category: str
-    subcategory: Optional[str] = None
-    description: Optional[str] = None
+    subcategory: str | None = None
+    description: str | None = None
     prompt_count: int = Field(0, description="Number of prompts testing this principle")
-    sample_prompts: List[str] = Field(default_factory=list, description="Sample prompts (max 3)")
+    sample_prompts: list[str] = Field(default_factory=list, description="Sample prompts (max 3)")
 
 
 # === Common ===
+
 
 class JobStatus(BaseModel):
     id: str
     status: str
     progress: float
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class HealthResponse(BaseModel):

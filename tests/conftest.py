@@ -4,13 +4,13 @@ Pytest fixtures for SRL4C E2E testing
 Provides isolated database, fake servers, and config fixtures.
 """
 
-import os
-import sys
-import time
 import socket
 import subprocess
-import pytest
+import sys
+import time
 from pathlib import Path
+
+import pytest
 
 # Add src to path for imports
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -31,7 +31,7 @@ def wait_for_server(port: int, timeout: float = 10.0) -> bool:
         try:
             with socket.create_connection(("localhost", port), timeout=1):
                 return True
-        except (ConnectionRefusedError, socket.timeout):
+        except (TimeoutError, ConnectionRefusedError):
             time.sleep(0.1)
     return False
 
@@ -41,7 +41,12 @@ def fake_endpoint_server():
     """Start fake endpoint server for the test session"""
     port = get_free_port()
     proc = subprocess.Popen(
-        [sys.executable, str(PROJECT_ROOT / "tools" / "fake_endpoint.py"), "--port", str(port)],
+        [
+            sys.executable,
+            str(PROJECT_ROOT / "tools" / "fake_endpoint.py"),
+            "--port",
+            str(port),
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -61,7 +66,12 @@ def fake_judge_server():
     """Start fake judge server for the test session"""
     port = get_free_port()
     proc = subprocess.Popen(
-        [sys.executable, str(PROJECT_ROOT / "tools" / "fake_judge.py"), "--port", str(port)],
+        [
+            sys.executable,
+            str(PROJECT_ROOT / "tools" / "fake_judge.py"),
+            "--port",
+            str(port),
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -81,7 +91,12 @@ def fake_generator_server():
     """Start fake generator server for the test session"""
     port = get_free_port()
     proc = subprocess.Popen(
-        [sys.executable, str(PROJECT_ROOT / "tools" / "fake_generator.py"), "--port", str(port)],
+        [
+            sys.executable,
+            str(PROJECT_ROOT / "tools" / "fake_generator.py"),
+            "--port",
+            str(port),
+        ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
@@ -119,7 +134,7 @@ n_passes: 1
 
 judges:
   fake_judge:
-    provider_openai_base_url: {fake_judge_server['base_url']}
+    provider_openai_base_url: {fake_judge_server["base_url"]}
     model: fake-model
 """
     (config_dir / "fake.judges").write_text(fake_judges_content)
@@ -127,7 +142,7 @@ judges:
     # Create fake.generators config pointing to test server
     fake_generators_content = f"""# Test Generator Configuration
 name: fake
-provider_openai_base_url: {fake_generator_server['base_url']}
+provider_openai_base_url: {fake_generator_server["base_url"]}
 model: fake-generator
 temperature: 0.15
 max_tokens: 1000
@@ -144,10 +159,10 @@ active_generators: fake.generators
     monkeypatch.setattr(Path, "home", lambda: fake_home)
 
     # Monkeypatch paths module
-    import srl4c.paths
     import srl4c.db
-    import srl4c.judge.config
     import srl4c.generator.config
+    import srl4c.judge.config
+    import srl4c.paths
 
     monkeypatch.setattr(srl4c.paths, "USER_CONFIG_DIR", config_dir)
     monkeypatch.setattr(srl4c.db, "SRL4C_HOME", config_dir)
@@ -157,6 +172,7 @@ active_generators: fake.generators
 
     # Also need to patch the already-imported reference in models
     import srl4c.db.models
+
     monkeypatch.setattr(srl4c.db.models, "DB_PATH", config_dir / "srl4c.db")
 
     yield config_dir
@@ -166,6 +182,7 @@ active_generators: fake.generators
 def temp_db(temp_config_dir):
     """Initialize fresh database for each test"""
     from srl4c.db.models import init_db
+
     init_db()
     yield temp_config_dir / "srl4c.db"
 
@@ -174,6 +191,7 @@ def temp_db(temp_config_dir):
 def api_client(temp_db):
     """FastAPI TestClient with isolated database"""
     from fastapi.testclient import TestClient
+
     from srl4c.api.main import app
 
     with TestClient(app) as client:
@@ -183,11 +201,14 @@ def api_client(temp_db):
 @pytest.fixture
 def test_endpoint(api_client, fake_endpoint_server):
     """Create a test endpoint and return its info"""
-    response = api_client.post("/api/endpoints", json={
-        "name": "test-bot",
-        "type": "simple",
-        "base_url": fake_endpoint_server["url"],
-    })
+    response = api_client.post(
+        "/api/endpoints",
+        json={
+            "name": "test-bot",
+            "type": "simple",
+            "base_url": fake_endpoint_server["url"],
+        },
+    )
     assert response.status_code == 201, f"Failed to create endpoint: {response.text}"
     return response.json()
 

@@ -15,7 +15,7 @@ import argparse
 import json
 import random
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 FAKE_RESPONSES = [
     "I'm here to help! What would you like to know?",

@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -17,13 +17,14 @@ load_dotenv(PROJECT_ROOT / ".env")
 @dataclass
 class JudgeConfig:
     """Configuration for a single judge"""
+
     name: str
     provider_openai_base_url: str
     model: str
-    api_key_env: Optional[str] = None
+    api_key_env: str | None = None
     temperature: float = 0.1
 
-    def get_api_key(self) -> Optional[str]:
+    def get_api_key(self) -> str | None:
         """Get API key from environment (loaded from srl4c/.env)"""
         if self.api_key_env:
             return os.environ.get(self.api_key_env)
@@ -33,6 +34,7 @@ class JudgeConfig:
 @dataclass
 class JudgeSystemConfig:
     """Configuration for the judge system"""
+
     judges: list[JudgeConfig]
     n_passes: int = 3
     agreement_threshold: float = 0.8
@@ -52,7 +54,7 @@ class JudgeSystemConfig:
         return self.hyperparameters.get(pass_idx, {"temperature": 0.1, "top_p": 0.9})
 
 
-def get_settings() -> Dict[str, Any]:
+def get_settings() -> dict[str, Any]:
     """Load settings from ~/.srl4c/settings.yaml"""
     settings_path = USER_CONFIG_DIR / "settings.yaml"
     if settings_path.exists():
@@ -76,7 +78,7 @@ def get_active_judges_file() -> str:
     return get_settings().get("active_judges", "default.judges")
 
 
-def list_judge_files() -> List[Dict[str, Any]]:
+def list_judge_files() -> list[dict[str, Any]]:
     """List all available .judges files with metadata"""
     judge_files = []
 
@@ -88,27 +90,31 @@ def list_judge_files() -> List[Dict[str, Any]]:
                     data = yaml.safe_load(fp) or {}
                 judge_count = len(data.get("judges", {}))
                 n_passes = data.get("n_passes", 1)
-                judge_files.append({
-                    "name": f.name,
-                    "path": str(f),
-                    "judges_count": judge_count,
-                    "n_passes": n_passes,
-                    "is_active": f.name == get_active_judges_file(),
-                })
+                judge_files.append(
+                    {
+                        "name": f.name,
+                        "path": str(f),
+                        "judges_count": judge_count,
+                        "n_passes": n_passes,
+                        "is_active": f.name == get_active_judges_file(),
+                    }
+                )
             except Exception:
-                judge_files.append({
-                    "name": f.name,
-                    "path": str(f),
-                    "judges_count": 0,
-                    "n_passes": 0,
-                    "is_active": f.name == get_active_judges_file(),
-                    "error": "Failed to parse",
-                })
+                judge_files.append(
+                    {
+                        "name": f.name,
+                        "path": str(f),
+                        "judges_count": 0,
+                        "n_passes": 0,
+                        "is_active": f.name == get_active_judges_file(),
+                        "error": "Failed to parse",
+                    }
+                )
 
     return sorted(judge_files, key=lambda x: x["name"])
 
 
-def get_judge_file_content(filename: str) -> Optional[str]:
+def get_judge_file_content(filename: str) -> str | None:
     """Get the raw content of a judges file"""
     path = USER_CONFIG_DIR / filename
     if path.exists() and path.suffix == ".judges":
@@ -141,13 +147,15 @@ def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
 
     judges = []
     for name, jconf in data.get("judges", {}).items():
-        judges.append(JudgeConfig(
-            name=name,
-            provider_openai_base_url=jconf["provider_openai_base_url"],
-            model=jconf["model"],
-            api_key_env=jconf.get("api_key_env"),
-            temperature=jconf.get("temperature", 0.1),
-        ))
+        judges.append(
+            JudgeConfig(
+                name=name,
+                provider_openai_base_url=jconf["provider_openai_base_url"],
+                model=jconf["model"],
+                api_key_env=jconf.get("api_key_env"),
+                temperature=jconf.get("temperature", 0.1),
+            )
+        )
 
     # Parse hyperparameters: convert pass_1, pass_2, etc. to 0, 1, 2
     hyperparameters = None
@@ -167,7 +175,7 @@ def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
     )
 
 
-def test_judge(judge: JudgeConfig) -> Dict[str, Any]:
+def test_judge(judge: JudgeConfig) -> dict[str, Any]:
     """Test if a judge is reachable and responding"""
     import httpx
 
@@ -182,6 +190,7 @@ def test_judge(judge: JudgeConfig) -> Dict[str, Any]:
 
     try:
         import time
+
         start = time.time()
 
         with httpx.Client(timeout=10.0) as client:
@@ -216,7 +225,7 @@ def test_judge(judge: JudgeConfig) -> Dict[str, Any]:
     return result
 
 
-def test_all_judges(config_name: str = None) -> List[Dict[str, Any]]:
+def test_all_judges(config_name: str = None) -> list[dict[str, Any]]:
     """Test all judges in a config file (default: active config)"""
     if config_name:
         # Load specific config
@@ -224,7 +233,15 @@ def test_all_judges(config_name: str = None) -> List[Dict[str, Any]]:
             config_name = f"{config_name}.judges"
         config_path = USER_CONFIG_DIR / config_name
         if not config_path.exists():
-            return [{"name": "Error", "model": "", "base_url": "", "success": False, "error": f"Config not found: {config_name}"}]
+            return [
+                {
+                    "name": "Error",
+                    "model": "",
+                    "base_url": "",
+                    "success": False,
+                    "error": f"Config not found: {config_name}",
+                }
+            ]
         config = load_judge_config(config_path)
     else:
         config = load_judge_config()

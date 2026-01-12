@@ -1,7 +1,6 @@
 """Simple POST adapter for basic chat endpoints"""
 
 import time
-from typing import Optional
 
 import httpx
 
@@ -11,7 +10,7 @@ from srl4c.adapters.base import BaseAdapter
 class SimpleAdapter(BaseAdapter):
     """Adapter for simple POST /chat style endpoints"""
 
-    def __init__(self, base_url: str, api_key_env: Optional[str] = None, config: dict = None):
+    def __init__(self, base_url: str, api_key_env: str | None = None, config: dict = None):
         super().__init__(base_url, api_key_env, config)
         # Field names for request/response
         self.request_field = self.config.get("request_field", "message")
@@ -37,7 +36,7 @@ class SimpleAdapter(BaseAdapter):
         data = response.json()
         return data.get(self.response_field, str(data))
 
-    def test_connection(self) -> tuple[bool, str, Optional[int]]:
+    def test_connection(self) -> tuple[bool, str, int | None]:
         """Test connection with a simple message"""
         try:
             start = time.time()
@@ -45,6 +44,10 @@ class SimpleAdapter(BaseAdapter):
             latency = int((time.time() - start) * 1000)
             return True, response[:100], latency
         except httpx.HTTPStatusError as e:
-            return False, f"HTTP {e.response.status_code}: {e.response.text[:100]}", None
+            return (
+                False,
+                f"HTTP {e.response.status_code}: {e.response.text[:100]}",
+                None,
+            )
         except Exception as e:
             return False, str(e), None

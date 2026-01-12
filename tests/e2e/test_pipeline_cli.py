@@ -7,9 +7,8 @@ Uses fake endpoint and fake judge servers (no real LLMs).
 
 import os
 import re
-import sys
-import time
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -59,7 +58,7 @@ n_passes: 1
 
 judges:
   fake_judge:
-    provider_openai_base_url: {fake_judge_server['base_url']}
+    provider_openai_base_url: {fake_judge_server["base_url"]}
     model: fake-model
 """
         (config_dir / "fake.judges").write_text(fake_judges_content)
@@ -76,8 +75,10 @@ judges:
         test_dataset_dst.write_text(test_dataset_src.read_text())
 
         # Initialize database
-        from srl4c.db.models import SCHEMA
         import sqlite3
+
+        from srl4c.db.models import SCHEMA
+
         db_path = config_dir / "srl4c.db"
         conn = sqlite3.connect(str(db_path))
         conn.executescript(SCHEMA)
@@ -107,11 +108,18 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Step 1: Add endpoint
-        result = run_cli([
-            "endpoint", "add", "simple",
-            "--name", "test-bot",
-            "--url", endpoint_url,
-        ], env=env)
+        result = run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "test-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
         assert result.returncode == 0, f"Failed to add endpoint: {result.stderr}\n{result.stdout}"
         assert "test-bot" in result.stdout.lower() or "created" in result.stdout.lower()
 
@@ -121,11 +129,18 @@ judges:
         assert "test-bot" in result.stdout
 
         # Step 2: Run attack
-        result = run_cli([
-            "attack", "run",
-            "--endpoint", "test-bot",
-            "--dataset", "test_mini",
-        ], env=env, timeout=180)
+        result = run_cli(
+            [
+                "attack",
+                "run",
+                "--endpoint",
+                "test-bot",
+                "--dataset",
+                "test_mini",
+            ],
+            env=env,
+            timeout=180,
+        )
         assert result.returncode == 0, f"Attack failed: {result.stderr}\n{result.stdout}"
 
         # Extract attack ID from output
@@ -151,11 +166,19 @@ judges:
         assert attack_id is not None, f"Could not find attack ID in output:\n{result.stdout}"
 
         # Step 3: Run score
-        result = run_cli([
-            "score", "run", attack_id,
-            "--age", "child",
-            "--weights", "balanced",
-        ], env=env, timeout=180)
+        result = run_cli(
+            [
+                "score",
+                "run",
+                attack_id,
+                "--age",
+                "child",
+                "--weights",
+                "balanced",
+            ],
+            env=env,
+            timeout=180,
+        )
         assert result.returncode == 0, f"Score failed: {result.stderr}\n{result.stdout}"
 
         # Get score ID from list
@@ -171,11 +194,19 @@ judges:
         assert score_id is not None, f"Could not find score ID in output:\n{result.stdout}"
 
         # Step 4: Generate guardrails
-        result = run_cli([
-            "guardrails", "generate", score_id,
-            "--max-rules", "3",
-            "--max-total", "10",
-        ], env=env, timeout=180)
+        result = run_cli(
+            [
+                "guardrails",
+                "generate",
+                score_id,
+                "--max-rules",
+                "3",
+                "--max-total",
+                "10",
+            ],
+            env=env,
+            timeout=180,
+        )
         assert result.returncode == 0, f"Guardrails failed: {result.stderr}\n{result.stdout}"
 
         # Verify guardrails were created
@@ -199,11 +230,18 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Add
-        result = run_cli([
-            "endpoint", "add", "simple",
-            "--name", "my-bot",
-            "--url", endpoint_url,
-        ], env=env)
+        result = run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "my-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
         assert result.returncode == 0
 
         # List
@@ -243,10 +281,25 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Create endpoint
-        run_cli(["endpoint", "add", "simple", "--name", "report-bot", "--url", endpoint_url], env=env)
+        run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "report-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
 
         # Run attack
-        result = run_cli(["attack", "run", "--endpoint", "report-bot", "--dataset", "test_mini"], env=env, timeout=180)
+        result = run_cli(
+            ["attack", "run", "--endpoint", "report-bot", "--dataset", "test_mini"],
+            env=env,
+            timeout=180,
+        )
         assert result.returncode == 0
 
         # Get attack ID
@@ -255,6 +308,7 @@ judges:
         for line in result.stdout.split("\n"):
             if "report-bot" in line or "test_mini" in line:
                 import re
+
                 match = re.search(r"([0-9a-f]{8})", line)
                 if match:
                     attack_id = match.group(1)
@@ -270,6 +324,7 @@ judges:
         score_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 score_id = match.group(1)
@@ -287,16 +342,32 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Create endpoint
-        run_cli(["endpoint", "add", "simple", "--name", "export-bot", "--url", endpoint_url], env=env)
+        run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "export-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
 
         # Run attack
-        run_cli(["attack", "run", "--endpoint", "export-bot", "--dataset", "test_mini"], env=env, timeout=180)
+        run_cli(
+            ["attack", "run", "--endpoint", "export-bot", "--dataset", "test_mini"],
+            env=env,
+            timeout=180,
+        )
 
         # Get attack ID
         result = run_cli(["attack", "list"], env=env)
         attack_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 attack_id = match.group(1)
@@ -310,6 +381,7 @@ judges:
         score_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 score_id = match.group(1)
@@ -323,6 +395,7 @@ judges:
         set_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 set_id = match.group(1)
@@ -339,7 +412,18 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Create endpoint
-        run_cli(["endpoint", "add", "simple", "--name", "del-endpoint", "--url", endpoint_url], env=env)
+        run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "del-endpoint",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
 
         # Verify exists
         result = run_cli(["endpoint", "list"], env=env)
@@ -359,14 +443,30 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Create endpoint and attack
-        run_cli(["endpoint", "add", "simple", "--name", "del-attack-bot", "--url", endpoint_url], env=env)
-        run_cli(["attack", "run", "--endpoint", "del-attack-bot", "--dataset", "test_mini"], env=env, timeout=180)
+        run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "del-attack-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
+        run_cli(
+            ["attack", "run", "--endpoint", "del-attack-bot", "--dataset", "test_mini"],
+            env=env,
+            timeout=180,
+        )
 
         # Get attack ID
         result = run_cli(["attack", "list"], env=env)
         attack_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 attack_id = match.group(1)
@@ -387,14 +487,30 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Create endpoint, attack, score
-        run_cli(["endpoint", "add", "simple", "--name", "del-score-bot", "--url", endpoint_url], env=env)
-        run_cli(["attack", "run", "--endpoint", "del-score-bot", "--dataset", "test_mini"], env=env, timeout=180)
+        run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "del-score-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
+        run_cli(
+            ["attack", "run", "--endpoint", "del-score-bot", "--dataset", "test_mini"],
+            env=env,
+            timeout=180,
+        )
 
         # Get attack ID
         result = run_cli(["attack", "list"], env=env)
         attack_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 attack_id = match.group(1)
@@ -408,6 +524,7 @@ judges:
         score_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 score_id = match.group(1)
@@ -428,13 +545,29 @@ judges:
         endpoint_url = cli_env["endpoint_url"]
 
         # Full pipeline
-        run_cli(["endpoint", "add", "simple", "--name", "del-guard-bot", "--url", endpoint_url], env=env)
-        run_cli(["attack", "run", "--endpoint", "del-guard-bot", "--dataset", "test_mini"], env=env, timeout=180)
+        run_cli(
+            [
+                "endpoint",
+                "add",
+                "simple",
+                "--name",
+                "del-guard-bot",
+                "--url",
+                endpoint_url,
+            ],
+            env=env,
+        )
+        run_cli(
+            ["attack", "run", "--endpoint", "del-guard-bot", "--dataset", "test_mini"],
+            env=env,
+            timeout=180,
+        )
 
         result = run_cli(["attack", "list"], env=env)
         attack_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 attack_id = match.group(1)
@@ -446,6 +579,7 @@ judges:
         score_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 score_id = match.group(1)
@@ -457,6 +591,7 @@ judges:
         set_id = None
         for line in result.stdout.split("\n"):
             import re
+
             match = re.search(r"([0-9a-f]{8})", line)
             if match:
                 set_id = match.group(1)
