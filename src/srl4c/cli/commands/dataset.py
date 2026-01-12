@@ -32,7 +32,7 @@ def list_datasets(console: Console):
     table.add_column("Principles", no_wrap=True)
 
     for name, info in sorted(datasets.items()):
-        principles_str = f"{len(info['principles'])} principles" if info['principles'] else "—"
+        principles_str = f"{len(info['principles'])} principles" if info["principles"] else "—"
         table.add_row(name, str(info["prompts"]), principles_str)
 
     console.print(table)
@@ -73,6 +73,6 @@ def show_dataset(console: Console, name: str):
     if prompt_col:
         for i, row in df.head(5).iterrows():
             prompt = str(row[prompt_col])[:60]
-            console.print(f"  {i+1}. \"{prompt}...\"")
+            console.print(f'  {i + 1}. "{prompt}..."')
 
     console.print()

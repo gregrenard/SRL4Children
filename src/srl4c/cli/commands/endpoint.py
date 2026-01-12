@@ -3,10 +3,10 @@
 from rich.console import Console
 from rich.table import Table
 
-from srl4c.db.models import Endpoint
-from srl4c.db.repository import EndpointRepository, generate_id
 from srl4c.adapters.openai import OpenAIAdapter
 from srl4c.adapters.simple import SimpleAdapter
+from srl4c.db.models import Endpoint
+from srl4c.db.repository import EndpointRepository, generate_id
 
 
 def add_endpoint(
@@ -97,11 +97,11 @@ def test_endpoint(console: Console, id_or_name: str):
         adapter = SimpleAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
 
     # Test
-    console.print(f"  → Sending: \"Hello, this is a test.\"")
+    console.print('  → Sending: "Hello, this is a test."')
     success, response, latency = adapter.test_connection()
 
     if success:
-        console.print(f"  ← Response: \"{response}...\"")
+        console.print(f'  ← Response: "{response}..."')
         console.print(f"  [green]✓[/green] Endpoint is healthy (latency: {latency}ms)")
         EndpointRepository.update_last_used(endpoint.id)
     else:
@@ -129,7 +129,7 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes:
 
     if has_children:
         will_delete = preview.get("will_delete", {})
-        console.print(f"\n[yellow]⚠ Warning: This endpoint has related data that will also be deleted:[/yellow]")
+        console.print("\n[yellow]⚠ Warning: This endpoint has related data that will also be deleted:[/yellow]")
         if will_delete.get("attacks"):
             console.print(f"  • {will_delete['attacks']} attack(s)")
         if will_delete.get("records"):
@@ -144,13 +144,14 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes:
             console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
 
         if not force:
-            console.print(f"\n[dim]Use --force to delete with all related data.[/dim]")
+            console.print("\n[dim]Use --force to delete with all related data.[/dim]")
             return
 
     # Confirm unless --yes
     if not yes:
         confirm_text = "Delete ALL related data" if has_children else "Delete"
         from rich.prompt import Confirm
+
         if not Confirm.ask(f"\n{confirm_text}?"):
             console.print("[dim]Cancelled[/dim]")
             return
@@ -160,11 +161,17 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes:
 
     if deleted and any(deleted.values()):
         parts = []
-        if deleted.get("attacks"): parts.append(f"{deleted['attacks']} attacks")
-        if deleted.get("records"): parts.append(f"{deleted['records']} records")
-        if deleted.get("scores"): parts.append(f"{deleted['scores']} scores")
-        if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
-        if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
-        if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+        if deleted.get("attacks"):
+            parts.append(f"{deleted['attacks']} attacks")
+        if deleted.get("records"):
+            parts.append(f"{deleted['records']} records")
+        if deleted.get("scores"):
+            parts.append(f"{deleted['scores']} scores")
+        if deleted.get("evaluations"):
+            parts.append(f"{deleted['evaluations']} evaluations")
+        if deleted.get("guardrail_sets"):
+            parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+        if deleted.get("guardrails"):
+            parts.append(f"{deleted['guardrails']} guardrails")
         if parts:
             console.print(f"  Deleted: {', '.join(parts)}")

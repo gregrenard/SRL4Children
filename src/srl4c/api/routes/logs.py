@@ -1,6 +1,5 @@
 """Logs routes"""
 
-from typing import Optional
 from fastapi import APIRouter, Query
 
 from srl4c.db.repository import LogRepository
@@ -12,9 +11,12 @@ router = APIRouter(prefix="/logs", tags=["logs"])
 async def list_logs(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    level: Optional[str] = Query(None, description="Filter by level: info, warning, error"),
-    entity_type: Optional[str] = Query(None, description="Filter by entity type: endpoint, attack, score, guardrail_set"),
-    entity_id: Optional[str] = Query(None, description="Filter by entity ID"),
+    level: str | None = Query(None, description="Filter by level: info, warning, error"),
+    entity_type: str | None = Query(
+        None,
+        description="Filter by entity type: endpoint, attack, score, guardrail_set",
+    ),
+    entity_id: str | None = Query(None, description="Filter by entity ID"),
 ):
     """List logs with optional filters, newest first."""
     logs = LogRepository.list_all(
@@ -42,8 +44,8 @@ async def list_logs(
 
 @router.get("/count")
 async def count_logs(
-    level: Optional[str] = Query(None, description="Filter by level"),
-    entity_type: Optional[str] = Query(None, description="Filter by entity type"),
+    level: str | None = Query(None, description="Filter by level"),
+    entity_type: str | None = Query(None, description="Filter by entity type"),
 ):
     """Get count of logs matching filters."""
     return {"count": LogRepository.count(level=level, entity_type=entity_type)}

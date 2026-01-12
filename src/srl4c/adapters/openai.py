@@ -1,7 +1,6 @@
 """OpenAI-compatible API adapter"""
 
 import time
-from typing import Optional
 
 import httpx
 
@@ -38,7 +37,7 @@ class OpenAIAdapter(BaseAdapter):
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
-    def test_connection(self) -> tuple[bool, str, Optional[int]]:
+    def test_connection(self) -> tuple[bool, str, int | None]:
         """Test connection with a simple message"""
         try:
             start = time.time()
@@ -46,6 +45,10 @@ class OpenAIAdapter(BaseAdapter):
             latency = int((time.time() - start) * 1000)
             return True, response[:100], latency
         except httpx.HTTPStatusError as e:
-            return False, f"HTTP {e.response.status_code}: {e.response.text[:100]}", None
+            return (
+                False,
+                f"HTTP {e.response.status_code}: {e.response.text[:100]}",
+                None,
+            )
         except Exception as e:
             return False, str(e), None

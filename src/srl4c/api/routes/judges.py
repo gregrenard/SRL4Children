@@ -2,13 +2,12 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
 
 from srl4c.judge.config import (
-    list_judge_files,
     get_active_judges_file,
-    set_active_judges,
     get_judge_file_content,
+    list_judge_files,
+    set_active_judges,
     test_all_judges,
 )
 
@@ -21,7 +20,7 @@ class JudgeFileInfo(BaseModel):
     judges_count: int
     n_passes: int
     is_active: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class JudgeFileContent(BaseModel):
@@ -34,7 +33,7 @@ class SetActiveRequest(BaseModel):
     name: str
 
 
-@router.get("/", response_model=List[JudgeFileInfo])
+@router.get("/", response_model=list[JudgeFileInfo])
 async def list_judges():
     """List all available judge configuration files."""
     return list_judge_files()
@@ -86,15 +85,15 @@ class JudgeTestResult(BaseModel):
     model: str
     base_url: str
     success: bool
-    error: Optional[str] = None
-    response_time_ms: Optional[int] = None
+    error: str | None = None
+    response_time_ms: int | None = None
 
 
 class TestRequest(BaseModel):
-    config: Optional[str] = None
+    config: str | None = None
 
 
-@router.post("/test", response_model=List[JudgeTestResult])
+@router.post("/test", response_model=list[JudgeTestResult])
 async def test_judges(request: TestRequest = None):
     """Test connectivity to judges in a config file."""
     config_name = request.config if request else None

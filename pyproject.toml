@@ -21,6 +21,9 @@ test = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
 ]
+dev = [
+    "ruff>=0.1.0",
+]
 
 [project.scripts]
 srl4c = "srl4c.cli.main:app"
@@ -31,3 +34,10 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/srl4c"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]

@@ -1,14 +1,21 @@
 """Attack commands implementation"""
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+)
 
-from srl4c.db.repository import EndpointRepository, AttackRepository, RecordRepository
+from srl4c.db.repository import AttackRepository, EndpointRepository, RecordRepository
 
 
 def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     """Run an attack against an endpoint"""
-    from srl4c.core.attack import create_attack, run_attack as execute_attack
+    from srl4c.core.attack import create_attack
+    from srl4c.core.attack import run_attack as execute_attack
 
     # Create attack job (shared with API)
     try:
@@ -21,7 +28,7 @@ def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     attack = AttackRepository.get_by_id(attack_id)
     endpoint = EndpointRepository.get_by_id(attack.endpoint_id)
 
-    console.print(f"\nStarting attack...")
+    console.print("\nStarting attack...")
     console.print(f"  Endpoint: [cyan]{endpoint.name}[/cyan] ({endpoint.id})")
     console.print(f"  Dataset:  [cyan]{attack.dataset_name}[/cyan] ({attack.total_prompts} prompts)\n")
     console.print(f"Attack [cyan]{attack_id}[/cyan] created\n")
@@ -50,7 +57,7 @@ def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     records = RecordRepository.get_by_attack(attack_id)
     errors = sum(1 for r in records if r.error)
 
-    console.print(f"\n[green]✓[/green] Attack completed")
+    console.print("\n[green]✓[/green] Attack completed")
     console.print(f"  ID:        [cyan]{attack.id}[/cyan]")
     console.print(f"  Prompts:   {attack.completed_prompts} sent, {errors} errors")
     console.print(f"\nNext step: [cyan]srl4c score run {attack.id} --age child --weights balanced[/cyan]\n")
@@ -143,8 +150,8 @@ def show_attack(console: Console, attack_id: str):
             elif record.error:
                 response_short = f"[red]Error: {record.error[:30]}[/red]"
 
-            console.print(f"  #{i} [cyan]Prompt:[/cyan] \"{prompt_short}\"")
-            console.print(f"      [green]Response:[/green] \"{response_short}\"")
+            console.print(f'  #{i} [cyan]Prompt:[/cyan] "{prompt_short}"')
+            console.print(f'      [green]Response:[/green] "{response_short}"')
             if record.principle_id:
                 principle_short = record.principle_id.split(".")[-1]
                 console.print(f"      [dim]Principle: {principle_short}[/dim]")

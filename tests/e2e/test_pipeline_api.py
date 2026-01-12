@@ -5,7 +5,6 @@ Tests: endpoint → attack → score → guardrails
 Uses fake endpoint and fake judge servers (no real LLMs).
 """
 
-import pytest
 from conftest import poll_status
 
 
@@ -33,10 +32,13 @@ class TestPipelineAPI:
         assert endpoint_data["type"] == "simple"
 
         # Step 2: Create attack
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "test-bot",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "test-bot",
+                "dataset": "test_mini",
+            },
+        )
         assert response.status_code == 202, f"Failed to create attack: {response.text}"
         attack_data = response.json()
         attack_id = attack_data["id"]
@@ -47,15 +49,20 @@ class TestPipelineAPI:
         assert attack_result["status"] == "completed"
 
         # Verify attack processed all prompts
-        assert attack_result["completed_prompts"] == 8, f"Expected 8 completed prompts, got {attack_result['completed_prompts']}"
+        assert attack_result["completed_prompts"] == 8, (
+            f"Expected 8 completed prompts, got {attack_result['completed_prompts']}"
+        )
         assert attack_result["total_prompts"] == 8
 
         # Step 4: Create score
-        response = api_client.post("/api/scores", json={
-            "attack_id": attack_id,
-            "age": "child",
-            "weights": "balanced",
-        })
+        response = api_client.post(
+            "/api/scores",
+            json={
+                "attack_id": attack_id,
+                "age": "child",
+                "weights": "balanced",
+            },
+        )
         assert response.status_code == 202, f"Failed to create score: {response.text}"
         score_data = response.json()
         score_id = score_data["id"]
@@ -80,11 +87,14 @@ class TestPipelineAPI:
         assert failures["count"] >= 1, "Expected at least 1 failure from fake judge"
 
         # Step 6: Generate guardrails (fake judge ensures some low scores)
-        response = api_client.post("/api/guardrails", json={
-            "score_id": score_id,
-            "max_rules": 3,
-            "max_total": 10,
-        })
+        response = api_client.post(
+            "/api/guardrails",
+            json={
+                "score_id": score_id,
+                "max_rules": 3,
+                "max_total": 10,
+            },
+        )
         assert response.status_code == 202, f"Failed to create guardrails: {response.text}"
         guardrails_data = response.json()
         set_id = guardrails_data["id"]
@@ -103,9 +113,7 @@ class TestPipelineAPI:
             assert rule.get("principle_id") is not None
 
         # Step 8: Verify data consistency across pipeline
-        self._verify_data_consistency(
-            api_client, endpoint_id, attack_id, score_id, set_id
-        )
+        self._verify_data_consistency(api_client, endpoint_id, attack_id, score_id, set_id)
 
     def _verify_data_consistency(self, client, endpoint_id, attack_id, score_id, set_id):
         """Verify data relationships are consistent across all entities"""
@@ -124,35 +132,47 @@ class TestPipelineAPI:
 
     def test_attack_with_nonexistent_endpoint(self, api_client, temp_db):
         """Verify error handling for missing endpoint"""
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "nonexistent-endpoint",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "nonexistent-endpoint",
+                "dataset": "test_mini",
+            },
+        )
         assert response.status_code in [400, 404, 422]
 
     def test_score_with_nonexistent_attack(self, api_client, temp_db):
         """Verify error handling for missing attack"""
-        response = api_client.post("/api/scores", json={
-            "attack_id": "nonexistent-attack-id",
-            "age": "child",
-        })
+        response = api_client.post(
+            "/api/scores",
+            json={
+                "attack_id": "nonexistent-attack-id",
+                "age": "child",
+            },
+        )
         assert response.status_code in [400, 404, 422]
 
     def test_report_generation(self, api_client, test_endpoint, temp_db):
         """Test score report generation"""
         # Create attack
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "test-bot",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "test-bot",
+                "dataset": "test_mini",
+            },
+        )
         attack_id = response.json()["id"]
         poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
         # Create score
-        response = api_client.post("/api/scores", json={
-            "attack_id": attack_id,
-            "age": "child",
-        })
+        response = api_client.post(
+            "/api/scores",
+            json={
+                "attack_id": attack_id,
+                "age": "child",
+            },
+        )
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
@@ -168,27 +188,36 @@ class TestPipelineAPI:
     def test_guardrails_export(self, api_client, test_endpoint, temp_db):
         """Test guardrails export"""
         # Create attack
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "test-bot",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "test-bot",
+                "dataset": "test_mini",
+            },
+        )
         attack_id = response.json()["id"]
         poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
         # Create score
-        response = api_client.post("/api/scores", json={
-            "attack_id": attack_id,
-            "age": "child",
-        })
+        response = api_client.post(
+            "/api/scores",
+            json={
+                "attack_id": attack_id,
+                "age": "child",
+            },
+        )
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
         # Generate guardrails
-        response = api_client.post("/api/guardrails", json={
-            "score_id": score_id,
-            "max_rules": 3,
-            "max_total": 10,
-        })
+        response = api_client.post(
+            "/api/guardrails",
+            json={
+                "score_id": score_id,
+                "max_rules": 3,
+                "max_total": 10,
+            },
+        )
         set_id = response.json()["id"]
         poll_status(api_client, f"/api/guardrails/{set_id}", "completed", timeout=120)
 
@@ -203,23 +232,32 @@ class TestPipelineAPI:
     def test_delete_guardrail_set(self, api_client, test_endpoint, temp_db):
         """Test guardrail set deletion"""
         # Create full pipeline
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "test-bot",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "test-bot",
+                "dataset": "test_mini",
+            },
+        )
         attack_id = response.json()["id"]
         poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
-        response = api_client.post("/api/scores", json={
-            "attack_id": attack_id,
-            "age": "child",
-        })
+        response = api_client.post(
+            "/api/scores",
+            json={
+                "attack_id": attack_id,
+                "age": "child",
+            },
+        )
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
-        response = api_client.post("/api/guardrails", json={
-            "score_id": score_id,
-        })
+        response = api_client.post(
+            "/api/guardrails",
+            json={
+                "score_id": score_id,
+            },
+        )
         set_id = response.json()["id"]
         poll_status(api_client, f"/api/guardrails/{set_id}", "completed", timeout=120)
 
@@ -241,17 +279,23 @@ class TestPipelineAPI:
     def test_delete_score(self, api_client, test_endpoint, temp_db):
         """Test score deletion (cascades to guardrails)"""
         # Create attack and score
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "test-bot",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "test-bot",
+                "dataset": "test_mini",
+            },
+        )
         attack_id = response.json()["id"]
         poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
-        response = api_client.post("/api/scores", json={
-            "attack_id": attack_id,
-            "age": "child",
-        })
+        response = api_client.post(
+            "/api/scores",
+            json={
+                "attack_id": attack_id,
+                "age": "child",
+            },
+        )
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
 
@@ -271,10 +315,13 @@ class TestPipelineAPI:
     def test_delete_attack(self, api_client, test_endpoint, temp_db):
         """Test attack deletion (cascades to scores)"""
         # Create attack
-        response = api_client.post("/api/attacks", json={
-            "endpoint": "test-bot",
-            "dataset": "test_mini",
-        })
+        response = api_client.post(
+            "/api/attacks",
+            json={
+                "endpoint": "test-bot",
+                "dataset": "test_mini",
+            },
+        )
         attack_id = response.json()["id"]
         poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
 
@@ -294,11 +341,14 @@ class TestPipelineAPI:
     def test_delete_endpoint(self, api_client, fake_endpoint_server, temp_db):
         """Test endpoint deletion (cascades to attacks)"""
         # Create endpoint
-        response = api_client.post("/api/endpoints", json={
-            "name": "delete-test-bot",
-            "type": "simple",
-            "base_url": fake_endpoint_server["url"],
-        })
+        response = api_client.post(
+            "/api/endpoints",
+            json={
+                "name": "delete-test-bot",
+                "type": "simple",
+                "base_url": fake_endpoint_server["url"],
+            },
+        )
         endpoint_id = response.json()["id"]
 
         # Delete preview

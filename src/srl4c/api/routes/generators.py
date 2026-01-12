@@ -2,13 +2,12 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
 
 from srl4c.generator.config import (
-    list_generator_files,
     get_active_generators_file,
-    set_active_generators,
     get_generator_file_content,
+    list_generator_files,
+    set_active_generators,
     test_active_generator,
 )
 
@@ -21,7 +20,7 @@ class GeneratorFileInfo(BaseModel):
     model: str
     base_url: str
     is_active: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class GeneratorFileContent(BaseModel):
@@ -39,15 +38,15 @@ class GeneratorTestResult(BaseModel):
     model: str
     base_url: str
     success: bool
-    error: Optional[str] = None
-    response_time_ms: Optional[int] = None
+    error: str | None = None
+    response_time_ms: int | None = None
 
 
 class TestRequest(BaseModel):
-    config: Optional[str] = None
+    config: str | None = None
 
 
-@router.get("/", response_model=List[GeneratorFileInfo])
+@router.get("/", response_model=list[GeneratorFileInfo])
 async def list_generators():
     """List all available generator configuration files."""
     return list_generator_files()

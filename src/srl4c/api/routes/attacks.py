@@ -2,11 +2,9 @@
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
+from srl4c.api.schemas import AttackCreate, AttackCreateResponse, AttackResponse
 from srl4c.core.attack import create_attack, run_attack
 from srl4c.db.repository import AttackRepository
-from srl4c.api.schemas import (
-    AttackCreate, AttackResponse, AttackCreateResponse
-)
 
 router = APIRouter(prefix="/attacks", tags=["attacks"])
 

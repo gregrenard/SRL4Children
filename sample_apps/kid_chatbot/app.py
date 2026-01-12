@@ -13,12 +13,12 @@ Test with: curl -X POST http://localhost:8080/v1/chat/completions ...
 import os
 from pathlib import Path
 
+import uvicorn
 import yaml
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from openai import OpenAI
-import uvicorn
+from pydantic import BaseModel
 
 # Optional: srl4c wrapper for guardrails
 try:
@@ -80,15 +80,18 @@ class Message(BaseModel):
     role: str
     content: str
 
+
 class ChatCompletionRequest(BaseModel):
     messages: list[Message]
     model: str = None
     temperature: float = 0.7
 
+
 class Choice(BaseModel):
     index: int = 0
     message: Message
     finish_reason: str = "stop"
+
 
 class ChatCompletionResponse(BaseModel):
     id: str = "chatcmpl-kid-chatbot"
@@ -114,11 +117,7 @@ def chat_completions(request: ChatCompletionRequest):
 
     try:
         response_text = generate_response(message)
-        return ChatCompletionResponse(
-            choices=[
-                Choice(message=Message(role="assistant", content=response_text))
-            ]
-        )
+        return ChatCompletionResponse(choices=[Choice(message=Message(role="assistant", content=response_text))])
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
@@ -129,8 +128,10 @@ def chat_completions(request: ChatCompletionRequest):
 class SimpleRequest(BaseModel):
     message: str
 
+
 class SimpleResponse(BaseModel):
     response: str
+
 
 @app.post("/chat", response_model=SimpleResponse)
 def simple_chat(request: SimpleRequest):
@@ -152,10 +153,13 @@ if __name__ == "__main__":
     print(f"   Model: {config.get('model')}")
     if guarded:
         print(f"   Guardrails: {worker_url}")
-    print(f"\n   Endpoints:")
-    print(f"   - POST /v1/chat/completions (OpenAI-compatible)")
-    print(f"   - POST /chat (simple: {{message: ...}} -> {{response: ...}})")
-    print(f"\n   Test:")
-    print(f"   curl -X POST http://localhost:{port}/chat -H 'Content-Type: application/json' -d '{{\"message\": \"Are we friends?\"}}'")
+    print("\n   Endpoints:")
+    print("   - POST /v1/chat/completions (OpenAI-compatible)")
+    print("   - POST /chat (simple: {message: ...} -> {response: ...})")
+    print("\n   Test:")
+    print(
+        f"   curl -X POST http://localhost:{port}/chat -H 'Content-Type: application/json' "
+        f"-d '{{\"message\": \"Are we friends?\"}}'"
+    )
     print()
     uvicorn.run(app, host=host, port=port)

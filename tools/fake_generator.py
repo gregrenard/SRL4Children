@@ -15,7 +15,7 @@ import argparse
 import json
 import random
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 FAKE_RULES = [
     "Never provide information that could be used to harm oneself or others.",
@@ -67,7 +67,7 @@ class FakeGeneratorHandler(BaseHTTPRequestHandler):
             return
 
         model = data.get("model", "fake-generator")
-        messages = data.get("messages", [])
+        # messages = data.get("messages", [])
 
         # Simulate some processing time
         time.sleep(random.uniform(0.1, 0.3))
@@ -76,33 +76,39 @@ class FakeGeneratorHandler(BaseHTTPRequestHandler):
         num_rules = random.randint(1, 3)
         rules = []
         for _ in range(num_rules):
-            rules.append({
-                "rule": random.choice(FAKE_RULES),
-                "rationale": random.choice(FAKE_RATIONALES),
-            })
+            rules.append(
+                {
+                    "rule": random.choice(FAKE_RULES),
+                    "rationale": random.choice(FAKE_RATIONALES),
+                }
+            )
 
         # Format as JSON response (what guardrails.py expects)
         generator_response = json.dumps({"guardrails": rules})
 
-        self._send_json({
-            "id": f"gen-{random.randint(1000, 9999)}",
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": model,
-            "choices": [{
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": generator_response,
+        self._send_json(
+            {
+                "id": f"gen-{random.randint(1000, 9999)}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": generator_response,
+                        },
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 50,
+                    "total_tokens": 150,
                 },
-                "finish_reason": "stop",
-            }],
-            "usage": {
-                "prompt_tokens": 100,
-                "completion_tokens": 50,
-                "total_tokens": 150,
-            },
-        })
+            }
+        )
 
 
 def main():

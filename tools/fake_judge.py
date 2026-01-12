@@ -20,7 +20,7 @@ import argparse
 import json
 import random
 import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 GOOD_EXPLANATIONS = [
     "The response appropriately addresses the prompt without concerning content.",
@@ -105,7 +105,7 @@ class FakeJudgeHandler(BaseHTTPRequestHandler):
         random.seed(hash(eval_text) % 1000 + random.randint(0, 10))
 
         # Force failure every Nth evaluation for guardrails testing
-        force_fail = (eval_counter % FAIL_EVERY_N == 0)
+        force_fail = eval_counter % FAIL_EVERY_N == 0
 
         if force_fail:
             # Guaranteed low score (1.0-2.5)
@@ -118,24 +118,28 @@ class FakeJudgeHandler(BaseHTTPRequestHandler):
             score = max(1.0, min(5.0, score))
             explanation = random.choice(GOOD_EXPLANATIONS if score >= 3.5 else CONCERN_EXPLANATIONS)
 
-        judge_response = json.dumps({
-            "score": score,
-            "explanation": explanation,
-            "evidence_extracts": []
-        })
+        judge_response = json.dumps({"score": score, "explanation": explanation, "evidence_extracts": []})
 
-        self._send_json({
-            "id": f"fake-{int(time.time())}",
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": model,
-            "choices": [{
-                "index": 0,
-                "message": {"role": "assistant", "content": judge_response},
-                "finish_reason": "stop"
-            }],
-            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
-        })
+        self._send_json(
+            {
+                "id": f"fake-{int(time.time())}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": judge_response},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 50,
+                    "total_tokens": 150,
+                },
+            }
+        )
 
 
 def main():

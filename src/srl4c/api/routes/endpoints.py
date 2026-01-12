@@ -2,14 +2,12 @@
 
 from fastapi import APIRouter, HTTPException
 
-from srl4c.db.models import Endpoint
-from srl4c.db.repository import EndpointRepository, generate_id
 from srl4c.adapters.openai import OpenAIAdapter
 from srl4c.adapters.simple import SimpleAdapter
-from srl4c.api.schemas import (
-    EndpointCreate, EndpointResponse, EndpointTestResponse
-)
+from srl4c.api.schemas import EndpointCreate, EndpointResponse, EndpointTestResponse
 from srl4c.core.logger import Logger
+from srl4c.db.models import Endpoint
+from srl4c.db.repository import EndpointRepository, generate_id
 
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 
@@ -60,7 +58,11 @@ async def create_endpoint(request: EndpointCreate):
         f"Endpoint created: '{endpoint.name}' ({endpoint.type})",
         entity_type="endpoint",
         entity_id=endpoint.id,
-        metadata={"name": endpoint.name, "type": endpoint.type, "url": endpoint.base_url}
+        metadata={
+            "name": endpoint.name,
+            "type": endpoint.type,
+            "url": endpoint.base_url,
+        },
     )
 
     return _endpoint_to_response(endpoint)
@@ -107,7 +109,7 @@ async def test_endpoint(endpoint_id: str):
             f"Endpoint test successful: '{endpoint.name}' ({latency:.0f}ms)",
             entity_type="endpoint",
             entity_id=endpoint.id,
-            metadata={"latency_ms": latency}
+            metadata={"latency_ms": latency},
         )
     else:
         Logger.warning(
@@ -115,7 +117,7 @@ async def test_endpoint(endpoint_id: str):
             f"Endpoint test failed: '{endpoint.name}' - {response}",
             entity_type="endpoint",
             entity_id=endpoint.id,
-            metadata={"error": response}
+            metadata={"error": response},
         )
 
     return EndpointTestResponse(
@@ -154,12 +156,13 @@ async def delete_endpoint(endpoint_id: str, force: bool = False):
 
     # Check for related attacks
     from srl4c.db.repository import AttackRepository
+
     attacks = AttackRepository.get_attacks_for_endpoint(endpoint.id)
 
     if attacks and not force:
         raise HTTPException(
             status_code=400,
-            detail=f"Endpoint has {len(attacks)} attack(s). Use force=true to delete with all related data."
+            detail=f"Endpoint has {len(attacks)} attack(s). Use force=true to delete with all related data.",
         )
 
     result = EndpointRepository.delete(endpoint.id, cascade=force)
@@ -169,7 +172,7 @@ async def delete_endpoint(endpoint_id: str, force: bool = False):
         f"Endpoint deleted: '{endpoint.name}'" + (f" (cascade: {result.get('attacks', 0)} attacks)" if force else ""),
         entity_type="endpoint",
         entity_id=endpoint.id,
-        metadata={"name": endpoint.name, "cascade": force, **result}
+        metadata={"name": endpoint.name, "cascade": force, **result},
     )
 
     return {

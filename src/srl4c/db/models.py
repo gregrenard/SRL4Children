@@ -1,11 +1,9 @@
 """SQLite database models and schema"""
 
 import sqlite3
-import json
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
-from pathlib import Path
 
 from srl4c.db import DB_PATH
 
@@ -134,10 +132,10 @@ class Endpoint:
     name: str
     type: str  # 'openai' or 'simple'
     base_url: str
-    api_key_env: Optional[str] = None
+    api_key_env: str | None = None
     config: dict = field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    last_used_at: datetime | None = None
 
 
 @dataclass
@@ -150,10 +148,10 @@ class Attack:
     completed_prompts: int = 0
     progress_current: int = 0
     progress_total: int = 0
-    error_message: Optional[str] = None
-    started_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    error_message: str | None = None
+    started_at: datetime | None = None
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 @dataclass
@@ -162,9 +160,9 @@ class Record:
     attack_id: str
     prompt: str
     principle_id: str
-    response: Optional[str] = None
-    error: Optional[str] = None
-    created_at: Optional[datetime] = None
+    response: str | None = None
+    error: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -173,16 +171,16 @@ class Score:
     attack_id: str
     age_context: str
     status: str = "pending"
-    weights_preset: Optional[str] = None
-    weights: Optional[dict] = None
-    final_score: Optional[float] = None
-    category_scores: Optional[dict] = None
+    weights_preset: str | None = None
+    weights: dict | None = None
+    final_score: float | None = None
+    category_scores: dict | None = None
     progress_current: int = 0
     progress_total: int = 0
-    error_message: Optional[str] = None
-    started_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    error_message: str | None = None
+    started_at: datetime | None = None
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 @dataclass
@@ -191,26 +189,26 @@ class Evaluation:
     score_id: str
     record_id: str
     principle_id: str
-    final_score: Optional[float] = None
-    explanation: Optional[str] = None
-    evidence: Optional[list] = None
-    judge_details: Optional[dict] = None
-    created_at: Optional[datetime] = None
+    final_score: float | None = None
+    explanation: str | None = None
+    evidence: list | None = None
+    judge_details: dict | None = None
+    created_at: datetime | None = None
 
 
 @dataclass
 class GuardrailSet:
     id: str
     score_id: str
-    model: Optional[str] = None
+    model: str | None = None
     rules_count: int = 0
     status: str = "pending"
     progress_current: int = 0
     progress_total: int = 0
-    error_message: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    error_message: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    completed_at: datetime | None = None
 
 
 @dataclass
@@ -219,8 +217,8 @@ class Guardrail:
     set_id: str
     principle_id: str
     rule_text: str
-    rationale: Optional[str] = None
-    created_at: Optional[datetime] = None
+    rationale: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass
@@ -230,10 +228,10 @@ class Log:
     level: str  # 'info', 'warning', 'error'
     source: str  # 'endpoint', 'attack', 'score', 'guardrails', 'api'
     message: str
-    entity_type: Optional[str] = None  # 'endpoint', 'attack', 'score', 'guardrail_set'
-    entity_id: Optional[str] = None
-    metadata: Optional[dict] = None
-    created_at: Optional[datetime] = None
+    entity_type: str | None = None  # 'endpoint', 'attack', 'score', 'guardrail_set'
+    entity_id: str | None = None
+    metadata: dict | None = None
+    created_at: datetime | None = None
 
 
 def get_connection() -> sqlite3.Connection:
@@ -251,8 +249,6 @@ def init_db():
     conn.commit()
     conn.close()
 
-
-from contextlib import contextmanager
 
 @contextmanager
 def db_connection():

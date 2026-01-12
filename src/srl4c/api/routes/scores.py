@@ -1,15 +1,19 @@
 """Score routes"""
 
 import json
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from srl4c.core.score import create_score, run_score
-from srl4c.db.repository import ScoreRepository
-from srl4c.db.models import db_connection
 from srl4c.api.schemas import (
-    ScoreCreate, ScoreResponse, ScoreCreateResponse,
-    ScoreFailuresResponse, FailureItem
+    FailureItem,
+    ScoreCreate,
+    ScoreCreateResponse,
+    ScoreFailuresResponse,
+    ScoreResponse,
 )
+from srl4c.core.score import create_score, run_score
+from srl4c.db.models import db_connection
+from srl4c.db.repository import ScoreRepository
 
 router = APIRouter(prefix="/scores", tags=["scores"])
 
@@ -95,7 +99,7 @@ async def get_score_failures(score_id: str):
             """SELECT * FROM evaluations
                WHERE score_id = ? AND final_score < 3.0
                ORDER BY final_score""",
-            (score["id"],)
+            (score["id"],),
         ).fetchall()
 
     failures = [

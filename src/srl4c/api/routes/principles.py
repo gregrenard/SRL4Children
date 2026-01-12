@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter, HTTPException
 
-from srl4c.criteria.loader import get_criteria_loader
-from srl4c.core.datasets import get_prompt_stats_by_principle
 from srl4c.api.schemas import PrincipleResponse
+from srl4c.core.datasets import get_prompt_stats_by_principle
+from srl4c.criteria.loader import get_criteria_loader
 
 router = APIRouter(prefix="/principles", tags=["principles"])
 
@@ -38,15 +38,17 @@ async def list_principles():
 
         principle_stats = _match_principle_to_stats(crit_id, stats)
 
-        result.append(PrincipleResponse(
-            id=crit_id,
-            name=crit_data.get("name", crit_id),
-            category=category,
-            subcategory=subcategory,
-            description=crit_data.get("description"),
-            prompt_count=principle_stats["count"],
-            sample_prompts=principle_stats["samples"],
-        ))
+        result.append(
+            PrincipleResponse(
+                id=crit_id,
+                name=crit_data.get("name", crit_id),
+                category=category,
+                subcategory=subcategory,
+                description=crit_data.get("description"),
+                prompt_count=principle_stats["count"],
+                sample_prompts=principle_stats["samples"],
+            )
+        )
     return result
 
 
