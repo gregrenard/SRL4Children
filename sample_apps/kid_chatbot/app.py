@@ -159,7 +159,7 @@ if __name__ == "__main__":
     print("\n   Test:")
     print(
         f"   curl -X POST http://localhost:{port}/chat -H 'Content-Type: application/json' "
-        f"-d '{{\"message\": \"Are we friends?\"}}'"
+        f'-d \'{{"message": "Are we friends?"}}\''
     )
     print()
     uvicorn.run(app, host=host, port=port)
