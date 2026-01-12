@@ -70,6 +70,7 @@ async def run_pipeline(request: PipelineRequest):
 
         # Step 4: Generate guardrails
         guardrail_set_id = None
+        guardrails_failed = False
         try:
             guardrail_set_id = create_guardrails(
                 score_id,
@@ -82,6 +83,7 @@ async def run_pipeline(request: PipelineRequest):
                 max_total=request.max_total,
             )
         except Exception as e:
+            guardrails_failed = True
             Logger.warn(
                 "pipeline",
                 f"Guardrails generation failed: {str(e)}",
@@ -91,6 +93,7 @@ async def run_pipeline(request: PipelineRequest):
 
         # Step 5: Optional worker deployment
         worker_url = None
+        worker_failed = False
         if request.deploy_worker and guardrail_set_id:
             try:
                 worker_url = deploy_worker(guardrail_set_id)
@@ -102,6 +105,7 @@ async def run_pipeline(request: PipelineRequest):
                     metadata={"worker_url": worker_url},
                 )
             except Exception as e:
+                worker_failed = True
                 Logger.warn(
                     "pipeline",
                     f"Worker deployment failed: {str(e)}",
@@ -109,9 +113,17 @@ async def run_pipeline(request: PipelineRequest):
                     entity_id=guardrail_set_id,
                 )
 
+        # Determine final status
+        if guardrails_failed or worker_failed:
+            final_status = "completed_with_warnings"
+            final_message = "Pipeline completed with warnings (guardrails/worker steps failed)"
+        else:
+            final_status = "completed"
+            final_message = "Pipeline completed successfully"
+
         Logger.info(
             "pipeline",
-            "Pipeline completed successfully",
+            final_message,
             entity_type="endpoint",
             entity_id=endpoint.id,
             metadata={
@@ -128,10 +140,10 @@ async def run_pipeline(request: PipelineRequest):
             attack_id=attack_id,
             score_id=score_id,
             guardrail_set_id=guardrail_set_id,
-            status="completed",
+            status=final_status,
             final_score=final_score,
             worker_url=worker_url,
-            message="Pipeline completed successfully",
+            message=final_message,
         )
 
     except HTTPException:
