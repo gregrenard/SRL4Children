@@ -144,6 +144,35 @@ class GuardrailsExportResponse(BaseModel):
     text: str
 
 
+# === Pipeline ===
+
+
+class PipelineRequest(BaseModel):
+    name: str = Field(..., description="Friendly name for the endpoint")
+    endpoint_type: str = Field("simple", description="Endpoint type: 'openai' or 'simple'")
+    endpoint_url: str = Field(..., description="Endpoint URL")
+    api_key_env: str | None = Field(None, description="Env var with API key")
+    base_url: str | None = Field(None, description="Base URL (openai type)")
+    dataset: str = Field("anthropomorphism_question_mini", description="Dataset for attack")
+    age: str = Field("child", description="Age context: child, teen, young_adult")
+    weights: str = Field("balanced", description="Weight preset")
+    request_field: str = Field("message", description="Request field (simple type)")
+    response_field: str = Field("response", description="Response field (simple type)")
+    max_rules: int = Field(3, description="Max guardrails per criterion")
+    max_total: int = Field(20, description="Max total guardrails")
+    deploy_worker: bool = Field(False, description="Deploy Cloudflare Worker")
+
+
+class PipelineResponse(BaseModel):
+    endpoint_id: str
+    attack_id: str
+    score_id: str
+    guardrail_set_id: str | None = None
+    status: str
+    final_score: float | None = None
+    message: str | None = None
+
+
 # === Datasets ===
 
 

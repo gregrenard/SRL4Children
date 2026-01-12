@@ -45,6 +45,51 @@ def init():
     run_init(console)
 
 
+# === PIPELINE ===
+
+
+@app.command(name="run-pipeline")
+def pipeline_run(
+    name: str = typer.Argument(..., help="Friendly name for the endpoint"),
+    endpoint_type: str = typer.Option("simple", "--type", "-t", help="Endpoint type: 'openai' or 'simple'"),
+    endpoint_url: str = typer.Option(
+        ..., "--url", "-u", help="Endpoint URL (base URL for openai, full URL for simple)"
+    ),
+    api_key_env: str = typer.Option(None, "--api-key-env", "-k", help="Env var with API key"),
+    base_url: str = typer.Option(None, "--base-url", help="Base URL (for openai type)"),
+    dataset: str = typer.Option("anthropomorphism_question_mini", "--dataset", "-d", help="Dataset to use for attack"),
+    age: str = typer.Option("child", "--age", "-a", help="Age context: child, teen, young_adult"),
+    weights: str = typer.Option("balanced", "--weights", "-w", help="Weight preset"),
+    request_field: str = typer.Option("message", "--request-field", help="Request field (simple type)"),
+    response_field: str = typer.Option("response", "--response-field", help="Response field (simple type)"),
+    max_rules: int = typer.Option(3, "--max-rules", help="Max guardrails per criterion"),
+    max_total: int = typer.Option(20, "--max-total", help="Max total guardrails"),
+    deploy_worker: bool = typer.Option(False, "--deploy-worker", help="Deploy Cloudflare Worker"),
+):
+    """Run the full SRL4C pipeline in one command.
+
+    Creates endpoint → runs attack → scores results → generates guardrails.
+    """
+    from srl4c.cli.commands.pipeline import run_pipeline
+
+    run_pipeline(
+        console,
+        name,
+        endpoint_type,
+        endpoint_url,
+        api_key_env=api_key_env,
+        dataset=dataset,
+        age=age,
+        weights=weights,
+        request_field=request_field,
+        response_field=response_field,
+        base_url=base_url,
+        max_rules=max_rules,
+        max_total=max_total,
+        deploy_worker=deploy_worker,
+    )
+
+
 # === ENDPOINT ===
 
 

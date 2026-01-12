@@ -15,6 +15,7 @@ from srl4c.api.routes import (
     guardrails,
     judges,
     logs,
+    pipeline,
     principles,
     scores,
 )
@@ -46,6 +47,7 @@ api_router.include_router(principles.router)
 api_router.include_router(logs.router)
 api_router.include_router(judges.router)
 api_router.include_router(generators.router)
+api_router.include_router(pipeline.router)
 
 app.include_router(api_router)
 
