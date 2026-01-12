@@ -469,3 +469,103 @@ def run_guardrails(
             metadata={"error": str(e)},
         )
         raise
+
+
+def deploy_worker(set_id: str) -> str | None:
+    """Deploy guardrails as a Cloudflare Worker.
+
+    Pure deployment logic without console output. Used by both CLI and API.
+
+    Args:
+        set_id: Guardrail set ID to deploy
+
+    Returns:
+        Worker URL if successful, None otherwise
+
+    Raises:
+        ValueError: If guardrail set not found or deployment fails
+    """
+    import re
+    import shutil
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    # Reuse the WORKER_TEMPLATE from CLI guardrails
+    from srl4c.cli.commands.guardrails import WORKER_TEMPLATE
+
+    gset = GuardrailSetRepository.get_by_id(set_id)
+    if not gset:
+        raise ValueError(f"Guardrail set not found: {set_id}")
+
+    with db_connection() as conn:
+        guardrails = conn.execute(
+            "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
+            (gset["id"],),
+        ).fetchall()
+
+    if not guardrails:
+        raise ValueError("No guardrails in this set")
+
+    # Format guardrails as bullet points (same as CLI)
+    guardrails_text = "\n".join(f"- {g['rule_text']}" for g in guardrails)
+
+    # Generate worker code using the shared template
+    worker_code = WORKER_TEMPLATE.format(
+        set_id=gset["id"][:8],
+        rules_count=len(guardrails),
+        guardrails_text=guardrails_text,
+    )
+
+    short_id = gset["id"][:8]
+
+    # Check wrangler availability
+    if not shutil.which("wrangler") and not shutil.which("npx"):
+        raise ValueError("wrangler not found. Install with: npm install -g wrangler")
+
+    wrangler_cmd = ["wrangler"] if shutil.which("wrangler") else ["npx", "wrangler"]
+
+    # Create temp directory with worker files (same as CLI)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        worker_path = Path(tmpdir) / "worker.js"
+        toml_path = Path(tmpdir) / "wrangler.toml"
+
+        worker_path.write_text(worker_code)
+        toml_path.write_text(
+            f"""name = "srl4c-guard-{short_id}"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+"""
+        )
+
+        try:
+            result = subprocess.run(
+                wrangler_cmd + ["deploy"],
+                cwd=tmpdir,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+
+            if result.returncode != 0:
+                raise ValueError(f"Deploy failed: {result.stderr}")
+
+            # Extract URL (same as CLI)
+            match = re.search(r"https://[^\s]+workers\.dev", result.stdout)
+            if match:
+                worker_url = match.group(0)
+                Logger.info(
+                    "guardrails",
+                    f"Worker deployed: {worker_url}",
+                    entity_type="guardrail_set",
+                    entity_id=set_id,
+                    metadata={"worker_url": worker_url},
+                )
+                return worker_url
+            else:
+                raise ValueError("Could not extract worker URL from deployment output")
+
+        except subprocess.TimeoutExpired:
+            raise ValueError("Deployment timed out")
+        except Exception as e:
+            raise ValueError(f"Deployment failed: {str(e)}")

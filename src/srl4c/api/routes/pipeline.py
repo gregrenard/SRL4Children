@@ -19,6 +19,7 @@ async def run_pipeline(request: PipelineRequest):
     from srl4c.core.attack import create_attack, run_attack
     from srl4c.core.guardrails import (
         create_guardrails,
+        deploy_worker,
         run_guardrails,
     )
     from srl4c.core.score import create_score, run_score
@@ -88,14 +89,25 @@ async def run_pipeline(request: PipelineRequest):
                 entity_id=score_id,
             )
 
-        # Step 5: Optional worker deployment (reserved for future use)
+        # Step 5: Optional worker deployment
+        worker_url = None
         if request.deploy_worker and guardrail_set_id:
-            Logger.info(
-                "pipeline",
-                "Worker deployment requested but not yet implemented",
-                entity_type="guardrail_set",
-                entity_id=guardrail_set_id,
-            )
+            try:
+                worker_url = deploy_worker(guardrail_set_id)
+                Logger.info(
+                    "pipeline",
+                    f"Worker deployed: {worker_url}",
+                    entity_type="guardrail_set",
+                    entity_id=guardrail_set_id,
+                    metadata={"worker_url": worker_url},
+                )
+            except Exception as e:
+                Logger.warn(
+                    "pipeline",
+                    f"Worker deployment failed: {str(e)}",
+                    entity_type="guardrail_set",
+                    entity_id=guardrail_set_id,
+                )
 
         Logger.info(
             "pipeline",
@@ -106,6 +118,7 @@ async def run_pipeline(request: PipelineRequest):
                 "attack_id": attack_id,
                 "score_id": score_id,
                 "guardrail_set_id": guardrail_set_id,
+                "worker_url": worker_url,
                 "final_score": final_score,
             },
         )
@@ -117,6 +130,7 @@ async def run_pipeline(request: PipelineRequest):
             guardrail_set_id=guardrail_set_id,
             status="completed",
             final_score=final_score,
+            worker_url=worker_url,
             message="Pipeline completed successfully",
         )
 

@@ -2,7 +2,6 @@
 
 import shutil
 import subprocess
-import tempfile
 from pathlib import Path
 
 from rich.console import Console
@@ -350,23 +349,24 @@ def generate_worker(console: Console, set_id: str, output_path: str = None):
 
 
 def deploy_guardrails(console: Console, set_id: str):
-    """Deploy guardrails as a Cloudflare Worker"""
-    import re
+    """Deploy guardrails as a Cloudflare Worker.
 
-    # Generate worker code
-    result = generate_worker(console, set_id)
-    if not result:
-        return
+    Wraps the core deploy_worker() function with CLI console output.
+    """
+    from srl4c.core.guardrails import deploy_worker
 
-    worker_code, full_set_id = result
-    short_id = full_set_id[:8]
+    gset = GuardrailSetRepository.get_by_id(set_id)
+    if not gset:
+        console.print(f"[red]Guardrail set not found: {set_id}[/red]")
+        return None
 
+    short_id = gset["id"][:8]
     console.print(f"\n[bold]Deploying guardrail set {short_id} to Cloudflare Workers[/bold]\n")
 
     # Check wrangler
     if not shutil.which("wrangler") and not shutil.which("npx"):
         console.print("[red]wrangler not found. Install with: npm install -g wrangler[/red]")
-        return
+        return None
 
     wrangler_cmd = ["wrangler"] if shutil.which("wrangler") else ["npx", "wrangler"]
 
@@ -380,49 +380,28 @@ def deploy_guardrails(console: Console, set_id: str):
         console.print(f"[yellow]Could not check login: {e}[/yellow]")
 
     console.print("[green]✓[/green] Wrangler ready")
+    console.print("[dim]Deploying...[/dim]")
 
-    # Create temp directory with worker files
-    with tempfile.TemporaryDirectory() as tmpdir:
-        worker_path = Path(tmpdir) / "worker.js"
-        toml_path = Path(tmpdir) / "wrangler.toml"
+    # Call core deployment logic
+    try:
+        worker_url = deploy_worker(set_id)
 
-        worker_path.write_text(worker_code)
-        toml_path.write_text(f"""name = "srl4c-guard-{short_id}"
-main = "worker.js"
-compatibility_date = "2024-01-01"
-""")
+        console.print()
+        console.print("═" * 60)
+        console.print("[bold green]✓ Deployed![/bold green]")
+        console.print()
+        console.print(f"  Worker URL: [cyan]{worker_url}[/cyan]")
+        console.print()
+        console.print("  [bold]To use in Python:[/bold]")
+        console.print(f'    [dim]export SRL4C_WORKER_URL="{worker_url}"[/dim]')
+        console.print("    [dim]client = srl4c(OpenAI(api_key='sk-...', base_url='...'))[/dim]")
+        console.print("═" * 60)
 
-        console.print("[dim]Deploying...[/dim]")
+        return worker_url
 
-        try:
-            result = subprocess.run(
-                wrangler_cmd + ["deploy"],
-                cwd=tmpdir,
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-
-            if result.returncode != 0:
-                console.print(f"[red]Deploy failed:[/red]\n{result.stderr}")
-                return
-
-            # Extract URL
-            match = re.search(r"https://[^\s]+workers\.dev", result.stdout)
-            worker_url = match.group(0) if match else f"https://srl4c-guard-{short_id}.<your-subdomain>.workers.dev"
-
-            console.print()
-            console.print("═" * 60)
-            console.print("[bold green]✓ Deployed![/bold green]")
-            console.print()
-            console.print(f"  Worker URL: [cyan]{worker_url}[/cyan]")
-            console.print()
-            console.print("  [bold]To use in Python:[/bold]")
-            console.print(f'    [dim]export SRL4C_WORKER_URL="{worker_url}"[/dim]')
-            console.print("    [dim]client = srl4c(OpenAI(api_key='sk-...', base_url='...'))[/dim]")
-            console.print("═" * 60)
-
-        except subprocess.TimeoutExpired:
-            console.print("[red]Deployment timed out[/red]")
-        except Exception as e:
-            console.print(f"[red]Deployment failed: {e}[/red]")
+    except ValueError as e:
+        console.print(f"[red]Deployment failed: {e}[/red]")
+        return None
+    except Exception as e:
+        console.print(f"[red]Deployment failed: {e}[/red]")
+        return None

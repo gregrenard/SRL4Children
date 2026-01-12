@@ -170,6 +170,7 @@ class PipelineResponse(BaseModel):
     guardrail_set_id: str | None = None
     status: str
     final_score: float | None = None
+    worker_url: str | None = None
     message: str | None = None
 
 

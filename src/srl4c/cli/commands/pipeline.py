@@ -184,6 +184,17 @@ def run_pipeline(
         console.print(f"[red]✗ Failed to generate guardrails: {e}[/red]")
         guardrail_set_id = None
 
+    # Step 5: Optional worker deployment
+    worker_url = None
+    if deploy_worker and guardrail_set_id:
+        console.print("\n[bold]Step 5: Deploying Cloudflare Worker[/bold]...")
+        try:
+            from srl4c.cli.commands.guardrails import deploy_guardrails
+
+            worker_url = deploy_guardrails(console, guardrail_set_id)
+        except Exception as e:
+            console.print(f"[yellow]⚠ Worker deployment failed: {e}[/yellow]")
+
     # Summary
     console.print("\n[bold cyan]Pipeline Complete![/bold cyan]\n")
     console.print("[dim]Summary:[/dim]")
@@ -192,4 +203,6 @@ def run_pipeline(
     console.print(f"  Score:      [cyan]{score_id}[/cyan]")
     if guardrail_set_id:
         console.print(f"  Guardrails: [cyan]{guardrail_set_id}[/cyan]")
+    if worker_url:
+        console.print(f"  Worker URL: [cyan]{worker_url}[/cyan]")
     console.print()
