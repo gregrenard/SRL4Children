@@ -49,7 +49,7 @@ def load_dataset(path: Path) -> pd.DataFrame:
     # Normalize
     result = pd.DataFrame()
     result["prompt"] = df[prompt_col]
-    result["principle_id"] = df[cat_col] if cat_col else ""
+    result["criteria_id"] = df[cat_col] if cat_col else ""
     result["id"] = df[id_col] if id_col else range(len(df))
 
     return result
@@ -174,14 +174,14 @@ def run_attack(
 
         for i, (_, row) in enumerate(df.iterrows()):
             prompt = str(row["prompt"])
-            principle_id = str(row["principle_id"]) if row["principle_id"] else ""
+            criteria_id = str(row["criteria_id"]) if row["criteria_id"] else ""
 
             # Create record
             record = Record(
                 id=generate_id(),
                 attack_id=attack_id,
                 prompt=prompt,
-                principle_id=principle_id,
+                criteria_id=criteria_id,
             )
             RecordRepository.create(record)
 

@@ -22,7 +22,7 @@ from srl4c.core.logger import Logger
 def create_score(
     attack_id: str,
     age: str = "child",
-    weights_preset: str = "balanced",
+    judge: str = "balanced",
 ) -> str:
     """Create a score job record.
 
@@ -34,7 +34,7 @@ def create_score(
     Args:
         attack_id: Attack ID to score
         age: Age context for evaluation
-        weights_preset: Weights preset name
+        judge: Weights preset name
 
     Returns:
         score_id: The ID of the created score
@@ -62,10 +62,10 @@ def create_score(
     now = datetime.now().isoformat()
     with db_connection() as conn:
         conn.execute(
-            """INSERT INTO scores (id, attack_id, age_context, weights_preset, status,
+            """INSERT INTO scores (id, attack_id, age_context, judge, status,
                progress_current, progress_total, started_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (score_id, attack.id, age, weights_preset, "pending",
+            (score_id, attack.id, age, judge, "pending",
              0, len(valid_records), now, now)
         )
 
@@ -145,7 +145,7 @@ def run_score(
 
         # Build records list for batch evaluation
         records_for_eval = [
-            (idx, r.id, r.prompt, r.response, r.principle_id if r.principle_id else None)
+            (idx, r.id, r.prompt, r.response, r.criteria_id if r.criteria_id else None)
             for idx, r in enumerate(valid_records)
         ]
 
@@ -156,7 +156,7 @@ def run_score(
             config=judge_config,
             records=records_for_eval,
             age_group=score["age_context"],
-            weights_preset=score["weights_preset"],
+            judge=score["judge"],
         )
 
         # Store evaluations in DB
@@ -184,7 +184,7 @@ def run_score(
                             evidence = jr.pass_results[0].get("evidence_extracts", [])
 
                     conn.execute(
-                        """INSERT INTO evaluations (id, score_id, record_id, principle_id,
+                        """INSERT INTO evaluations (id, score_id, record_id, criteria_id,
                            final_score, agreement_score, explanation, evidence_json, created_at)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
@@ -289,11 +289,11 @@ def generate_report(score_id: str) -> str:
 
         # Get all evaluations with record details
         evals = conn.execute(
-            """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
+            """SELECT e.*, r.prompt, r.response, r.criteria_id as record_principle
                FROM evaluations e
                JOIN records r ON e.record_id = r.id
                WHERE e.score_id = ?
-               ORDER BY r.id, e.principle_id""",
+               ORDER BY r.id, e.criteria_id""",
             (score['id'],)
         ).fetchall()
 
@@ -309,7 +309,7 @@ def generate_report(score_id: str) -> str:
     lines.append(f"| Score ID | {score['id']} |")
     lines.append(f"| Attack ID | {score['attack_id']} |")
     lines.append(f"| Age Context | {score['age_context']} |")
-    lines.append(f"| Weights | {score['weights_preset']} |")
+    lines.append(f"| Weights | {score['judge']} |")
     lines.append(f"| Status | {score['status']} |")
     lines.append(f"| Started | {score['started_at']} |")
     lines.append(f"| Completed | {score['completed_at'] or '—'} |")
@@ -374,7 +374,7 @@ def generate_report(score_id: str) -> str:
         lines.append("")
 
         # Principle tested
-        principle = e['record_principle'] or e['principle_id']
+        principle = e['record_principle'] or e['criteria_id']
         lines.append(f"**Principle tested**: `{principle}`")
         lines.append("")
 

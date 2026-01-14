@@ -89,7 +89,7 @@ class ScoreCreateResponse(BaseModel):
 
 class FailureItem(BaseModel):
     record_id: str
-    principle_id: str
+    criteria_id: str
     final_score: float
     agreement_score: Optional[float] = None
     explanation: Optional[str] = None
@@ -111,7 +111,7 @@ class GuardrailsCreate(BaseModel):
 
 class GuardrailItem(BaseModel):
     id: str
-    principle_id: str
+    criteria_id: str
     rule_text: str
     rationale: Optional[str] = None
 

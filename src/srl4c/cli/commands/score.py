@@ -18,7 +18,7 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
 
     # Create score job (shared with API)
     try:
-        score_id = create_score(attack_id, age=age, weights_preset=weights)
+        score_id = create_score(attack_id, age=age, judge=weights)
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
         return
@@ -210,7 +210,7 @@ def show_failures(console: Console, score_id: str):
     # Group by principle
     by_principle = {}
     for e in evals:
-        p = e['principle_id']
+        p = e['criteria_id']
         if p not in by_principle:
             by_principle[p] = []
         by_principle[p].append(dict(e))

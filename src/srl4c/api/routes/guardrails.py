@@ -29,7 +29,7 @@ def _gset_to_response(gset: dict, include_guardrails: bool = False) -> Guardrail
         guardrails = [
             GuardrailItem(
                 id=g["id"],
-                principle_id=g["principle_id"],
+                criteria_id=g["criteria_id"],
                 rule_text=g["rule_text"],
                 rationale=g["rationale"],
             )
@@ -143,8 +143,8 @@ async def export_guardrails(set_id: str):
         context_lines.append(f"Prompts tested: {attack['total_prompts']}")
     if score:
         context_lines.append(f"Age context: {score['age_context']}")
-        if score['weights_preset']:
-            context_lines.append(f"Weights preset: {score['weights_preset']}")
+        if score['judge']:
+            context_lines.append(f"Weights preset: {score['judge']}")
         if score['final_score'] is not None:
             context_lines.append(f"Final score: {score['final_score']:.2f}/5")
     context_lines.append(f"Model used: {gset['model']}")

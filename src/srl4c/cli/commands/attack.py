@@ -145,7 +145,7 @@ def show_attack(console: Console, attack_id: str):
 
             console.print(f"  #{i} [cyan]Prompt:[/cyan] \"{prompt_short}\"")
             console.print(f"      [green]Response:[/green] \"{response_short}\"")
-            if record.principle_id:
-                principle_short = record.principle_id.split(".")[-1]
+            if record.criteria_id:
+                principle_short = record.criteria_id.split(".")[-1]
                 console.print(f"      [dim]Principle: {principle_short}[/dim]")
             console.print()

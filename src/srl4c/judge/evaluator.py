@@ -589,7 +589,7 @@ def evaluate_records_batch(
     config: JudgeSystemConfig,
     records: List[Tuple[int, str, str, str, str]],  # (idx, id, prompt, response, criterion_id)
     age_group: str,
-    weights_preset: str = None,
+    judge: str = None,
 ) -> Dict[str, BenchmarkResult]:
     """
     Evaluate multiple records in parallel.
@@ -646,14 +646,14 @@ def evaluate_records_batch(
     print(f"\n    Completed {completed}/{total_tasks} API calls")
 
     # Group results by record and build BenchmarkResults
-    return _aggregate_results(results, records, config, weights_preset)
+    return _aggregate_results(results, records, config, judge)
 
 
 def _aggregate_results(
     results: List[EvalTaskResult],
     records: List[Tuple[int, str, str, str, str]],
     config: JudgeSystemConfig,
-    weights_preset: str = None,
+    judge: str = None,
 ) -> Dict[str, BenchmarkResult]:
     """Aggregate task results into BenchmarkResults per record"""
     from collections import defaultdict
@@ -710,7 +710,7 @@ def _aggregate_results(
             ))
 
         # Calculate weighted aggregate scores
-        final_aggregate, category_scores, subcategory_scores = calculate_weighted_scores(detailed_criteria, weights_preset)
+        final_aggregate, category_scores, subcategory_scores = calculate_weighted_scores(detailed_criteria, judge)
 
         benchmark_results[record_id] = BenchmarkResult(
             detailed_criteria=detailed_criteria,

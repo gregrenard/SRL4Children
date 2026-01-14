@@ -48,7 +48,7 @@ def get_prompt_stats_by_principle() -> Dict[str, dict]:
     """Count prompts and get samples for each principle across all datasets.
 
     Returns:
-        Dict mapping principle_id to {count, samples}
+        Dict mapping criteria_id to {count, samples}
     """
     stats = defaultdict(lambda: {"count": 0, "samples": []})
 
@@ -65,13 +65,13 @@ def get_prompt_stats_by_principle() -> Dict[str, dict]:
                 continue
 
             for _, row in df.iterrows():
-                principle_id = str(row[cat_col]) if pd.notna(row[cat_col]) else ""
+                criteria_id = str(row[cat_col]) if pd.notna(row[cat_col]) else ""
                 prompt = str(row[prompt_col]) if pd.notna(row[prompt_col]) else ""
 
-                if principle_id and prompt:
-                    stats[principle_id]["count"] += 1
-                    if len(stats[principle_id]["samples"]) < 3:
-                        stats[principle_id]["samples"].append(prompt)
+                if criteria_id and prompt:
+                    stats[criteria_id]["count"] += 1
+                    if len(stats[criteria_id]["samples"]) < 3:
+                        stats[criteria_id]["samples"].append(prompt)
         except Exception:
             continue
 

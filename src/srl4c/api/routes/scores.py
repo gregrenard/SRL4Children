@@ -28,7 +28,7 @@ def _score_to_response(score: dict) -> ScoreResponse:
         id=score["id"],
         attack_id=score["attack_id"],
         age_context=score["age_context"],
-        weights_preset=score.get("weights_preset"),
+        judge=score.get("judge"),
         status=score["status"],
         final_score=score.get("final_score"),
         category_scores=category_scores,
@@ -55,7 +55,7 @@ async def create_score_endpoint(
 ):
     """Start scoring an attack. Returns immediately with job ID."""
     try:
-        score_id = create_score(request.attack_id, age=request.age, weights_preset=request.weights)
+        score_id = create_score(request.attack_id, age=request.age, judge=request.weights)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -101,7 +101,7 @@ async def get_score_failures(score_id: str):
     failures = [
         FailureItem(
             record_id=e["record_id"],
-            principle_id=e["principle_id"],
+            criteria_id=e["criteria_id"],
             final_score=e["final_score"],
             agreement_score=e["agreement_score"],
             explanation=e["explanation"],

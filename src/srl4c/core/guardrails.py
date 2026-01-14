@@ -176,7 +176,7 @@ def create_guardrails(
     # Get failing evaluations
     with db_connection() as conn:
         evals = conn.execute(
-            """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
+            """SELECT e.*, r.prompt, r.response, r.criteria_id as record_principle
                FROM evaluations e
                JOIN records r ON e.record_id = r.id
                WHERE e.score_id = ? AND e.final_score < 3.0
@@ -190,7 +190,7 @@ def create_guardrails(
     # Group by principle to count unique principles
     by_principle = {}
     for e in evals:
-        p = e['principle_id']
+        p = e['criteria_id']
         if p not in by_principle:
             by_principle[p] = []
         by_principle[p].append(dict(e))
@@ -232,7 +232,7 @@ def get_guardrails_details(set_id: str) -> Optional[dict]:
     # Count unique failing principles
     with db_connection() as conn:
         evals = conn.execute(
-            """SELECT DISTINCT e.principle_id
+            """SELECT DISTINCT e.criteria_id
                FROM evaluations e
                WHERE e.score_id = ? AND e.final_score < 3.0""",
             (gset["score_id"],)
@@ -295,7 +295,7 @@ def run_guardrails(
         # Get failing evaluations
         with db_connection() as conn:
             evals = conn.execute(
-                """SELECT e.*, r.prompt, r.response, r.principle_id as record_principle
+                """SELECT e.*, r.prompt, r.response, r.criteria_id as record_principle
                    FROM evaluations e
                    JOIN records r ON e.record_id = r.id
                    WHERE e.score_id = ? AND e.final_score < 3.0
@@ -307,7 +307,7 @@ def run_guardrails(
         # Group by principle
         by_principle: Dict[str, List[dict]] = {}
         for e in evals:
-            p = e['principle_id']
+            p = e['criteria_id']
             if p not in by_principle:
                 by_principle[p] = []
             by_principle[p].append(e)
@@ -393,7 +393,7 @@ def run_guardrails(
                             all_guardrails.append({
                                 'id': guardrail_id,
                                 'set_id': set_id,
-                                'principle_id': principle,
+                                'criteria_id': principle,
                                 'rule_text': rule,
                                 'rationale': g.get('rationale', ''),
                             })
@@ -420,9 +420,9 @@ def run_guardrails(
         with db_connection() as conn:
             for g in all_guardrails:
                 conn.execute(
-                    """INSERT INTO guardrails (id, set_id, principle_id, rule_text, rationale, created_at)
+                    """INSERT INTO guardrails (id, set_id, criteria_id, rule_text, rationale, created_at)
                        VALUES (?, ?, ?, ?, ?, ?)""",
-                    (g['id'], g['set_id'], g['principle_id'], g['rule_text'], g['rationale'], now)
+                    (g['id'], g['set_id'], g['criteria_id'], g['rule_text'], g['rationale'], now)
                 )
 
             # Update set rules_count and status

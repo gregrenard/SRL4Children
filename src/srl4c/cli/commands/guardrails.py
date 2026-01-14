@@ -74,7 +74,7 @@ def generate_guardrails_cmd(console: Console, score_id: str, max_rules: int = 3,
     table.add_column("Rule")
 
     for idx, g in enumerate(all_guardrails, 1):
-        short_p = g['principle_id'].split(".")[-1]
+        short_p = g['criteria_id'].split(".")[-1]
         table.add_row(
             str(idx),
             short_p,
@@ -172,7 +172,7 @@ def show_guardrail(console: Console, set_id: str):
     console.print()
 
     for idx, g in enumerate(guardrails, 1):
-        short_p = g['principle_id'].split(".")[-1] if g['principle_id'] else ""
+        short_p = g['criteria_id'].split(".")[-1] if g['criteria_id'] else ""
         console.print(f"[bold]Rule {idx}[/bold] - {short_p}")
         console.print(f"  {g['rule_text']}")
         if g['rationale']:

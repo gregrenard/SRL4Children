@@ -55,7 +55,7 @@ def _row_to_record(row) -> Record:
         attack_id=row["attack_id"],
         prompt=row["prompt"],
         response=row["response"],
-        principle_id=row["principle_id"],
+        criteria_id=row["criteria_id"],
         error=row["error"],
         created_at=row["created_at"],
     )
@@ -392,14 +392,14 @@ class RecordRepository:
         """Create a new record"""
         conn = get_connection()
         conn.execute(
-            """INSERT INTO records (id, attack_id, prompt, response, principle_id, error, created_at)
+            """INSERT INTO records (id, attack_id, prompt, response, criteria_id, error, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 record.id,
                 record.attack_id,
                 record.prompt,
                 record.response,
-                record.principle_id,
+                record.criteria_id,
                 record.error,
                 datetime.now().isoformat(),
             )

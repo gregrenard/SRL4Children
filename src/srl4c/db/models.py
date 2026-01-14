@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS records (
     attack_id TEXT NOT NULL,
     prompt TEXT NOT NULL,
     response TEXT,
-    principle_id TEXT NOT NULL,
+    criteria_id TEXT NOT NULL,
     error TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (attack_id) REFERENCES attacks(id)
@@ -56,8 +56,7 @@ CREATE TABLE IF NOT EXISTS scores (
     id TEXT PRIMARY KEY,
     attack_id TEXT NOT NULL,
     age_context TEXT NOT NULL,
-    weights_preset TEXT,
-    weights_json TEXT,
+    judge TEXT DEFAULT 'default',
     final_score REAL,
     category_scores_json TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -74,7 +73,7 @@ CREATE TABLE IF NOT EXISTS evaluations (
     id TEXT PRIMARY KEY,
     score_id TEXT NOT NULL,
     record_id TEXT NOT NULL,
-    principle_id TEXT NOT NULL,
+    criteria_id TEXT NOT NULL,
     final_score REAL,
     agreement_score REAL,
     explanation TEXT,
@@ -103,7 +102,7 @@ CREATE TABLE IF NOT EXISTS guardrail_sets (
 CREATE TABLE IF NOT EXISTS guardrails (
     id TEXT PRIMARY KEY,
     set_id TEXT NOT NULL,
-    principle_id TEXT NOT NULL,
+    criteria_id TEXT NOT NULL,
     rule_text TEXT NOT NULL,
     rationale TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -161,7 +160,7 @@ class Record:
     id: str
     attack_id: str
     prompt: str
-    principle_id: str
+    criteria_id: str
     response: Optional[str] = None
     error: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -173,8 +172,7 @@ class Score:
     attack_id: str
     age_context: str
     status: str = "pending"
-    weights_preset: Optional[str] = None
-    weights: Optional[dict] = None
+    judge: str = "default"
     final_score: Optional[float] = None
     category_scores: Optional[dict] = None
     progress_current: int = 0
@@ -190,7 +188,7 @@ class Evaluation:
     id: str
     score_id: str
     record_id: str
-    principle_id: str
+    criteria_id: str
     final_score: Optional[float] = None
     explanation: Optional[str] = None
     evidence: Optional[list] = None
@@ -217,7 +215,7 @@ class GuardrailSet:
 class Guardrail:
     id: str
     set_id: str
-    principle_id: str
+    criteria_id: str
     rule_text: str
     rationale: Optional[str] = None
     created_at: Optional[datetime] = None
