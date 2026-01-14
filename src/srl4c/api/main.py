@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from srl4c.api.schemas import HealthResponse
-from srl4c.api.routes import attacks, scores, guardrails, endpoints, datasets, principles, logs, judges, generators
+from srl4c.api.routes import attacks, scores, guardrails, endpoints, datasets, criteria, logs, judges, generators
 
 app = FastAPI(
     title="SRL4C API",
@@ -33,7 +33,7 @@ api_router.include_router(attacks.router)
 api_router.include_router(scores.router)
 api_router.include_router(guardrails.router)
 api_router.include_router(datasets.router)
-api_router.include_router(principles.router)
+api_router.include_router(criteria.router)
 api_router.include_router(logs.router)
 api_router.include_router(judges.router)
 api_router.include_router(generators.router)

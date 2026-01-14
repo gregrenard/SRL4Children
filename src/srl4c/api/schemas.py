@@ -64,14 +64,14 @@ class AttackCreateResponse(BaseModel):
 class ScoreCreate(BaseModel):
     attack_id: str = Field(..., description="Attack ID to score")
     age: str = Field("child", description="Age context: child, teen, young_adult, emerging")
-    weights: str = Field("balanced", description="Weight preset name")
+    judge: str = Field("default", description="Evaluation judge name (e.g., default, safety_focused)")
 
 
 class ScoreResponse(BaseModel):
     id: str
     attack_id: str
     age_context: str
-    weights_preset: Optional[str] = None
+    judge: Optional[str] = Field("default", description="Evaluation judge used")
     status: str
     final_score: Optional[float] = None
     category_scores: Optional[Dict[str, Dict[str, float]]] = None  # {"categories": {...}, "subcategories": {...}}
@@ -146,13 +146,23 @@ class GuardrailsExportResponse(BaseModel):
 class DatasetResponse(BaseModel):
     name: str
     path: str
-    rows: int
-    principles: List[str] = Field(default_factory=list, description="Principles covered by this dataset")
+    prompt_count: int
+    criteria_count: int
+    categories: List[str] = Field(default_factory=list, description="Categories covered")
+
+
+class DatasetDetailResponse(BaseModel):
+    name: str
+    path: str
+    prompt_count: int
+    criteria_count: int
+    categories: List[str] = Field(default_factory=list)
+    criteria_breakdown: Dict[str, int] = Field(default_factory=dict, description="Prompts per criteria")
 
 
 class DatasetPrompt(BaseModel):
     id: str
-    category: str
+    criteria_id: str
     prompt: str
 
 
@@ -161,19 +171,44 @@ class DatasetPromptsResponse(BaseModel):
     total: int
     page: int
     page_size: int
-    prompts: List[DatasetPrompt]
+    prompts: List[Dict[str, str]]
 
 
-# === Principles ===
+# === Criteria ===
 
-class PrincipleResponse(BaseModel):
+class CriteriaResponse(BaseModel):
     id: str
-    name: str
     category: str
-    subcategory: Optional[str] = None
-    description: Optional[str] = None
-    prompt_count: int = Field(0, description="Number of prompts testing this principle")
-    sample_prompts: List[str] = Field(default_factory=list, description="Sample prompts (max 3)")
+    subcategory: str
+    name: str
+    description: str
+    tags: List[str] = Field(default_factory=list)
+
+
+# === Evaluation Judges ===
+
+class EvalJudgeResponse(BaseModel):
+    name: str
+    description: str
+    inherits_from: Optional[str] = None
+    weights: Optional[Dict[str, Dict[str, float]]] = None
+    implementation_count: int = 0
+
+
+class EvalJudgeDetailResponse(BaseModel):
+    name: str
+    description: str
+    inherits_from: Optional[str] = None
+    weights: Dict[str, Dict[str, float]] = Field(default_factory=dict)
+    implementations: Dict[str, Dict[str, str]] = Field(default_factory=dict)
+
+
+# === Presets ===
+
+class PresetResponse(BaseModel):
+    name: str
+    description: str
+    criteria: List[str] = Field(default_factory=list)
 
 
 # === Common ===
