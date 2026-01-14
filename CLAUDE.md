@@ -12,7 +12,9 @@ SRL4Children/
 │   ├── core/                  # Shared business logic (CLI + API)
 │   │   ├── attack.py          # create_attack(), run_attack()
 │   │   ├── score.py           # create_score(), run_score()
-│   │   └── guardrails.py      # create_guardrails(), run_guardrails()
+│   │   ├── guardrails.py      # create_guardrails(), run_guardrails()
+│   │   ├── datasets.py        # Dataset CRUD operations
+│   │   └── judges.py          # Evaluation judge CRUD operations
 │   ├── cli/                   # Typer CLI (thin wrapper)
 │   │   ├── main.py            # Command definitions
 │   │   └── commands/          # Command implementations
@@ -20,11 +22,12 @@ SRL4Children/
 │   │   ├── main.py            # FastAPI app + routers
 │   │   ├── schemas.py         # Pydantic request/response models
 │   │   └── routes/            # Route handlers
-│   ├── criteria/              # Criteria loader
-│   │   └── loader.py          # Loads principles from registry
+│   ├── registry/              # Registry loader
+│   │   └── loader.py          # Loads criteria & judges from registry.yml
 │   ├── db/                    # SQLite persistence
-│   │   ├── models.py          # Data models
-│   │   └── repository.py      # CRUD operations
+│   │   ├── models.py          # Data models + dataclasses
+│   │   ├── repository.py      # CRUD operations
+│   │   └── sync.py            # Sync built-in datasets/judges from files
 │   ├── judge/                 # Evaluation system
 │   │   ├── config.py          # Judge configuration
 │   │   └── evaluator.py       # Multi-judge scoring
@@ -33,18 +36,20 @@ SRL4Children/
 │   └── wrapper.py             # OpenAI proxy wrapper
 │
 ├── data/
-│   ├── criteria/              # 22 .prompt files + registry.yml
-│   │   ├── safety/
-│   │   ├── anthropomorphism/
-│   │   ├── age/
-│   │   ├── relevance/
-│   │   └── ethics/
-│   └── datasets/              # Attack CSV files
+│   ├── criteria/              # Registry + judge prompt files
+│   │   ├── registry.yml       # Master registry (criteria, judges, presets)
+│   │   └── judges/            # Judge implementations
+│   │       └── default/       # Default judge prompts (22 .prompt files)
+│   │           ├── safety/
+│   │           ├── anthropomorphism/
+│   │           ├── age/
+│   │           ├── relevance/
+│   │           └── ethics/
+│   └── datasets/              # Attack CSV files (auto-discovered)
 │
 ├── templates/                 # Copied to ~/.srl4c/ on init
-│   ├── judges.yaml
-│   ├── weights.yaml
-│   └── guardrails.yaml
+│   ├── judges.yaml            # LLM judge model configuration
+│   └── guardrails.yaml        # Guardrail generation settings
 │
 ├── archive/                   # Legacy docs (not maintained)
 └── sample_apps/               # Example applications
@@ -55,11 +60,15 @@ SRL4Children/
 ```bash
 # Run CLI
 uv run python -m srl4c.cli.main --help
-uv run python -m srl4c.cli.main principles list
-uv run python -m srl4c.cli.main dataset list
+uv run python -m srl4c.cli.main criteria list      # List 22 criteria definitions
+uv run python -m srl4c.cli.main eval-judges list   # List evaluation judges
+uv run python -m srl4c.cli.main dataset list       # List datasets
 
 # Start API server
 uv run python -m srl4c.cli.main api serve --port 8000
+
+# Start UI (in separate terminal)
+cd ui && VITE_API_URL=http://localhost:8000 npm run dev
 
 # Install globally
 uv tool install -e . --force
@@ -69,20 +78,28 @@ srl4c api serve --port 8000
 
 ## Key Concepts
 
-### Design Principles
-22 safety criteria in 5 categories:
+### Criteria vs Judges
+
+**Criteria** are abstract safety definitions (22 total in 5 categories):
 - **Safety** (6): sexual_content, violence, manipulation, hate
 - **Anthropomorphism** (8): emotions, agency, sycophancy, parasocial bonds
 - **Age** (3): vocabulary, complexity, abstract concepts
 - **Relevance** (2): topic match, factual accuracy
 - **Ethics** (3): harmful advice, positive guidance, social norms
 
-Each principle has a `.prompt` file in `data/criteria/` with scoring guide and examples.
+**Judges** are implementations that evaluate criteria. Each judge:
+- Inherits from a parent (e.g., `safety_focused` inherits from `default`)
+- Has `.prompt` files with scoring guides and examples
+- Can override weights (how much each criteria contributes to final score)
+
+Built-in judges: `default`, `safety_focused`, `anthropomorphism_focused`, `educational`, `research`
 
 ### Datasets
-CSV files in `data/datasets/` with attack prompts:
+**First-class DB objects** - both built-in (synced from `data/datasets/*.csv`) and user-uploaded.
+
+CSV format:
 - `PromptID`: UUID
-- `Category`: Which principle this tests
+- `Category`: Criteria ID (e.g., `anthropomorphism.parasocial_bonds.exclusivity_claims`)
 - `Prompt`: The adversarial prompt text
 
 ### CLI Workflow
@@ -150,24 +167,27 @@ Jobs running >90 min without updates auto-mark as `stale`.
 | `src/srl4c/core/attack.py` | Attack business logic (create + run) |
 | `src/srl4c/core/score.py` | Score business logic (create + run + report) |
 | `src/srl4c/core/guardrails.py` | Guardrails business logic (create + run) |
+| `src/srl4c/core/datasets.py` | Dataset CRUD (list, get, create, delete) |
+| `src/srl4c/core/judges.py` | Eval judge CRUD (list, get, create, update weights) |
 | `src/srl4c/api/main.py` | FastAPI app with all routers |
 | `src/srl4c/api/schemas.py` | Pydantic request/response models |
 | `src/srl4c/cli/main.py` | Typer CLI command definitions |
 | `src/srl4c/paths.py` | All path constants |
-| `src/srl4c/criteria/loader.py` | Load principles from registry |
+| `src/srl4c/registry/loader.py` | Load criteria & judges from registry |
 | `src/srl4c/judge/evaluator.py` | Multi-judge evaluation + weighting |
 | `src/srl4c/db/repository.py` | CRUD + progress update methods |
-| `data/criteria/registry.yml` | Principle registry with presets |
-| `templates/judges.yaml` | Judge model configuration |
-| `templates/weights.yaml` | Score weighting presets |
+| `src/srl4c/db/sync.py` | Sync built-in datasets/judges from files to DB |
+| `data/criteria/registry.yml` | Master registry (criteria, judges, presets) |
+| `templates/judges.yaml` | LLM judge model configuration |
 
 ## Configuration
 
 User configs live in `~/.srl4c/`:
-- `judges.yaml` - Which models judge responses
-- `weights.yaml` - How to weight categories (presets: balanced, safety_focused, etc.)
-- `guardrails.yaml` - Guardrail generation settings
-- `srl4c.db` - SQLite database
+- `judges.yaml` - Which LLM models judge responses (model names, passes, temperatures)
+- `guardrails.yaml` - Guardrail generation settings (model, max rules)
+- `srl4c.db` - SQLite database (endpoints, attacks, scores, datasets, judges, etc.)
+
+**Note**: Evaluation judge weights are now stored per-judge in the database, not in a separate YAML file. Use the UI or API to create custom judges with weight overrides.
 
 ## Testing
 

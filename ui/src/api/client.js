@@ -57,11 +57,38 @@ export const api = {
   previewDeleteGuardrail: (id) => fetch(`${API_BASE}/guardrails/${id}/delete-preview`).then(handleResponse),
   deleteGuardrail: (id) => fetch(`${API_BASE}/guardrails/${id}`, { method: 'DELETE' }).then(handleResponse),
 
-  // Reference data
+  // Datasets
   getDatasets: () => fetch(`${API_BASE}/datasets`).then(handleResponse),
-  getDatasetPrompts: (name, page = 1, pageSize = 50) =>
-    fetch(`${API_BASE}/datasets/${name}/prompts?page=${page}&page_size=${pageSize}`).then(handleResponse),
-  getPrinciples: () => fetch(`${API_BASE}/principles`).then(handleResponse),
+  getDataset: (idOrName) => fetch(`${API_BASE}/datasets/${idOrName}`).then(handleResponse),
+  getDatasetPrompts: (idOrName, page = 1, pageSize = 50) =>
+    fetch(`${API_BASE}/datasets/${idOrName}/prompts?page=${page}&page_size=${pageSize}`).then(handleResponse),
+  createDataset: (data) => fetch(`${API_BASE}/datasets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+  deleteDataset: (idOrName) => fetch(`${API_BASE}/datasets/${idOrName}`, { method: 'DELETE' }).then(handleResponse),
+
+  // Criteria (from registry)
+  getCriteria: () => fetch(`${API_BASE}/criteria`).then(handleResponse),
+
+  // Evaluation judges (from DB)
+  getEvalJudges: () => fetch(`${API_BASE}/eval-judges`).then(handleResponse),
+  getEvalJudge: (idOrName) => fetch(`${API_BASE}/eval-judges/${idOrName}`).then(handleResponse),
+  createEvalJudge: (data) => fetch(`${API_BASE}/eval-judges`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+  updateEvalJudgeWeights: (idOrName, weights) => fetch(`${API_BASE}/eval-judges/${idOrName}/weights`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ weights })
+  }).then(handleResponse),
+  deleteEvalJudge: (idOrName) => fetch(`${API_BASE}/eval-judges/${idOrName}`, { method: 'DELETE' }).then(handleResponse),
+
+  // Presets (from registry)
+  getPresets: () => fetch(`${API_BASE}/presets`).then(handleResponse),
 
   // Logs
   getLogs: (limit = 50) => fetch(`${API_BASE}/logs?limit=${limit}`).then(handleResponse),

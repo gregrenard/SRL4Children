@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Dashboard, Datasets } from './pages';
+import { Dashboard, Datasets, Judges } from './pages';
 import './index.css';
 
 function App() {
@@ -8,6 +8,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/datasets" element={<Datasets />} />
+        <Route path="/judges" element={<Judges />} />
       </Routes>
     </BrowserRouter>
   );

@@ -163,8 +163,15 @@ def attack_delete(
         has_children = preview.get("has_children", False)
         will_delete = preview.get("will_delete", {})
 
+        # Get dataset name from ID
+        from srl4c.db.repository import DatasetRepository
+        dataset_id = attack.get('dataset_id')
+        dataset_name = "unknown"
+        if dataset_id:
+            dataset = DatasetRepository.get_by_id(dataset_id)
+            dataset_name = dataset.name if dataset else dataset_id[:8]
         console.print(f"\n[bold]Delete Attack:[/bold] [cyan]{attack.get('id', id)[:8]}[/cyan]")
-        console.print(f"  Dataset: {attack.get('dataset_name', 'unknown')}")
+        console.print(f"  Dataset: {dataset_name}")
 
         if has_children:
             console.print(f"\n[yellow]⚠ This will also delete:[/yellow]")

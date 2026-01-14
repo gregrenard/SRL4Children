@@ -13,6 +13,7 @@ export const Dashboard = () => {
   const [scores, setScores] = useState([]);
   const [guardrails, setGuardrails] = useState([]);
   const [datasets, setDatasets] = useState([]);
+  const [evalJudges, setEvalJudges] = useState([]);
   const [loading, setLoading] = useState({ endpoints: true, attacks: true, scores: true, guardrails: true });
   const [error, setError] = useState({});
 
@@ -66,6 +67,10 @@ export const Dashboard = () => {
     api.getDatasets().then(data => setDatasets(Array.isArray(data) ? data : [])).catch(console.error);
   }, []);
 
+  const fetchEvalJudges = useCallback(() => {
+    api.getEvalJudges().then(data => setEvalJudges(Array.isArray(data) ? data : [])).catch(console.error);
+  }, []);
+
   // Initial fetch
   useEffect(() => {
     fetchEndpoints();
@@ -73,6 +78,7 @@ export const Dashboard = () => {
     fetchScores();
     fetchGuardrails();
     fetchDatasets();
+    fetchEvalJudges();
   }, []);
 
   // Polling for running jobs
@@ -141,7 +147,7 @@ export const Dashboard = () => {
           await api.createScore({
             attack_id: values.attack_id,
             age: values.age,
-            weights: values.weights || 'balanced'
+            judge: values.judge || 'default'
           });
           fetchScores();
           break;
@@ -200,13 +206,7 @@ export const Dashboard = () => {
           { value: 'teen', label: 'Teen (13-17)' },
           { value: 'young_adult', label: 'Young Adult (18-25)' },
         ]},
-        { name: 'weights', label: 'Weight Preset', type: 'select', required: false, options: [
-          { value: 'balanced', label: 'Balanced (default)' },
-          { value: 'safety_focused', label: 'Safety Focused' },
-          { value: 'anthropomorphism_focused', label: 'Anthropomorphism Focused' },
-          { value: 'educational', label: 'Educational' },
-          { value: 'research', label: 'Research' },
-        ]},
+        { name: 'judge', label: 'Evaluation Judge', type: 'select', required: false, options: evalJudges.map(j => ({ value: j.name, label: j.name === 'default' ? 'default (balanced weights)' : j.name })) },
       ]
     },
     guardrail: {

@@ -3,7 +3,15 @@
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
-from srl4c.db.repository import EndpointRepository, AttackRepository, RecordRepository
+from srl4c.db.repository import EndpointRepository, AttackRepository, RecordRepository, DatasetRepository
+
+
+def _get_dataset_name(dataset_id: str) -> str:
+    """Get dataset name from ID, with fallback."""
+    if not dataset_id:
+        return "unknown"
+    dataset = DatasetRepository.get_by_id(dataset_id)
+    return dataset.name if dataset else dataset_id[:8]
 
 
 def run_attack(console: Console, endpoint_name: str, dataset_name: str):
@@ -21,9 +29,10 @@ def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     attack = AttackRepository.get_by_id(attack_id)
     endpoint = EndpointRepository.get_by_id(attack.endpoint_id)
 
+    dataset_name_display = _get_dataset_name(attack.dataset_id)
     console.print(f"\nStarting attack...")
     console.print(f"  Endpoint: [cyan]{endpoint.name}[/cyan] ({endpoint.id})")
-    console.print(f"  Dataset:  [cyan]{attack.dataset_name}[/cyan] ({attack.total_prompts} prompts)\n")
+    console.print(f"  Dataset:  [cyan]{dataset_name_display}[/cyan] ({attack.total_prompts} prompts)\n")
     console.print(f"Attack [cyan]{attack_id}[/cyan] created\n")
 
     # Run with progress display
@@ -53,7 +62,7 @@ def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     console.print(f"\n[green]✓[/green] Attack completed")
     console.print(f"  ID:        [cyan]{attack.id}[/cyan]")
     console.print(f"  Prompts:   {attack.completed_prompts} sent, {errors} errors")
-    console.print(f"\nNext step: [cyan]srl4c score run {attack.id} --age child --weights balanced[/cyan]\n")
+    console.print(f"\nNext step: [cyan]srl4c score run {attack.id} --age child --judge default[/cyan]\n")
 
 
 def list_attacks(console: Console):
@@ -93,11 +102,12 @@ def list_attacks(console: Console):
 
         prompts = f"{attack.completed_prompts}/{attack.total_prompts}"
         date = attack.started_at[:10] if attack.started_at else ""
+        dataset_name_display = _get_dataset_name(attack.dataset_id)
 
         table.add_row(
             attack.id[:8],
             endpoint_name,
-            attack.dataset_name,
+            dataset_name_display,
             f"[{status_style}]{status}[/{status_style}]",
             prompts,
             date,
@@ -121,12 +131,14 @@ def show_attack(console: Console, attack_id: str):
     endpoint = EndpointRepository.get_by_id(attack.endpoint_id)
     endpoint_name = endpoint.name if endpoint else attack.endpoint_id
 
+    dataset_name_display = _get_dataset_name(attack.dataset_id)
+
     console.print(f"\n[bold]Attack:[/bold] {attack.id}")
     console.print(f"[bold]Status:[/bold] {attack.status}")
     if attack.error_message:
         console.print(f"[bold]Error:[/bold] [red]{attack.error_message}[/red]")
     console.print(f"[bold]Endpoint:[/bold] {endpoint_name} ({attack.endpoint_id})")
-    console.print(f"[bold]Dataset:[/bold] {attack.dataset_name}")
+    console.print(f"[bold]Dataset:[/bold] {dataset_name_display}")
     console.print(f"[bold]Started:[/bold] {attack.started_at}")
     console.print(f"[bold]Completed:[/bold] {attack.completed_at or 'N/A'}")
     console.print(f"[bold]Records:[/bold] {attack.completed_prompts}/{attack.total_prompts}\n")

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from srl4c.core.attack import create_attack, run_attack
-from srl4c.db.repository import AttackRepository
+from srl4c.db.repository import AttackRepository, DatasetRepository
 from srl4c.api.schemas import (
     AttackCreate, AttackResponse, AttackCreateResponse
 )
@@ -16,10 +16,19 @@ def _attack_to_response(attack) -> AttackResponse:
     progress = 0.0
     if attack.progress_total and attack.progress_total > 0:
         progress = attack.progress_current / attack.progress_total
+
+    # Get dataset name for display
+    dataset_name = None
+    if attack.dataset_id:
+        dataset = DatasetRepository.get_by_id(attack.dataset_id)
+        if dataset:
+            dataset_name = dataset.name
+
     return AttackResponse(
         id=attack.id,
         endpoint_id=attack.endpoint_id,
-        dataset_name=attack.dataset_name,
+        dataset_id=attack.dataset_id,
+        dataset_name=dataset_name,
         status=attack.status,
         total_prompts=attack.total_prompts,
         completed_prompts=attack.completed_prompts,

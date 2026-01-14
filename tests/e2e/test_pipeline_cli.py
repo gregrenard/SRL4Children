@@ -68,25 +68,39 @@ judges:
         settings_content = "active_judges: fake.judges\n"
         (config_dir / "settings.yaml").write_text(settings_content)
 
-        # Copy test dataset
-        datasets_dir = config_dir / "datasets"
-        datasets_dir.mkdir()
+        # Patch paths before importing db modules
+        import srl4c.paths
+        import srl4c.db
+        srl4c.paths.USER_CONFIG_DIR = config_dir
+        srl4c.db.SRL4C_HOME = config_dir
+        srl4c.db.DB_PATH = config_dir / "srl4c.db"
+
+        # Also patch in models module
+        import srl4c.db.models
+        srl4c.db.models.DB_PATH = config_dir / "srl4c.db"
+
+        # Initialize database with sync (populates built-in datasets/judges)
+        from srl4c.db.models import init_db
+        from srl4c.core.datasets import create_dataset
+
+        init_db()
+
+        # Create test dataset in DB
         test_dataset_src = PROJECT_ROOT / "tests" / "fixtures" / "test_dataset.csv"
-        test_dataset_dst = datasets_dir / "test_mini.csv"
-        test_dataset_dst.write_text(test_dataset_src.read_text())
+        csv_content = test_dataset_src.read_text()
+        try:
+            create_dataset(
+                name="test_mini",
+                csv_content=csv_content,
+                description="Test dataset for E2E tests",
+            )
+        except ValueError:
+            pass  # Already exists
 
-        # Initialize database
-        from srl4c.db.models import SCHEMA
-        import sqlite3
-        db_path = config_dir / "srl4c.db"
-        conn = sqlite3.connect(str(db_path))
-        conn.executescript(SCHEMA)
-        conn.commit()
-        conn.close()
-
-        # Create environment with modified HOME
+        # Create environment with modified HOME and SRL4C_HOME
         env = os.environ.copy()
         env["HOME"] = str(fake_home)
+        env["SRL4C_HOME"] = str(config_dir)  # Explicit path to config dir
         env["PYTHONPATH"] = str(PROJECT_ROOT / "src")
 
         return {
@@ -154,7 +168,7 @@ judges:
         result = run_cli([
             "score", "run", attack_id,
             "--age", "child",
-            "--weights", "balanced",
+            "--judge", "default",
         ], env=env, timeout=180)
         assert result.returncode == 0, f"Score failed: {result.stderr}\n{result.stdout}"
 
@@ -228,13 +242,13 @@ judges:
         assert result.returncode == 0
         assert "fake.judges" in result.stdout
 
-    def test_principles_list(self, cli_env):
-        """Test principles listing"""
+    def test_criteria_list(self, cli_env):
+        """Test criteria listing"""
         env = cli_env["env"]
 
-        result = run_cli(["principles", "list"], env=env)
+        result = run_cli(["criteria", "list"], env=env)
         assert result.returncode == 0
-        # Should list some principles
+        # Should list some criteria
         assert "safety" in result.stdout.lower() or "harm" in result.stdout.lower()
 
     def test_score_report(self, cli_env):

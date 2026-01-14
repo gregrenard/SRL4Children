@@ -4,7 +4,7 @@ import json
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from srl4c.core.score import create_score, run_score
-from srl4c.db.repository import ScoreRepository
+from srl4c.db.repository import ScoreRepository, JudgeRepository
 from srl4c.db.models import db_connection
 from srl4c.api.schemas import (
     ScoreCreate, ScoreResponse, ScoreCreateResponse,
@@ -24,11 +24,20 @@ def _score_to_response(score: dict) -> ScoreResponse:
     if score.get("category_scores_json"):
         category_scores = json.loads(score["category_scores_json"])
 
+    # Get judge name for display
+    judge_name = None
+    judge_id = score.get("judge_id")
+    if judge_id:
+        judge = JudgeRepository.get_by_id(judge_id)
+        if judge:
+            judge_name = judge.name
+
     return ScoreResponse(
         id=score["id"],
         attack_id=score["attack_id"],
         age_context=score["age_context"],
-        judge=score.get("judge"),
+        judge_id=judge_id,
+        judge_name=judge_name,
         status=score["status"],
         final_score=score.get("final_score"),
         category_scores=category_scores,
@@ -55,7 +64,7 @@ async def create_score_endpoint(
 ):
     """Start scoring an attack. Returns immediately with job ID."""
     try:
-        score_id = create_score(request.attack_id, age=request.age, judge=request.weights)
+        score_id = create_score(request.attack_id, age=request.age, judge=request.judge)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -1,19 +1,30 @@
-"""Criteria and evaluation judges routes."""
+"""Criteria and evaluation judges routes.
+
+Criteria definitions stay in registry.yml (abstract definitions).
+Judges are first-class objects in DB (synced from registry for built-in).
+"""
 
 from fastapi import APIRouter, HTTPException
 
 from srl4c.registry import get_registry_loader
+from srl4c.core.judges import (
+    list_judges, get_judge, get_judge_criteria, create_judge,
+    update_judge_weights, delete_judge, get_resolved_weights
+)
+from srl4c.db.repository import JudgeRepository
 from srl4c.api.schemas import (
     CriteriaResponse,
     EvalJudgeResponse,
     EvalJudgeDetailResponse,
     PresetResponse,
+    JudgeCreate,
+    JudgeUpdateWeights,
 )
 
 router = APIRouter(tags=["registry"])
 
 
-# === Criteria ===
+# === Criteria (from registry.yml) ===
 
 @router.get("/criteria", response_model=list[CriteriaResponse])
 async def list_criteria():
@@ -54,59 +65,122 @@ async def get_criteria(criteria_id: str):
     )
 
 
-# === Evaluation Judges ===
+# === Evaluation Judges (from DB) ===
+
+def _judge_to_response(judge) -> EvalJudgeResponse:
+    """Convert Judge model to response schema."""
+    # Get parent name for display
+    parent_name = None
+    if judge.inherits_from:
+        parent = JudgeRepository.get_by_id(judge.inherits_from)
+        if parent:
+            parent_name = parent.name
+
+    # Get implementation count (all judges now have implementations in DB)
+    criteria = get_judge_criteria(judge.id)
+    impl_count = len(criteria)
+
+    return EvalJudgeResponse(
+        id=judge.id,
+        name=judge.name,
+        description=judge.description,
+        is_builtin=judge.is_builtin,
+        inherits_from=judge.inherits_from,
+        inherits_from_name=parent_name,
+        weights=judge.weights if judge.weights else None,
+        implementation_count=impl_count,
+        created_at=str(judge.created_at) if judge.created_at else None,
+        updated_at=str(judge.updated_at) if judge.updated_at else None,
+    )
+
 
 @router.get("/eval-judges", response_model=list[EvalJudgeResponse])
 async def list_eval_judges():
-    """List evaluation judges (scoring policies)."""
-    loader = get_registry_loader()
-    judge_names = loader.list_judges()
-
-    result = []
-    for name in judge_names:
-        judge = loader.get_judge(name)
-        result.append(
-            EvalJudgeResponse(
-                name=judge.name,
-                description=judge.description,
-                inherits_from=judge.inherits_from,
-                weights=judge.weights if judge.weights.get("categories") else None,
-                implementation_count=len(judge.implementations),
-            )
-        )
-
-    return result
+    """List evaluation judges (built-in + user created)."""
+    judges = list_judges()
+    return [_judge_to_response(j) for j in judges]
 
 
-@router.get("/eval-judges/{name}", response_model=EvalJudgeDetailResponse)
-async def get_eval_judge(name: str):
-    """Get evaluation judge details."""
-    loader = get_registry_loader()
-
+@router.post("/eval-judges", response_model=EvalJudgeResponse, status_code=201)
+async def create_eval_judge(request: JudgeCreate):
+    """Create a new user judge with weight overrides."""
     try:
-        judge = loader.get_judge(name)
-    except ValueError:
-        raise HTTPException(status_code=404, detail=f"Evaluation judge not found: {name}")
+        judge = create_judge(
+            name=request.name,
+            inherits_from=request.inherits_from,
+            weights=request.weights,
+            description=request.description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # Convert implementations to serializable format
-    implementations = {}
-    for criteria_id, impl in judge.implementations.items():
-        implementations[criteria_id] = {
-            "file": impl.file,
-            "version": impl.version,
-            "author": impl.author,
+    return _judge_to_response(judge)
+
+
+@router.get("/eval-judges/{judge_id}", response_model=EvalJudgeDetailResponse)
+async def get_eval_judge(judge_id: str):
+    """Get evaluation judge details by ID or name."""
+    judge = get_judge(judge_id)
+    if not judge:
+        raise HTTPException(status_code=404, detail=f"Evaluation judge not found: {judge_id}")
+
+    # Get parent name for display
+    parent_name = None
+    if judge.inherits_from:
+        parent = JudgeRepository.get_by_id(judge.inherits_from)
+        if parent:
+            parent_name = parent.name
+
+    # Get resolved weights (with inheritance)
+    resolved_weights = get_resolved_weights(judge.id)
+
+    # Get criteria implementations (all judges now have implementations in DB)
+    criteria = get_judge_criteria(judge.id)
+    implementations = [
+        {
+            "criteria_id": c.criteria_id,
+            "version": c.version,
+            "author": c.author,
+            "created_at": str(c.created_at) if c.created_at else None,
         }
+        for c in criteria
+    ]
 
     return EvalJudgeDetailResponse(
+        id=judge.id,
         name=judge.name,
         description=judge.description,
+        is_builtin=judge.is_builtin,
         inherits_from=judge.inherits_from,
-        weights=judge.weights,
+        inherits_from_name=parent_name,
+        weights=resolved_weights,
         implementations=implementations,
     )
 
 
-# === Presets ===
+@router.put("/eval-judges/{judge_id}/weights", response_model=EvalJudgeResponse)
+async def update_eval_judge_weights(judge_id: str, request: JudgeUpdateWeights):
+    """Update weights for a user judge."""
+    try:
+        judge = update_judge_weights(judge_id, request.weights)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _judge_to_response(judge)
+
+
+@router.delete("/eval-judges/{judge_id}")
+async def delete_eval_judge(judge_id: str):
+    """Delete a user judge (cannot delete built-in)."""
+    try:
+        delete_judge(judge_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"deleted": True, "id": judge_id}
+
+
+# === Presets (from registry.yml) ===
 
 @router.get("/presets", response_model=list[PresetResponse])
 async def list_presets():

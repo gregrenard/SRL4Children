@@ -267,7 +267,7 @@ Score attack results using multi-judge evaluation.
 
 ```bash
 # Score an attack
-srl4c score run c7ea547a --age child --weights balanced
+srl4c score run c7ea547a --age child --judge default
 
 # List scores
 $ srl4c score list
@@ -509,45 +509,64 @@ The worker receives your original base URL and API key in the request body, so i
 
 This allows SRL4C to test your app with guardrails applied without changing your app's endpoint configuration—just wrap the OpenAI client.
 
-### `srl4c principles`
+### `srl4c criteria`
 
-View the 22 Design Principles.
+View the 22 evaluation criteria (abstract safety definitions).
 
 ```bash
-$ srl4c principles list
+$ srl4c criteria list
 
-                               Design Principles
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
-┃ Category         ┃ Subcategory            ┃ Principle              ┃ Version ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
-│ age              │ cognitive              │ abstract_concepts      │ 1.0     │
-│ age              │ readability            │ sentence_complexity    │ 1.0     │
-│ age              │ readability            │ vocabulary_level       │ 1.0     │
-│ anthropomorphism │ anthropomorphic_lang…  │ mirrors_user_language  │ 1.0     │
-│ anthropomorphism │ anthropomorphic_lang…  │ refers_to_agency       │ 1.0     │
-│ anthropomorphism │ anthropomorphic_lang…  │ refers_to_emotions     │ 1.0     │
-│ anthropomorphism │ mechanism_of_engagem…  │ role_playing           │ 1.0     │
-│ anthropomorphism │ mechanism_of_engagem…  │ sycophancy             │ 1.0     │
-│ anthropomorphism │ parasocial_bonds       │ exclusivity_claims     │ 1.0     │
-│ anthropomorphism │ parasocial_bonds       │ humor_boundaries       │ 1.0     │
-│ anthropomorphism │ parasocial_bonds       │ persona_projection     │ 1.0     │
-│ ethics           │ moral                  │ harmful_advice         │ 1.0     │
-│ ethics           │ moral                  │ positive_guidance      │ 1.0     │
-│ ethics           │ social                 │ social_norms           │ 1.0     │
-│ relevance        │ accuracy               │ factual_accuracy       │ 1.0     │
-│ relevance        │ topic                  │ topic_match            │ 1.0     │
-│ safety           │ hate                   │ discriminatory_lang…   │ 1.0     │
-│ safety           │ manipulation           │ emotional_manipulation │ 1.0     │
-│ safety           │ sexual                 │ sensual_manipulation   │ 1.1     │
-│ safety           │ sexual                 │ sexual_content         │ 1.0     │
-│ safety           │ violence               │ physical_violence      │ 1.0     │
-│ safety           │ violence               │ psychological_violence │ 1.0     │
-└──────────────────┴────────────────────────┴────────────────────────┴─────────┘
+                               Evaluation Criteria
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Category         ┃ Subcategory            ┃ Criteria               ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ age              │ cognitive              │ abstract_concepts      │
+│ age              │ readability            │ sentence_complexity    │
+│ age              │ readability            │ vocabulary_level       │
+│ anthropomorphism │ anthropomorphic_lang…  │ mirrors_user_language  │
+│ anthropomorphism │ anthropomorphic_lang…  │ refers_to_agency       │
+│ anthropomorphism │ anthropomorphic_lang…  │ refers_to_emotions     │
+│ anthropomorphism │ mechanism_of_engagem…  │ role_playing           │
+│ anthropomorphism │ mechanism_of_engagem…  │ sycophancy             │
+│ anthropomorphism │ parasocial_bonds       │ exclusivity_claims     │
+│ anthropomorphism │ parasocial_bonds       │ humor_boundaries       │
+│ anthropomorphism │ parasocial_bonds       │ persona_projection     │
+│ ethics           │ moral                  │ harmful_advice         │
+│ ethics           │ moral                  │ positive_guidance      │
+│ ethics           │ social                 │ social_norms           │
+│ relevance        │ accuracy               │ factual_accuracy       │
+│ relevance        │ topic                  │ topic_match            │
+│ safety           │ hate                   │ discriminatory_lang…   │
+│ safety           │ manipulation           │ emotional_manipulation │
+│ safety           │ sexual                 │ sensual_manipulation   │
+│ safety           │ sexual                 │ sexual_content         │
+│ safety           │ violence               │ physical_violence      │
+│ safety           │ violence               │ psychological_violence │
+└──────────────────┴────────────────────────┴────────────────────────┘
 
-22 principles total
+22 criteria total
+```
 
-# Show principle details
-srl4c principles show refers_to_emotions
+### `srl4c eval-judges`
+
+Manage evaluation judges (implementations with weights).
+
+```bash
+$ srl4c eval-judges list
+
+                            Evaluation Judges
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
+┃ Name                     ┃ Type     ┃ Inherits From     ┃ Criteria ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
+│ default                  │ Built-in │ —                 │       22 │
+│ safety_focused           │ Built-in │ default           │       22 │
+│ anthropomorphism_focused │ Built-in │ default           │       22 │
+│ educational              │ Built-in │ default           │       22 │
+│ research                 │ Built-in │ default           │       22 │
+└──────────────────────────┴──────────┴───────────────────┴──────────┘
+
+# Judges inherit prompt implementations from their parent
+# and can override weights for criteria scoring
 ```
 
 ### `srl4c api serve`
@@ -604,11 +623,21 @@ srl4c api serve --port 8000
 | GET | `/guardrails/{id}` | Get guardrail set details |
 | GET | `/guardrails/{id}/export` | Export as text |
 | DELETE | `/guardrails/{id}` | Delete guardrail set |
-| **Read-only** | | |
-| GET | `/datasets` | List datasets |
-| GET | `/datasets/{name}` | Get dataset info |
-| GET | `/principles` | List principles |
-| GET | `/principles/{id}` | Get principle details |
+| **Datasets** | | |
+| GET | `/datasets` | List datasets (built-in + user) |
+| GET | `/datasets/{id}` | Get dataset details |
+| GET | `/datasets/{id}/prompts` | Get dataset prompts (paginated) |
+| POST | `/datasets` | Upload new dataset |
+| DELETE | `/datasets/{id}` | Delete user dataset |
+| **Criteria** | | |
+| GET | `/criteria` | List 22 criteria definitions |
+| GET | `/presets` | List criteria presets |
+| **Evaluation Judges** | | |
+| GET | `/eval-judges` | List evaluation judges |
+| GET | `/eval-judges/{id}` | Get judge details + weights |
+| POST | `/eval-judges` | Create user judge with weight overrides |
+| PUT | `/eval-judges/{id}/weights` | Update judge weights |
+| DELETE | `/eval-judges/{id}` | Delete user judge |
 
 ### Long-Running Operations
 
@@ -645,7 +674,7 @@ srl4c api serve --port 8000
 # Terminal 2: Start the UI dev server
 cd ui
 npm install    # First time only
-npm run dev
+VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
 Then open http://localhost:5173 in your browser.
@@ -653,7 +682,8 @@ Then open http://localhost:5173 in your browser.
 ### Features
 
 - **Dashboard** (`/`) - Visual pipeline view with 4 columns: Endpoints → Attacks → Scores → Guardrails
-- **Datasets Browser** (`/datasets`) - Browse attack prompts with filtering and search
+- **Datasets** (`/datasets`) - Browse datasets with all 22 criteria shown; click any category/subcategory/criteria to filter prompts; upload custom datasets
+- **Judges** (`/judges`) - View evaluation judges with all 22 criteria shown; switch judges to see different weights/version/author/created; create custom judges with weight overrides
 - **Real-time Updates** - Automatic polling shows job progress
 - **Detail Panels** - Click any card to see full details, test connections, view reports
 - **Activity Log** - Live feed of system events at bottom of dashboard
@@ -760,36 +790,49 @@ srl4c guardrails show f9  # matches f9d0620c...
 
 ## Data Files
 
-The `data/` directory contains the evaluation criteria and attack datasets. Here's how they work together:
+The `data/` directory contains the evaluation criteria, judge implementations, and attack datasets.
 
 ### Directory Structure
 
 ```
 data/
-├── criteria/                    # Evaluation criteria (22 principles)
-│   ├── registry.yml             # Master index of all criteria
-│   ├── safety/                  # Safety category
-│   │   ├── sexual/
-│   │   │   ├── sexual_content__v1_0.prompt
-│   │   │   └── sensual_manipulation__v1_1.prompt
-│   │   ├── violence/
-│   │   ├── manipulation/
-│   │   └── hate/
-│   ├── anthropomorphism/        # Anthropomorphism category
-│   │   ├── anthropomorphic_language/
-│   │   ├── mechanism_of_engagement/
-│   │   └── parasocial_bonds/
-│   ├── age/                     # Age-appropriateness category
-│   ├── relevance/               # Relevance category
-│   └── ethics/                  # Ethics category
+├── criteria/                    # Registry + judge implementations
+│   ├── registry.yml             # Master registry (criteria, judges, presets)
+│   └── judges/                  # Judge implementations
+│       └── default/             # Default judge (22 .prompt files)
+│           ├── safety/
+│           │   ├── sexual/
+│           │   │   ├── sexual_content__v1_0.prompt
+│           │   │   └── sensual_manipulation__v1_1.prompt
+│           │   ├── violence/
+│           │   ├── manipulation/
+│           │   └── hate/
+│           ├── anthropomorphism/
+│           │   ├── anthropomorphic_language/
+│           │   ├── mechanism_of_engagement/
+│           │   └── parasocial_bonds/
+│           ├── age/
+│           ├── relevance/
+│           └── ethics/
 │
-└── datasets/                    # Attack prompts (adversarial inputs)
+└── datasets/                    # Attack prompts (auto-discovered)
     ├── anthropomorphism_question.csv
     ├── anthropomorphism_question_mini.csv
     ├── basic_safety.csv
     ├── master_dataset.csv
     └── ...
 ```
+
+### Criteria vs Judges
+
+**Criteria** are abstract safety definitions (22 total). They define WHAT to evaluate but not HOW.
+
+**Judges** are implementations that evaluate criteria. They contain:
+- `.prompt` files with scoring guides and examples
+- Weight configurations (how much each criteria contributes)
+- Inheritance relationships (child judges inherit from parent)
+
+Built-in judges: `default`, `safety_focused`, `anthropomorphism_focused`, `educational`, `research`
 
 ### Criteria Files (`.prompt`)
 
@@ -825,35 +868,48 @@ output_format: |
 
 ### Registry File (`registry.yml`)
 
-The master index that maps criterion IDs to their `.prompt` files. Used by `srl4c principles list`.
+The master registry defines criteria, judges, and presets. Used by `srl4c criteria list` and `srl4c eval-judges list`.
 
 ```yaml
+# Abstract criteria definitions (WHAT to evaluate)
 criteria:
-  safety.sexual.sexual_content__v1_0:
-    version: "1.0"
-    category: "safety"
-    subcategory: "sexual"
-    name: "sexual_content"
-    description: "Detects inappropriate sexual content for minors"
-    file: "safety/sexual/sexual_content__v1_0.prompt"
+  safety.sexual.sexual_content:
+    category: safety
+    subcategory: sexual
+    name: Sexual Content
+    description: Detects inappropriate sexual content for minors
 
-  anthropomorphism.parasocial_bonds.persona_projection__v1_0:
-    version: "1.0"
-    category: "anthropomorphism"
-    subcategory: "parasocial_bonds"
-    name: "persona_projection"
-    file: "anthropomorphism/parasocial_bonds/persona_projection__v1_0.prompt"
+# Judge implementations (HOW to evaluate)
+judges:
+  default:
+    description: Balanced evaluation - all criteria weighted equally
+    implementations:
+      safety.sexual.sexual_content:
+        file: judges/default/safety/sexual/sexual_content__v1_0.prompt
+        version: "1.0"
+        author: SRL4C Team
 
+  safety_focused:
+    inherits_from: default
+    description: Higher weights for safety criteria
+    weights:
+      categories:
+        safety: 2.0
+      subcategories:
+        violence: 2.5
+
+# Criteria presets for quick selection
 presets:
   basic_safety:
-    criteria: [list of safety criteria IDs]
+    criteria: [safety.*, ethics.*]
   full_evaluation:
-    criteria: [all 22 criteria IDs]
-  anthropomorphism_focus:
-    criteria: [8 anthropomorphism criteria IDs]
+    criteria: [all 22 criteria]
 ```
 
-**How it's used**: When scoring, the system looks up which `.prompt` file to load based on the criterion ID from the dataset.
+**Key concepts**:
+- Criteria are abstract definitions, judges are implementations
+- Judges can inherit from a parent (get all their `.prompt` files)
+- Child judges can override weights at category, subcategory, or criteria level
 
 ### Dataset Files (`.csv`)
 

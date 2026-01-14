@@ -7,7 +7,8 @@ from typing import Optional
 
 from srl4c.db.models import (
     get_connection, init_db, db_connection,
-    Endpoint, Attack, Record, Score, Evaluation, Guardrail, Log
+    Endpoint, Attack, Record, Score, Evaluation, Guardrail, Log,
+    Dataset, Judge, JudgeCriteria
 )
 
 
@@ -35,7 +36,7 @@ def _row_to_attack(row) -> Attack:
     return Attack(
         id=row["id"],
         endpoint_id=row["endpoint_id"],
-        dataset_name=row["dataset_name"],
+        dataset_id=row["dataset_id"],
         status=row["status"],
         total_prompts=row["total_prompts"],
         completed_prompts=row["completed_prompts"],
@@ -217,12 +218,12 @@ class AttackRepository:
         conn = get_connection()
         started_at = datetime.now().isoformat()
         conn.execute(
-            """INSERT INTO attacks (id, endpoint_id, dataset_name, status, total_prompts, completed_prompts, started_at)
+            """INSERT INTO attacks (id, endpoint_id, dataset_id, status, total_prompts, completed_prompts, started_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 attack.id,
                 attack.endpoint_id,
-                attack.dataset_name,
+                attack.dataset_id,
                 attack.status,
                 attack.total_prompts,
                 attack.completed_prompts,
@@ -322,7 +323,7 @@ class AttackRepository:
                     counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
 
         has_children = counts["records"] > 0 or counts["scores"] > 0
-        return {"attack": {"id": attack.id, "dataset": attack.dataset_name}, "will_delete": counts, "has_children": has_children}
+        return {"attack": {"id": attack.id, "dataset_id": attack.dataset_id}, "will_delete": counts, "has_children": has_children}
 
     @staticmethod
     def delete(id: str, cascade: bool = True) -> dict:
@@ -715,3 +716,266 @@ class LogRepository:
                 (f"-{days} days",)
             )
             return result.rowcount
+
+
+def _row_to_dataset(row) -> Dataset:
+    """Convert a database row to a Dataset object"""
+    return Dataset(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        is_builtin=bool(row["is_builtin"]),
+        content_hash=row["content_hash"],
+        csv_content=row["csv_content"],
+        prompt_count=row["prompt_count"] or 0,
+        criteria_breakdown=json.loads(row["criteria_breakdown_json"]) if row["criteria_breakdown_json"] else None,
+        tenant_id=row["tenant_id"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
+
+def _row_to_judge(row) -> Judge:
+    """Convert a database row to a Judge object"""
+    return Judge(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        is_builtin=bool(row["is_builtin"]),
+        inherits_from=row["inherits_from"],
+        weights=json.loads(row["weights_json"]) if row["weights_json"] else None,
+        content_hash=row["content_hash"],
+        tenant_id=row["tenant_id"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
+
+class DatasetRepository:
+    """CRUD operations for datasets"""
+
+    @staticmethod
+    def get_by_id(id: str, tenant_id: str = None) -> Optional[Dataset]:
+        """Get dataset by ID"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM datasets WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                (id, tenant_id)
+            ).fetchone()
+            if not row:
+                # Try prefix match
+                rows = conn.execute(
+                    "SELECT * FROM datasets WHERE id LIKE ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                    (f"{id}%", tenant_id)
+                ).fetchall()
+                if len(rows) == 1:
+                    row = rows[0]
+                elif len(rows) > 1:
+                    raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
+        return _row_to_dataset(row) if row else None
+
+    @staticmethod
+    def get_by_name(name: str, tenant_id: str = None) -> Optional[Dataset]:
+        """Get dataset by name"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM datasets WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                (name, tenant_id)
+            ).fetchone()
+        return _row_to_dataset(row) if row else None
+
+    @staticmethod
+    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Optional[Dataset]:
+        """Get dataset by ID (prefix) or name"""
+        dataset = DatasetRepository.get_by_name(id_or_name, tenant_id)
+        if dataset:
+            return dataset
+        return DatasetRepository.get_by_id(id_or_name, tenant_id)
+
+    @staticmethod
+    def list_all(tenant_id: str = None) -> list[Dataset]:
+        """List all datasets (built-in + user's)"""
+        init_db()
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM datasets WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY is_builtin DESC, name",
+                (tenant_id,)
+            ).fetchall()
+        return [_row_to_dataset(row) for row in rows]
+
+    @staticmethod
+    def create(dataset: Dataset) -> Dataset:
+        """Create a new user dataset"""
+        init_db()
+        with db_connection() as conn:
+            conn.execute(
+                """INSERT INTO datasets
+                    (id, name, description, is_builtin, content_hash, csv_content, prompt_count, criteria_breakdown_json, tenant_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    dataset.id,
+                    dataset.name,
+                    dataset.description,
+                    1 if dataset.is_builtin else 0,
+                    dataset.content_hash,
+                    dataset.csv_content,
+                    dataset.prompt_count,
+                    json.dumps(dataset.criteria_breakdown) if dataset.criteria_breakdown else None,
+                    dataset.tenant_id,
+                )
+            )
+        return dataset
+
+    @staticmethod
+    def delete(id: str, tenant_id: str = None) -> bool:
+        """Delete a user dataset (cannot delete built-in)"""
+        dataset = DatasetRepository.get_by_id(id, tenant_id)
+        if not dataset:
+            return False
+        if dataset.is_builtin:
+            raise ValueError("Cannot delete built-in dataset")
+
+        with db_connection() as conn:
+            conn.execute("DELETE FROM datasets WHERE id = ?", (dataset.id,))
+        return True
+
+
+class JudgeRepository:
+    """CRUD operations for judges"""
+
+    @staticmethod
+    def get_by_id(id: str, tenant_id: str = None) -> Optional[Judge]:
+        """Get judge by ID"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM judges WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                (id, tenant_id)
+            ).fetchone()
+            if not row:
+                # Try prefix match
+                rows = conn.execute(
+                    "SELECT * FROM judges WHERE id LIKE ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                    (f"{id}%", tenant_id)
+                ).fetchall()
+                if len(rows) == 1:
+                    row = rows[0]
+                elif len(rows) > 1:
+                    raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
+        return _row_to_judge(row) if row else None
+
+    @staticmethod
+    def get_by_name(name: str, tenant_id: str = None) -> Optional[Judge]:
+        """Get judge by name"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM judges WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                (name, tenant_id)
+            ).fetchone()
+        return _row_to_judge(row) if row else None
+
+    @staticmethod
+    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Optional[Judge]:
+        """Get judge by ID (prefix) or name"""
+        judge = JudgeRepository.get_by_name(id_or_name, tenant_id)
+        if judge:
+            return judge
+        return JudgeRepository.get_by_id(id_or_name, tenant_id)
+
+    @staticmethod
+    def list_all(tenant_id: str = None) -> list[Judge]:
+        """List all judges (built-in + user's)"""
+        init_db()
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM judges WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY is_builtin DESC, name",
+                (tenant_id,)
+            ).fetchall()
+        return [_row_to_judge(row) for row in rows]
+
+    @staticmethod
+    def create(judge: Judge) -> Judge:
+        """Create a new user judge"""
+        init_db()
+        with db_connection() as conn:
+            conn.execute(
+                """INSERT INTO judges
+                    (id, name, description, is_builtin, inherits_from, weights_json, content_hash, tenant_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    judge.id,
+                    judge.name,
+                    judge.description,
+                    1 if judge.is_builtin else 0,
+                    judge.inherits_from,
+                    json.dumps(judge.weights) if judge.weights else None,
+                    judge.content_hash,
+                    judge.tenant_id,
+                )
+            )
+        return judge
+
+    @staticmethod
+    def update_weights(id: str, weights: dict, tenant_id: str = None) -> bool:
+        """Update judge weights (only for user judges)"""
+        judge = JudgeRepository.get_by_id(id, tenant_id)
+        if not judge:
+            return False
+        if judge.is_builtin:
+            raise ValueError("Cannot modify built-in judge weights")
+
+        with db_connection() as conn:
+            conn.execute(
+                "UPDATE judges SET weights_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (json.dumps(weights), judge.id)
+            )
+        return True
+
+    @staticmethod
+    def delete(id: str, tenant_id: str = None) -> bool:
+        """Delete a user judge (cannot delete built-in)"""
+        judge = JudgeRepository.get_by_id(id, tenant_id)
+        if not judge:
+            return False
+        if judge.is_builtin:
+            raise ValueError("Cannot delete built-in judge")
+
+        with db_connection() as conn:
+            # Delete judge criteria first
+            conn.execute("DELETE FROM judge_criteria WHERE judge_id = ?", (judge.id,))
+            conn.execute("DELETE FROM judges WHERE id = ?", (judge.id,))
+        return True
+
+    @staticmethod
+    def get_criteria(judge_id: str) -> list[JudgeCriteria]:
+        """Get all criteria implementations for a judge"""
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM judge_criteria WHERE judge_id = ? ORDER BY criteria_id",
+                (judge_id,)
+            ).fetchall()
+        return [
+            JudgeCriteria(
+                id=row["id"],
+                judge_id=row["judge_id"],
+                criteria_id=row["criteria_id"],
+                version=row["version"],
+                author=row["author"],
+                prompt_content=row["prompt_content"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+
+    @staticmethod
+    def get_criterion_prompt(judge_id: str, criteria_id: str) -> Optional[str]:
+        """Get prompt content for a specific criterion from a judge"""
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT prompt_content FROM judge_criteria WHERE judge_id = ? AND criteria_id = ?",
+                (judge_id, criteria_id)
+            ).fetchone()
+        return row["prompt_content"] if row else None

@@ -1,112 +1,163 @@
 """Core datasets logic.
 
-This module provides dataset-related functionality used by both CLI and API.
+This module provides the shared dataset functionality used by both CLI and API.
+Datasets are first-class objects stored in the database.
 """
 
-from collections import defaultdict
-from pathlib import Path
-from typing import Dict, List, Set
+import csv
+import hashlib
+from typing import Optional
 
-import pandas as pd
-
-from srl4c.paths import DATASETS_DIR
-
-
-def get_all_datasets() -> Dict[str, dict]:
-    """Get all datasets with metadata.
-
-    Returns:
-        Dict mapping dataset name to {path, rows, principles}
-    """
-    datasets = {}
-    if not DATASETS_DIR.exists():
-        return datasets
-
-    for f in DATASETS_DIR.glob("*.csv"):
-        try:
-            df = pd.read_csv(f)
-            prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
-            cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
-
-            if prompt_col:
-                principles = set()
-                if cat_col:
-                    principles = set(df[cat_col].dropna().unique())
-
-                datasets[f.stem] = {
-                    "path": f,
-                    "rows": len(df),
-                    "principles": list(principles),
-                }
-        except Exception:
-            continue
-
-    return datasets
+from srl4c.db.models import Dataset
+from srl4c.db.repository import DatasetRepository, generate_id
+from srl4c.db.sync import analyze_csv_content
 
 
-def get_prompt_stats_by_principle() -> Dict[str, dict]:
-    """Count prompts and get samples for each principle across all datasets.
-
-    Returns:
-        Dict mapping criteria_id to {count, samples}
-    """
-    stats = defaultdict(lambda: {"count": 0, "samples": []})
-
-    if not DATASETS_DIR.exists():
-        return dict(stats)
-
-    for csv_file in DATASETS_DIR.glob("*.csv"):
-        try:
-            df = pd.read_csv(csv_file)
-            cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
-            prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
-
-            if not cat_col or not prompt_col:
-                continue
-
-            for _, row in df.iterrows():
-                criteria_id = str(row[cat_col]) if pd.notna(row[cat_col]) else ""
-                prompt = str(row[prompt_col]) if pd.notna(row[prompt_col]) else ""
-
-                if criteria_id and prompt:
-                    stats[criteria_id]["count"] += 1
-                    if len(stats[criteria_id]["samples"]) < 3:
-                        stats[criteria_id]["samples"].append(prompt)
-        except Exception:
-            continue
-
-    return dict(stats)
+def list_datasets(tenant_id: str = None) -> list[Dataset]:
+    """List all datasets (built-in + user uploads)."""
+    return DatasetRepository.list_all(tenant_id)
 
 
-def get_dataset_prompts(dataset_name: str) -> List[dict]:
-    """Get all prompts from a specific dataset.
+def get_dataset(dataset_id_or_name: str, tenant_id: str = None) -> Optional[Dataset]:
+    """Get a dataset by ID or name."""
+    return DatasetRepository.get_by_id_or_name(dataset_id_or_name, tenant_id)
+
+
+def create_dataset(
+    name: str,
+    csv_content: str,
+    description: str = None,
+    tenant_id: str = None,
+) -> Dataset:
+    """Create a new user dataset.
 
     Args:
-        dataset_name: Name of the dataset (without .csv extension)
+        name: Dataset name (must be unique)
+        csv_content: CSV content string
+        description: Optional description
+        tenant_id: Optional tenant ID for multi-tenant
 
     Returns:
-        List of dicts with {id, category, prompt}
+        Created Dataset object
+
+    Raises:
+        ValueError: If name exists or CSV is invalid
     """
-    csv_path = DATASETS_DIR / f"{dataset_name}.csv"
-    if not csv_path.exists():
-        return []
+    # Check if name already exists
+    existing = DatasetRepository.get_by_name(name, tenant_id)
+    if existing:
+        raise ValueError(f"Dataset '{name}' already exists")
 
+    # Analyze CSV content
     try:
-        df = pd.read_csv(csv_path)
-        id_col = next((c for c in df.columns if c.lower() in ["promptid", "prompt_id", "id"]), None)
-        cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
-        prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
+        prompt_count, breakdown = analyze_csv_content(csv_content)
+    except Exception as e:
+        raise ValueError(f"Invalid CSV content: {e}")
 
-        if not prompt_col:
-            return []
+    if prompt_count == 0:
+        raise ValueError("CSV has no valid prompts")
 
-        prompts = []
-        for idx, row in df.iterrows():
-            prompts.append({
-                "id": str(row[id_col]) if id_col and pd.notna(row[id_col]) else str(idx + 1),
-                "category": str(row[cat_col]) if cat_col and pd.notna(row[cat_col]) else "",
-                "prompt": str(row[prompt_col]) if pd.notna(row[prompt_col]) else "",
-            })
-        return prompts
-    except Exception:
-        return []
+    # Create dataset
+    content_hash = hashlib.md5(csv_content.encode()).hexdigest()
+    dataset = Dataset(
+        id=generate_id(),
+        name=name,
+        description=description,
+        is_builtin=False,
+        content_hash=content_hash,
+        csv_content=csv_content,
+        prompt_count=prompt_count,
+        criteria_breakdown=breakdown,
+        tenant_id=tenant_id,
+    )
+    DatasetRepository.create(dataset)
+
+    return dataset
+
+
+def delete_dataset(dataset_id_or_name: str, tenant_id: str = None) -> bool:
+    """Delete a user dataset.
+
+    Args:
+        dataset_id_or_name: Dataset ID or name
+        tenant_id: Optional tenant ID
+
+    Returns:
+        True if deleted
+
+    Raises:
+        ValueError: If dataset is built-in or not found
+    """
+    dataset = DatasetRepository.get_by_id_or_name(dataset_id_or_name, tenant_id)
+    if not dataset:
+        raise ValueError(f"Dataset not found: {dataset_id_or_name}")
+
+    return DatasetRepository.delete(dataset.id, tenant_id)
+
+
+def get_dataset_prompts(
+    dataset_id_or_name: str,
+    page: int = 1,
+    page_size: int = 50,
+    tenant_id: str = None,
+) -> dict:
+    """Get prompts from a dataset with pagination.
+
+    Args:
+        dataset_id_or_name: Dataset ID or name
+        page: Page number (1-indexed)
+        page_size: Number of prompts per page
+        tenant_id: Optional tenant ID
+
+    Returns:
+        Dict with dataset_id, dataset_name, total, page, page_size, prompts
+
+    Raises:
+        ValueError: If dataset not found or has no content
+    """
+    dataset = DatasetRepository.get_by_id_or_name(dataset_id_or_name, tenant_id)
+    if not dataset:
+        raise ValueError(f"Dataset not found: {dataset_id_or_name}")
+
+    if not dataset.csv_content:
+        raise ValueError("Dataset has no content")
+
+    # Parse CSV content
+    prompts = []
+    lines = dataset.csv_content.strip().split("\n")
+    if lines:
+        first_line = lines[0]
+        delimiter = ";" if ";" in first_line and "," not in first_line else ","
+        reader = csv.DictReader(lines, delimiter=delimiter)
+
+        for row in reader:
+            prompt_id = row.get("PromptID") or row.get("prompt_id") or row.get("id") or ""
+            criteria_id = row.get("Category") or row.get("criteria_id") or row.get("category") or ""
+            prompt_text = row.get("Prompt") or row.get("prompt") or ""
+
+            if prompt_text:
+                # Strip version suffix if present
+                if "__" in criteria_id:
+                    criteria_id = criteria_id.split("__")[0]
+
+                prompts.append({
+                    "id": prompt_id,
+                    "criteria_id": criteria_id,
+                    "prompt": prompt_text,
+                })
+
+    total = len(prompts)
+
+    # Paginate
+    start = (page - 1) * page_size
+    end = start + page_size
+    prompts_page = prompts[start:end]
+
+    return {
+        "dataset_id": dataset.id,
+        "dataset_name": dataset.name,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "prompts": prompts_page,
+    }

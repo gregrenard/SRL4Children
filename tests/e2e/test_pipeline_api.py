@@ -54,7 +54,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
-            "weights": "balanced",
+            "judge": "default",
         })
         assert response.status_code == 202, f"Failed to create score: {response.text}"
         score_data = response.json()
@@ -100,7 +100,7 @@ class TestPipelineAPI:
         assert guardrails_result.get("guardrails") is not None
         for rule in guardrails_result["guardrails"]:
             assert rule.get("rule_text") is not None
-            assert rule.get("principle_id") is not None
+            assert rule.get("criteria_id") is not None
 
         # Step 8: Verify data consistency across pipeline
         self._verify_data_consistency(

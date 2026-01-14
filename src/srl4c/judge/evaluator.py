@@ -25,7 +25,7 @@ import threading
 _print_lock = threading.Lock()
 
 from srl4c.judge.config import JudgeConfig, JudgeSystemConfig
-from srl4c.criteria import get_criteria_loader, CriterionConfig
+from srl4c.registry import get_registry_loader, CriterionConfig
 
 logger = logging.getLogger(__name__)
 
@@ -53,37 +53,16 @@ def calculate_agreement_score(scores: List[float]) -> float:
 
 # === WEIGHTING SYSTEM ===
 
-def load_weights(preset: str = None) -> Dict[str, Any]:
-    """Load weights from ~/.srl4c/weights.yaml, optionally applying a preset."""
-    import yaml
-    from srl4c.paths import TEMPLATES_DIR, USER_CONFIG_DIR
+def load_weights(judge_name: str = "default") -> Dict[str, Any]:
+    """Load weights from registry for a judge."""
+    from srl4c.registry import get_registry_loader
 
-    # Try user config, fall back to template
-    user_config = USER_CONFIG_DIR / "weights.yaml"
-    template_config = TEMPLATES_DIR / "weights.yaml"
-    config_path = user_config if user_config.exists() else template_config
-
-    if not config_path.exists():
-        logger.warning(f"No weights config found, using equal weights")
-        return {}
-
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-
-    # Start with default weights
-    weights = config.get("default", {})
-
-    # Apply preset if specified (overrides category weights only)
-    if preset and preset != "default":
-        presets = config.get("presets", {})
-        if preset in presets:
-            preset_cats = presets[preset].get("categories", {})
-            weights["categories"] = preset_cats
-            logger.info(f"Applied weight preset: {preset}")
-        else:
-            logger.warning(f"Unknown preset '{preset}', using default weights")
-
-    return weights
+    loader = get_registry_loader()
+    try:
+        return loader.get_judge_weights(judge_name)
+    except ValueError:
+        logger.warning(f"Judge '{judge_name}' not found, using empty weights")
+        return {"categories": {}, "subcategories": {}, "criteria": {}}
 
 
 def weighted_average(scores: Dict[str, float], weights: Dict[str, float]) -> float:
@@ -589,13 +568,13 @@ def evaluate_records_batch(
     config: JudgeSystemConfig,
     records: List[Tuple[int, str, str, str, str]],  # (idx, id, prompt, response, criterion_id)
     age_group: str,
-    judge: str = None,
+    judge_name: str = None,
 ) -> Dict[str, BenchmarkResult]:
     """
     Evaluate multiple records in parallel.
     Returns dict mapping record_id -> BenchmarkResult
     """
-    loader = get_criteria_loader()
+    loader = get_registry_loader()
 
     # Build all tasks
     tasks = []
@@ -610,12 +589,12 @@ def evaluate_records_batch(
         criteria = loader.load_multiple_criteria(criterion_ids)
 
         for criterion in criteria:
-            for judge in config.judges:
+            for judge_config in config.judges:
                 for pass_idx in range(config.n_passes):
                     tasks.append(EvalTask(
                         record_idx=record_idx,
                         record_id=record_id,
-                        judge=judge,
+                        judge=judge_config,
                         criterion=criterion,
                         prompt=prompt,
                         response=response,
@@ -646,14 +625,14 @@ def evaluate_records_batch(
     print(f"\n    Completed {completed}/{total_tasks} API calls")
 
     # Group results by record and build BenchmarkResults
-    return _aggregate_results(results, records, config, judge)
+    return _aggregate_results(results, records, config, judge_name)
 
 
 def _aggregate_results(
     results: List[EvalTaskResult],
     records: List[Tuple[int, str, str, str, str]],
     config: JudgeSystemConfig,
-    judge: str = None,
+    judge_name: str = None,
 ) -> Dict[str, BenchmarkResult]:
     """Aggregate task results into BenchmarkResults per record"""
     from collections import defaultdict
@@ -710,7 +689,7 @@ def _aggregate_results(
             ))
 
         # Calculate weighted aggregate scores
-        final_aggregate, category_scores, subcategory_scores = calculate_weighted_scores(detailed_criteria, judge)
+        final_aggregate, category_scores, subcategory_scores = calculate_weighted_scores(detailed_criteria, judge_name)
 
         benchmark_results[record_id] = BenchmarkResult(
             detailed_criteria=detailed_criteria,
@@ -740,7 +719,7 @@ def evaluate_response(
     start_time = time.time()
 
     # Load criteria
-    loader = get_criteria_loader()
+    loader = get_registry_loader()
 
     if criteria_selection:
         criterion_ids = loader.resolve_criteria_selection(criteria_selection)

@@ -291,7 +291,7 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                     {details.guardrails.map((rule) => (
                       <div key={rule.id} className="bg-gray-50 rounded-xl p-3 border border-gray-200">
                         <div className="text-sm text-gray-700">{rule.rule_text}</div>
-                        <div className="text-xs text-gray-400 mt-1 truncate">{rule.principle_id}</div>
+                        <div className="text-xs text-gray-400 mt-1 truncate">{rule.criteria_id}</div>
                       </div>
                     ))}
                   </div>

@@ -3,40 +3,24 @@
 This module provides the shared attack functionality used by both CLI and API.
 """
 
+import io
 import time
-from pathlib import Path
 from typing import Optional, Callable
 
 import pandas as pd
 
 from srl4c.db.models import Attack, Record
 from srl4c.db.repository import (
-    EndpointRepository, AttackRepository, RecordRepository, generate_id
+    EndpointRepository, AttackRepository, RecordRepository, DatasetRepository, generate_id
 )
 from srl4c.adapters.openai import OpenAIAdapter
 from srl4c.adapters.simple import SimpleAdapter
 from srl4c.core.logger import Logger
 
 
-def get_dataset_path(name: str) -> Optional[Path]:
-    """Get path to dataset by name."""
-    from srl4c.cli.commands.dataset import get_builtin_datasets
-
-    datasets = get_builtin_datasets()
-    if name in datasets:
-        return datasets[name]["path"]
-
-    # Check custom datasets
-    custom_dir = Path.home() / ".srl4c" / "datasets"
-    custom_path = custom_dir / f"{name}.csv"
-    if custom_path.exists():
-        return custom_path
-    return None
-
-
-def load_dataset(path: Path) -> pd.DataFrame:
-    """Load dataset and normalize column names."""
-    df = pd.read_csv(path)
+def load_dataset_df(csv_content: str) -> pd.DataFrame:
+    """Load dataset from CSV content string and normalize column names."""
+    df = pd.read_csv(io.StringIO(csv_content))
 
     # Find columns
     prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
@@ -73,7 +57,7 @@ def create_attack(endpoint_name: str, dataset_name: str) -> str:
 
     Args:
         endpoint_name: Endpoint ID or name
-        dataset_name: Dataset name
+        dataset_name: Dataset ID or name
 
     Returns:
         attack_id: The ID of the created attack
@@ -86,20 +70,23 @@ def create_attack(endpoint_name: str, dataset_name: str) -> str:
     if not endpoint:
         raise ValueError(f"Endpoint not found: {endpoint_name}")
 
-    # Validate dataset
-    dataset_path = get_dataset_path(dataset_name)
-    if not dataset_path:
+    # Validate dataset (from DB)
+    dataset = DatasetRepository.get_by_id_or_name(dataset_name)
+    if not dataset:
         raise ValueError(f"Dataset not found: {dataset_name}")
 
+    if not dataset.csv_content:
+        raise ValueError(f"Dataset '{dataset_name}' has no content")
+
     # Load dataset to get prompt count
-    df = load_dataset(dataset_path)
+    df = load_dataset_df(dataset.csv_content)
 
     # Create attack record
     attack_id = generate_id()
     attack = Attack(
         id=attack_id,
         endpoint_id=endpoint.id,
-        dataset_name=dataset_name,
+        dataset_id=dataset.id,
         status="pending",
         total_prompts=len(df),
         completed_prompts=0,
@@ -110,10 +97,10 @@ def create_attack(endpoint_name: str, dataset_name: str) -> str:
 
     Logger.info(
         "attack",
-        f"Attack created: {len(df)} prompts from '{dataset_name}' to '{endpoint.name}'",
+        f"Attack created: {len(df)} prompts from '{dataset.name}' to '{endpoint.name}'",
         entity_type="attack",
         entity_id=attack_id,
-        metadata={"endpoint_id": endpoint.id, "dataset": dataset_name, "total_prompts": len(df)}
+        metadata={"endpoint_id": endpoint.id, "dataset_id": dataset.id, "total_prompts": len(df)}
     )
 
     return attack_id
@@ -161,9 +148,13 @@ def run_attack(
         if not endpoint:
             raise ValueError(f"Endpoint not found: {attack.endpoint_id}")
 
-        # Load dataset
-        dataset_path = get_dataset_path(attack.dataset_name)
-        df = load_dataset(dataset_path)
+        # Get dataset from DB
+        dataset = DatasetRepository.get_by_id(attack.dataset_id)
+        if not dataset:
+            raise ValueError(f"Dataset not found: {attack.dataset_id}")
+
+        # Load dataset content
+        df = load_dataset_df(dataset.csv_content)
 
         # Create adapter
         adapter = create_adapter(endpoint)

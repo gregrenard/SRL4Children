@@ -139,12 +139,21 @@ async def export_guardrails(set_id: str):
     if endpoint:
         context_lines.append(f"Endpoint: {endpoint['name']} ({endpoint['base_url']})")
     if attack:
-        context_lines.append(f"Dataset: {attack['dataset_name']}")
+        # Get dataset name from ID
+        from srl4c.db.repository import DatasetRepository
+        dataset_id = attack['dataset_id'] if 'dataset_id' in attack.keys() else None
+        dataset = DatasetRepository.get_by_id(dataset_id) if dataset_id else None
+        dataset_name = dataset.name if dataset else "unknown"
+        context_lines.append(f"Dataset: {dataset_name}")
         context_lines.append(f"Prompts tested: {attack['total_prompts']}")
     if score:
         context_lines.append(f"Age context: {score['age_context']}")
-        if score['judge']:
-            context_lines.append(f"Weights preset: {score['judge']}")
+        judge_id = score['judge_id'] if 'judge_id' in score.keys() else None
+        if judge_id:
+            from srl4c.db.repository import JudgeRepository
+            judge = JudgeRepository.get_by_id(judge_id)
+            judge_name = judge.name if judge else "unknown"
+            context_lines.append(f"Judge: {judge_name}")
         if score['final_score'] is not None:
             context_lines.append(f"Final score: {score['final_score']:.2f}/5")
     context_lines.append(f"Model used: {gset['model']}")

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS endpoints (
 CREATE TABLE IF NOT EXISTS attacks (
     id TEXT PRIMARY KEY,
     endpoint_id TEXT NOT NULL,
-    dataset_name TEXT NOT NULL,
+    dataset_id TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
     total_prompts INTEGER,
     completed_prompts INTEGER DEFAULT 0,
@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS attacks (
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
-    FOREIGN KEY (endpoint_id) REFERENCES endpoints(id)
+    FOREIGN KEY (endpoint_id) REFERENCES endpoints(id),
+    FOREIGN KEY (dataset_id) REFERENCES datasets(id)
 );
 
 CREATE TABLE IF NOT EXISTS records (
@@ -56,7 +57,7 @@ CREATE TABLE IF NOT EXISTS scores (
     id TEXT PRIMARY KEY,
     attack_id TEXT NOT NULL,
     age_context TEXT NOT NULL,
-    judge TEXT DEFAULT 'default',
+    judge_id TEXT,
     final_score REAL,
     category_scores_json TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -66,7 +67,8 @@ CREATE TABLE IF NOT EXISTS scores (
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
-    FOREIGN KEY (attack_id) REFERENCES attacks(id)
+    FOREIGN KEY (attack_id) REFERENCES attacks(id),
+    FOREIGN KEY (judge_id) REFERENCES judges(id)
 );
 
 CREATE TABLE IF NOT EXISTS evaluations (
@@ -124,6 +126,55 @@ CREATE TABLE IF NOT EXISTS logs (
 CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_entity ON logs(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
+
+-- Datasets as first-class objects
+CREATE TABLE IF NOT EXISTS datasets (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_builtin INTEGER NOT NULL DEFAULT 0,
+    content_hash TEXT,
+    csv_content TEXT,
+    prompt_count INTEGER DEFAULT 0,
+    criteria_breakdown_json TEXT,
+    tenant_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(name, tenant_id)
+);
+
+-- Judges as first-class objects
+CREATE TABLE IF NOT EXISTS judges (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_builtin INTEGER NOT NULL DEFAULT 0,
+    inherits_from TEXT,
+    weights_json TEXT,
+    content_hash TEXT,
+    tenant_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(name, tenant_id),
+    FOREIGN KEY (inherits_from) REFERENCES judges(id)
+);
+
+-- Judge criteria implementations (prompt content)
+CREATE TABLE IF NOT EXISTS judge_criteria (
+    id TEXT PRIMARY KEY,
+    judge_id TEXT NOT NULL,
+    criteria_id TEXT NOT NULL,
+    version TEXT,
+    author TEXT,
+    prompt_content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(judge_id, criteria_id),
+    FOREIGN KEY (judge_id) REFERENCES judges(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_datasets_tenant ON datasets(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_judges_tenant ON judges(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_judge_criteria_judge ON judge_criteria(judge_id);
 """
 
 
@@ -143,7 +194,7 @@ class Endpoint:
 class Attack:
     id: str
     endpoint_id: str
-    dataset_name: str
+    dataset_id: str
     status: str = "pending"
     total_prompts: int = 0
     completed_prompts: int = 0
@@ -172,7 +223,7 @@ class Score:
     attack_id: str
     age_context: str
     status: str = "pending"
-    judge: str = "default"
+    judge_id: Optional[str] = None
     final_score: Optional[float] = None
     category_scores: Optional[dict] = None
     progress_current: int = 0
@@ -234,6 +285,46 @@ class Log:
     created_at: Optional[datetime] = None
 
 
+@dataclass
+class Dataset:
+    id: str
+    name: str
+    description: Optional[str] = None
+    is_builtin: bool = False
+    content_hash: Optional[str] = None
+    csv_content: Optional[str] = None
+    prompt_count: int = 0
+    criteria_breakdown: Optional[dict] = None
+    tenant_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+@dataclass
+class Judge:
+    id: str
+    name: str
+    description: Optional[str] = None
+    is_builtin: bool = False
+    inherits_from: Optional[str] = None
+    weights: Optional[dict] = None
+    content_hash: Optional[str] = None
+    tenant_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+@dataclass
+class JudgeCriteria:
+    id: str
+    judge_id: str
+    criteria_id: str
+    version: Optional[str] = None
+    author: Optional[str] = None
+    prompt_content: str = ""
+    created_at: Optional[datetime] = None
+
+
 def get_connection() -> sqlite3.Connection:
     """Get database connection, creating DB if needed"""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -242,12 +333,16 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
-def init_db():
-    """Initialize database schema"""
+def init_db(sync_builtins: bool = True):
+    """Initialize database schema and optionally sync built-in data."""
     conn = get_connection()
     conn.executescript(SCHEMA)
     conn.commit()
     conn.close()
+
+    if sync_builtins:
+        from srl4c.db.sync import sync_all
+        sync_all()
 
 
 from contextlib import contextmanager

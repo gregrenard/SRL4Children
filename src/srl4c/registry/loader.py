@@ -37,6 +37,11 @@ class CriteriaConfig:
     name: str  # e.g., "sexual_content"
     description: str
     tags: list[str] = field(default_factory=list)
+    prompt_content: dict[str, Any] | None = None  # Loaded judge prompt for evaluator
+
+
+# Alias for backward compatibility with evaluator
+CriterionConfig = CriteriaConfig
 
 
 @dataclass
@@ -285,6 +290,41 @@ class RegistryLoader:
         """Get a specific weight value, defaulting to 1.0 if not set."""
         weights = self.get_judge_weights(judge_name)
         return weights.get(level, {}).get(key, default)
+
+    # -------------------------------------------------------------------------
+    # Evaluator Support (load criteria with prompt content)
+    # -------------------------------------------------------------------------
+
+    def load_criterion(self, criteria_id: str, judge_name: str = "default") -> CriteriaConfig:
+        """Load a criterion with its prompt content for evaluation.
+
+        This combines the abstract criteria definition with the judge's
+        prompt implementation.
+        """
+        criteria = self.get_criteria(criteria_id)
+        prompt_content = self.get_judge_prompt(judge_name, criteria_id)
+
+        return CriteriaConfig(
+            id=criteria.id,
+            category=criteria.category,
+            subcategory=criteria.subcategory,
+            name=criteria.name,
+            description=criteria.description,
+            tags=criteria.tags,
+            prompt_content=prompt_content,
+        )
+
+    def load_multiple_criteria(
+        self, criteria_ids: list[str], judge_name: str = "default"
+    ) -> list[CriteriaConfig]:
+        """Load multiple criteria with prompt content."""
+        loaded = []
+        for cid in criteria_ids:
+            try:
+                loaded.append(self.load_criterion(cid, judge_name))
+            except Exception as e:
+                logger.error(f"Failed to load criterion {cid}: {e}")
+        return loaded
 
     # -------------------------------------------------------------------------
     # Datasets (Auto-discovered from filesystem)

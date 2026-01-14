@@ -164,9 +164,25 @@ active_generators: fake.generators
 
 @pytest.fixture
 def temp_db(temp_config_dir):
-    """Initialize fresh database for each test"""
+    """Initialize fresh database for each test, including test dataset"""
     from srl4c.db.models import init_db
+    from srl4c.core.datasets import create_dataset
+
+    # Init DB (also syncs built-in datasets/judges from data/ dir)
     init_db()
+
+    # Create test dataset in DB
+    test_dataset_path = PROJECT_ROOT / "tests" / "fixtures" / "test_dataset.csv"
+    csv_content = test_dataset_path.read_text()
+    try:
+        create_dataset(
+            name="test_mini",
+            csv_content=csv_content,
+            description="Test dataset for E2E tests",
+        )
+    except ValueError:
+        pass  # Already exists (from previous test in same session)
+
     yield temp_config_dir / "srl4c.db"
 
 

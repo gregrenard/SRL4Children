@@ -12,7 +12,7 @@ from collections import defaultdict
 
 from srl4c.db.models import db_connection
 from srl4c.db.repository import (
-    AttackRepository, RecordRepository, ScoreRepository, generate_id
+    AttackRepository, RecordRepository, ScoreRepository, JudgeRepository, DatasetRepository, generate_id
 )
 from srl4c.judge.config import load_judge_config
 from srl4c.judge.evaluator import evaluate_records_batch
@@ -22,7 +22,7 @@ from srl4c.core.logger import Logger
 def create_score(
     attack_id: str,
     age: str = "child",
-    judge: str = "balanced",
+    judge: str = "default",
 ) -> str:
     """Create a score job record.
 
@@ -34,18 +34,23 @@ def create_score(
     Args:
         attack_id: Attack ID to score
         age: Age context for evaluation
-        judge: Weights preset name
+        judge: Judge ID or name
 
     Returns:
         score_id: The ID of the created score
 
     Raises:
-        ValueError: If attack not found or has no valid records
+        ValueError: If attack not found, judge not found, or has no valid records
     """
     # Validate attack
     attack = AttackRepository.get_by_id(attack_id)
     if not attack:
         raise ValueError(f"Attack not found: {attack_id}")
+
+    # Validate judge (from DB)
+    judge_obj = JudgeRepository.get_by_id_or_name(judge)
+    if not judge_obj:
+        raise ValueError(f"Judge not found: {judge}")
 
     # Get records
     records = RecordRepository.get_by_attack(attack.id)
@@ -62,19 +67,19 @@ def create_score(
     now = datetime.now().isoformat()
     with db_connection() as conn:
         conn.execute(
-            """INSERT INTO scores (id, attack_id, age_context, judge, status,
+            """INSERT INTO scores (id, attack_id, age_context, judge_id, status,
                progress_current, progress_total, started_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (score_id, attack.id, age, judge, "pending",
+            (score_id, attack.id, age, judge_obj.id, "pending",
              0, len(valid_records), now, now)
         )
 
     Logger.info(
         "score",
-        f"Score created: evaluating {len(valid_records)} responses (age={age})",
+        f"Score created: evaluating {len(valid_records)} responses (age={age}, judge={judge_obj.name})",
         entity_type="score",
         entity_id=score_id,
-        metadata={"attack_id": attack.id, "age": age, "records": len(valid_records)}
+        metadata={"attack_id": attack.id, "age": age, "judge_id": judge_obj.id, "records": len(valid_records)}
     )
 
     return score_id
@@ -137,10 +142,14 @@ def run_score(
         if not attack:
             raise ValueError(f"Attack not found: {score['attack_id']}")
 
+        # Get judge from DB
+        judge_obj = JudgeRepository.get_by_id(score["judge_id"]) if score["judge_id"] else None
+        judge_name = judge_obj.name if judge_obj else "default"
+
         records = RecordRepository.get_by_attack(attack.id)
         valid_records = [r for r in records if r.response and not r.error]
 
-        # Load judge config
+        # Load judge config (for LLM model settings)
         judge_config = load_judge_config()
 
         # Build records list for batch evaluation
@@ -156,7 +165,7 @@ def run_score(
             config=judge_config,
             records=records_for_eval,
             age_group=score["age_context"],
-            judge=score["judge"],
+            judge_name=judge_name,
         )
 
         # Store evaluations in DB
@@ -308,13 +317,26 @@ def generate_report(score_id: str) -> str:
     lines.append("| --- | --- |")
     lines.append(f"| Score ID | {score['id']} |")
     lines.append(f"| Attack ID | {score['attack_id']} |")
+    # Get judge name from ID
+    judge_name = "default"
+    judge_id = score['judge_id'] if 'judge_id' in score.keys() else None
+    if judge_id:
+        judge_obj = JudgeRepository.get_by_id(judge_id)
+        judge_name = judge_obj.name if judge_obj else "unknown"
+
     lines.append(f"| Age Context | {score['age_context']} |")
-    lines.append(f"| Weights | {score['judge']} |")
+    lines.append(f"| Judge | {judge_name} |")
     lines.append(f"| Status | {score['status']} |")
     lines.append(f"| Started | {score['started_at']} |")
     lines.append(f"| Completed | {score['completed_at'] or '—'} |")
     if attack:
-        lines.append(f"| Dataset | {attack['dataset_name']} |")
+        # Get dataset name from ID
+        dataset_name = "unknown"
+        dataset_id = attack['dataset_id'] if 'dataset_id' in attack.keys() else None
+        if dataset_id:
+            dataset_obj = DatasetRepository.get_by_id(dataset_id)
+            dataset_name = dataset_obj.name if dataset_obj else "unknown"
+        lines.append(f"| Dataset | {dataset_name} |")
         lines.append(f"| Endpoint | {attack['endpoint_id'][:8]}... |")
     lines.append("")
 
