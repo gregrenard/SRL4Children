@@ -1,78 +1,97 @@
-"""Dataset commands"""
+"""Dataset commands - list and show datasets discovered from filesystem."""
 
-import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from srl4c.core.datasets import get_all_datasets
-
-
-def get_builtin_datasets() -> dict:
-    """Get list of built-in datasets (wrapper for backwards compatibility)"""
-    datasets = get_all_datasets()
-    # Convert to old format for compatibility
-    return {
-        name: {
-            "path": info["path"],
-            "prompts": info["rows"],
-            "principles": set(info["principles"]),
-        }
-        for name, info in datasets.items()
-    }
+from srl4c.registry import get_registry_loader
 
 
 def list_datasets(console: Console):
-    """List available datasets"""
-    datasets = get_builtin_datasets()
+    """List available datasets (auto-discovered from data/datasets/)."""
+    loader = get_registry_loader()
+    datasets = loader.list_datasets()
 
-    console.print("\n[bold]BUILT-IN[/bold]")
+    if not datasets:
+        console.print("[dim]No datasets found in data/datasets/[/dim]")
+        console.print("[dim]Add CSV files with columns: PromptID, Category, Prompt[/dim]")
+        return
+
     table = Table(show_edge=False)
     table.add_column("Name", style="cyan", no_wrap=True)
     table.add_column("Prompts", justify="right", no_wrap=True)
-    table.add_column("Principles", no_wrap=True)
+    table.add_column("Criteria", justify="right", no_wrap=True)
+    table.add_column("Categories", no_wrap=True)
 
-    for name, info in sorted(datasets.items()):
-        principles_str = f"{len(info['principles'])} principles" if info['principles'] else "—"
-        table.add_row(name, str(info["prompts"]), principles_str)
+    for ds in datasets:
+        # Get unique categories from criteria breakdown
+        categories = set()
+        for criteria_id in ds.criteria_breakdown.keys():
+            if "." in criteria_id:
+                categories.add(criteria_id.split(".")[0])
 
+        categories_str = ", ".join(sorted(categories)) if categories else "—"
+        table.add_row(
+            ds.name,
+            str(ds.prompt_count),
+            str(len(ds.criteria_breakdown)),
+            categories_str,
+        )
+
+    console.print("\n[bold]Available Datasets[/bold]")
     console.print(table)
-
-    # TODO: Also show custom datasets from ~/.srl4c/datasets/
-    console.print("\n[dim]CUSTOM (~/.srl4c/datasets/)[/dim]")
-    console.print("  [dim](none)[/dim]\n")
+    console.print()
 
 
 def show_dataset(console: Console, name: str):
-    """Show dataset details"""
-    datasets = get_builtin_datasets()
+    """Show dataset details including criteria breakdown."""
+    loader = get_registry_loader()
 
-    if name not in datasets:
+    try:
+        dataset = loader.get_dataset(name)
+    except ValueError:
         console.print(f"[red]Dataset not found: {name}[/red]")
+        available = [ds.name for ds in loader.list_datasets()]
+        if available:
+            console.print(f"[dim]Available: {', '.join(available)}[/dim]")
         return
 
-    info = datasets[name]
-    df = pd.read_csv(info["path"])
-
     console.print(f"\n[bold cyan]Dataset:[/bold cyan] {name}")
-    console.print(f"[dim]Path: {info['path']}[/dim]")
-    console.print(f"Prompts: {info['prompts']}\n")
+    console.print(f"[dim]File: {dataset.file}[/dim]")
+    console.print(f"Total prompts: {dataset.prompt_count}\n")
 
-    if info["principles"]:
-        console.print("[bold]Principles covered:[/bold]")
-        # Count prompts per principle
-        cat_col = next((c for c in df.columns if c.lower() in ["category", "cat"]), None)
-        if cat_col:
-            for principle in sorted(info["principles"]):
-                count = len(df[df[cat_col] == principle])
-                # Extract just the principle name
-                short_name = principle.split(".")[-1] if "." in principle else principle
-                console.print(f"  {short_name}: {count} prompts")
+    if dataset.criteria_breakdown:
+        # Group by category
+        by_category: dict[str, dict[str, int]] = {}
+        for criteria_id, count in dataset.criteria_breakdown.items():
+            parts = criteria_id.split(".")
+            if len(parts) >= 1:
+                category = parts[0]
+                by_category.setdefault(category, {})[criteria_id] = count
 
+        console.print("[bold]Criteria breakdown:[/bold]")
+        table = Table(show_edge=False, show_header=True)
+        table.add_column("Criteria", style="dim")
+        table.add_column("Prompts", justify="right")
+
+        for category in sorted(by_category.keys()):
+            # Category header
+            category_total = sum(by_category[category].values())
+            table.add_row(f"[bold]{category}[/bold]", f"[bold]{category_total}[/bold]")
+
+            # Individual criteria
+            for criteria_id in sorted(by_category[category].keys()):
+                count = by_category[category][criteria_id]
+                # Show just subcategory.name for readability
+                short_name = ".".join(criteria_id.split(".")[1:]) if "." in criteria_id else criteria_id
+                table.add_row(f"  {short_name}", str(count))
+
+        console.print(table)
+
+    # Show sample prompts
     console.print("\n[bold]Sample prompts:[/bold]")
-    prompt_col = next((c for c in df.columns if c.lower() in ["prompt", "question"]), None)
-    if prompt_col:
-        for i, row in df.head(5).iterrows():
-            prompt = str(row[prompt_col])[:60]
-            console.print(f"  {i+1}. \"{prompt}...\"")
+    prompts = loader.load_dataset_prompts(name)
+    for p in prompts[:5]:
+        short_prompt = p.prompt[:60] + "..." if len(p.prompt) > 60 else p.prompt
+        console.print(f"  • [dim]{p.criteria_id.split('.')[-1]}:[/dim] \"{short_prompt}\"")
 
     console.print()

@@ -18,8 +18,9 @@ dataset_app = typer.Typer(help="Manage attack datasets")
 attack_app = typer.Typer(help="Run attacks against endpoints")
 score_app = typer.Typer(help="Score attack results")
 guardrails_app = typer.Typer(help="Generate and manage guardrails")
-principles_app = typer.Typer(help="View and manage design principles")
-judges_app = typer.Typer(help="Manage judge configurations")
+criteria_app = typer.Typer(help="View criteria definitions")
+judges_app = typer.Typer(help="Manage LLM judge configurations")
+eval_judges_app = typer.Typer(help="View evaluation judges (scoring policies)")
 generators_app = typer.Typer(help="Manage guardrail generator configurations")
 config_app = typer.Typer(help="Manage configuration")
 
@@ -28,8 +29,9 @@ app.add_typer(dataset_app, name="dataset")
 app.add_typer(attack_app, name="attack")
 app.add_typer(score_app, name="score")
 app.add_typer(guardrails_app, name="guardrails")
-app.add_typer(principles_app, name="principles")
+app.add_typer(criteria_app, name="criteria")
 app.add_typer(judges_app, name="judges")
+app.add_typer(eval_judges_app, name="eval-judges")
 app.add_typer(generators_app, name="generators")
 app.add_typer(config_app, name="config")
 
@@ -206,13 +208,13 @@ def attack_delete(
 def score_run(
     attack: str = typer.Argument(..., help="Attack ID"),
     age: str = typer.Option("child", "--age", "-a", help="Age context: child, teen, young_adult, emerging"),
-    weights: str = typer.Option("balanced", "--weights", "-w", help="Weight preset (see ~/.srl4c/weights.yaml)"),
+    judge: str = typer.Option("default", "--judge", "-j", help="Evaluation judge (e.g., default, safety_focused)"),
     format: str = typer.Option("table", "--format", "-f", help="Output format: table, json, markdown"),
     threshold: float = typer.Option(None, "--threshold", "-t", help="Fail if score below threshold"),
 ):
     """Score an attack's results"""
     from srl4c.cli.commands.score import run_score
-    run_score(console, attack, age, weights, format, threshold)
+    run_score(console, attack, age, judge, format, threshold)
 
 
 @score_app.command("list")
@@ -413,32 +415,36 @@ def guardrails_worker(
     generate_worker(console, set_id, output)
 
 
-# === PRINCIPLES ===
+# === CRITERIA ===
 
-@principles_app.command("list")
-def principles_list():
-    """List all design principles"""
-    from srl4c.cli.commands.principles import list_principles
-    list_principles(console)
-
-
-@principles_app.command("show")
-def principles_show(id: str = typer.Argument(..., help="Principle ID or name")):
-    """Show principle details"""
-    from srl4c.cli.commands.principles import show_principle
-    show_principle(console, id)
+@criteria_app.command("list")
+def criteria_list():
+    """List all criteria definitions"""
+    from srl4c.cli.commands.criteria import list_criteria
+    list_criteria(console)
 
 
-@principles_app.command("add")
-def principles_add(file: Path = typer.Argument(..., help="Path to .prompt file")):
-    """Add a custom principle"""
-    console.print(f"[yellow]TODO:[/yellow] Add principle from '{file}'")
+@criteria_app.command("show")
+def criteria_show(id: str = typer.Argument(..., help="Criteria ID (e.g., safety.sexual.sexual_content)")):
+    """Show criteria details"""
+    from srl4c.cli.commands.criteria import show_criteria
+    show_criteria(console, id)
 
 
-@principles_app.command("validate")
-def principles_validate(file: Path = typer.Argument(..., help="Path to .prompt file")):
-    """Validate a principle file"""
-    console.print(f"[yellow]TODO:[/yellow] Validate principle '{file}'")
+# === EVAL-JUDGES (Evaluation Policies) ===
+
+@eval_judges_app.command("list")
+def eval_judges_list():
+    """List evaluation judges (scoring policies)"""
+    from srl4c.cli.commands.criteria import list_judges_registry
+    list_judges_registry(console)
+
+
+@eval_judges_app.command("show")
+def eval_judges_show(name: str = typer.Argument(..., help="Judge name (e.g., default, safety_focused)")):
+    """Show evaluation judge details"""
+    from srl4c.cli.commands.criteria import show_judge_registry
+    show_judge_registry(console, name)
 
 
 # === JUDGES ===

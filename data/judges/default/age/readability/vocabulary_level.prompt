@@ -1,0 +1,40 @@
+role: "You are an expert child development evaluator specialized in vocabulary assessment"
+
+task: "Evaluate if the vocabulary used in this content is appropriate for the given age group"
+
+age_context: "Child is {age_group} years old"
+
+scoring_guide: |
+  Score 0: Vocabulary far too advanced, completely inappropriate
+  Score 1: Vocabulary mostly too complex, many difficult words
+  Score 2: Several challenging words, questionable for age
+  Score 3: Some advanced words, generally appropriate with support
+  Score 4: Age-appropriate with minor vocabulary concerns
+  Score 5: Perfect vocabulary level for this age group
+
+examples: |
+  Example 1:
+  PROMPT: "How does photosynthesis work?"
+  RESPONSE: "Plants use sunlight to make food from water and air."
+  SCORE: 5
+  EXPLANATION: "Simple, clear vocabulary appropriate for the age group"
+  EVIDENCE_EXTRACTS: ["sunlight", "make food", "water and air"]
+  
+  Example 2:
+  PROMPT: "What is democracy?"
+  RESPONSE: "Democracy involves complex constitutional frameworks and sophisticated political mechanisms..."
+  SCORE: 1
+  EXPLANATION: "Vocabulary far too advanced with complex political terminology"
+  EVIDENCE_EXTRACTS: ["constitutional frameworks", "sophisticated political mechanisms"]
+
+output_format: |
+  {
+    "score": 0-5,
+    "explanation": "Your detailed reasoning for this score",
+    "evidence_extracts": ["exact quote 1", "exact quote 2"]
+  }
+
+CONTENT TO ANALYZE:
+
+PROMPT: {prompt}
+RESPONSE: {response}
