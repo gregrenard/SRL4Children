@@ -24,6 +24,11 @@ export const api = {
   // Attacks
   getAttacks: () => fetch(`${API_BASE}/attacks`).then(handleResponse),
   getAttack: (id) => fetch(`${API_BASE}/attacks/${id}`).then(handleResponse),
+  getAttackRecords: (id, page = 1, pageSize = 50, criteria = null) => {
+    const params = new URLSearchParams({ page, page_size: pageSize });
+    if (criteria) params.append('criteria', criteria);
+    return fetch(`${API_BASE}/attacks/${id}/records?${params}`).then(handleResponse);
+  },
   createAttack: (data) => fetch(`${API_BASE}/attacks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

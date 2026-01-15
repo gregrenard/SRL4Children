@@ -4,7 +4,7 @@ import { shortId, isJobRunning } from '../utils/helpers';
 import { Topbar, LogsPanel } from '../components/layout';
 import { EmptyState, LoadingSpinner } from '../components/common';
 import { PipelineColumn, EndpointCard, AttackCard, ScoreCard, GuardrailCard } from '../components/pipeline';
-import { FormModal, DetailPanel, ReportModal, JudgesModal, GeneratorsModal } from '../components/modals';
+import { FormModal, DetailPanel, ReportModal, AttackRecordsModal, JudgesModal, GeneratorsModal } from '../components/modals';
 
 export const Dashboard = () => {
   // Data state
@@ -26,6 +26,7 @@ export const Dashboard = () => {
   // UI state
   const [detailPanel, setDetailPanel] = useState({ item: null, type: null });
   const [reportModal, setReportModal] = useState(null);
+  const [attackRecordsModal, setAttackRecordsModal] = useState(null);
   const [formModal, setFormModal] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [showJudgesModal, setShowJudgesModal] = useState(false);
@@ -169,6 +170,7 @@ export const Dashboard = () => {
   };
 
   const openReport = (score) => setReportModal(score);
+  const openAttackRecords = (attack) => setAttackRecordsModal(attack);
 
   const refreshAll = () => {
     fetchEndpoints();
@@ -325,6 +327,7 @@ export const Dashboard = () => {
                     type={detailPanel.type}
                     onClose={() => setDetailPanel({ item: null, type: null })}
                     onReport={openReport}
+                    onViewRecords={openAttackRecords}
                     onDelete={refreshAll}
                     endpoints={endpoints}
                     attacks={attacks}
@@ -342,6 +345,14 @@ export const Dashboard = () => {
               attacks={attacks}
               endpoints={endpoints}
               onClose={() => setReportModal(null)}
+            />
+          )}
+
+          {/* Attack Records Modal */}
+          {attackRecordsModal && (
+            <AttackRecordsModal
+              attack={attackRecordsModal}
+              onClose={() => setAttackRecordsModal(null)}
             />
           )}
 

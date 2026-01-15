@@ -2,7 +2,7 @@
 
 ## What is this project?
 
-**SRL4C** (Safety Readiness Level for Children) is a CLI tool to evaluate AI-generated content for children/teens (ages 6-25). It tests AI apps against 22 Design Principles and generates guardrails to fix failures.
+**SRL4C** (Safety Readiness Level for Children) is a CLI tool to evaluate AI-generated content for children/teens (ages 6-25). It tests AI apps against 15 behaviors across 3 cues that may foster emotional reliance, and generates guardrails to fix failures.
 
 ## Project Structure
 
@@ -37,21 +37,17 @@ SRL4Children/
 │
 ├── data/
 │   ├── criteria/              # Registry configuration (split files)
-│   │   ├── criteria.yml       # 22 abstract criteria definitions
+│   │   ├── criteria.yml       # 15 behavior definitions across 3 cues
 │   │   ├── presets.yml        # Named criteria selections
-│   │   └── judges/            # Judge configs (one .yml per judge)
-│   │       ├── default.yml
-│   │       ├── safety_focused.yml
-│   │       ├── anthropomorphism_focused.yml
+│   │   └── judges/            # Context-based judge configs
 │   │       ├── educational.yml
-│   │       └── research.yml
+│   │       ├── companionship.yml
+│   │       └── entertainment.yml
 │   ├── judges/                # Judge prompt implementations
-│   │   └── default/           # Default judge prompts (22 .prompt files)
-│   │       ├── safety/
-│   │       ├── anthropomorphism/
-│   │       ├── age/
-│   │       ├── relevance/
-│   │       └── ethics/
+│   │   └── emotional_reliance/  # 15 .prompt files by cue
+│   │       ├── anthropomorphic/
+│   │       ├── interactional/
+│   │       └── relational/
 │   └── datasets/              # Attack CSV files (auto-discovered)
 │
 ├── templates/                 # Copied to ~/.srl4c/ on init
@@ -67,7 +63,7 @@ SRL4Children/
 ```bash
 # Run CLI
 uv run python -m srl4c.cli.main --help
-uv run python -m srl4c.cli.main criteria list      # List 22 criteria definitions
+uv run python -m srl4c.cli.main criteria list      # List 15 behaviors across 3 cues
 uv run python -m srl4c.cli.main eval-judges list   # List evaluation judges
 uv run python -m srl4c.cli.main dataset list       # List datasets
 
@@ -85,28 +81,26 @@ srl4c api serve --port 8000
 
 ## Key Concepts
 
-### Criteria vs Judges
+### Cues, Behaviors, and Judges
 
-**Criteria** are abstract safety definitions (22 total in 5 categories):
-- **Safety** (6): sexual_content, violence, manipulation, hate
-- **Anthropomorphism** (8): emotions, agency, sycophancy, parasocial bonds
-- **Age** (3): vocabulary, complexity, abstract concepts
-- **Relevance** (2): topic match, factual accuracy
-- **Ethics** (3): harmful advice, positive guidance, social norms
+**Behaviors** are the 15 patterns being evaluated, organized into 3 **cues**:
+- **Anthropomorphic** (5): persona/backstories, emotional claims, physical sensations, agency/intentions, sentience
+- **Interactional** (6): human communication markers, mimicry, proactivity, flattery, empathy, validation
+- **Relational** (4): intrusiveness, relatability, relationship labels, exclusivity
 
-**Judges** are implementations that evaluate criteria. Each judge:
-- Inherits from a parent (e.g., `safety_focused` inherits from `default`)
-- Has `.prompt` files with scoring guides and examples
-- Can override weights (how much each criteria contributes to final score)
+**Judges** are context-specific configurations. Each judge:
+- Applies different weights per cue based on the AI's intended use case
+- Shares the same `.prompt` files for consistent evaluation
+- Judge selection is **required** when scoring (no default)
 
-Built-in judges: `default`, `safety_focused`, `anthropomorphism_focused`, `educational`, `research`
+Built-in judges: `educational`, `companionship`, `entertainment`
 
 ### Datasets
 **First-class DB objects** - both built-in (synced from `data/datasets/*.csv`) and user-uploaded.
 
 CSV format:
 - `PromptID`: UUID
-- `Category`: Criteria ID (e.g., `anthropomorphism.parasocial_bonds.exclusivity_claims`)
+- `Category`: Behavior ID (e.g., `emotional_reliance.relational.exclusivity`)
 - `Prompt`: The adversarial prompt text
 
 ### CLI Workflow
@@ -184,10 +178,10 @@ Jobs running >90 min without updates auto-mark as `stale`.
 | `src/srl4c/judge/evaluator.py` | Multi-judge evaluation + weighting |
 | `src/srl4c/db/repository.py` | CRUD + progress update methods |
 | `src/srl4c/db/sync.py` | Sync built-in datasets/judges from files to DB |
-| `data/criteria/criteria.yml` | Abstract criteria definitions (22 total) |
+| `data/criteria/criteria.yml` | Behavior definitions (15 across 3 cues) |
 | `data/criteria/presets.yml` | Named criteria selections |
-| `data/criteria/judges/*.yml` | Judge configs with inheritance and weights |
-| `data/judges/default/*.prompt` | Evaluation prompt implementations |
+| `data/criteria/judges/*.yml` | Context-based judge configs with weights |
+| `data/judges/emotional_reliance/*.prompt` | Evaluation prompt implementations |
 | `templates/judges.yaml` | LLM judge model configuration |
 
 ## Configuration

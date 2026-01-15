@@ -60,6 +60,22 @@ class AttackCreateResponse(BaseModel):
     status: str = "pending"
 
 
+class AttackRecordItem(BaseModel):
+    id: str
+    criteria_id: str
+    prompt: str
+    response: Optional[str] = None
+    error: Optional[str] = None
+
+
+class AttackRecordsResponse(BaseModel):
+    attack_id: str
+    total: int
+    page: int
+    page_size: int
+    records: List[AttackRecordItem]
+
+
 # === Scores ===
 
 class ScoreCreate(BaseModel):

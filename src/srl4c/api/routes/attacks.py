@@ -2,10 +2,11 @@
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from srl4c.core.attack import create_attack, run_attack
+from srl4c.core.attack import create_attack, run_attack, get_attack_records
 from srl4c.db.repository import AttackRepository, DatasetRepository
 from srl4c.api.schemas import (
-    AttackCreate, AttackResponse, AttackCreateResponse
+    AttackCreate, AttackResponse, AttackCreateResponse,
+    AttackRecordsResponse, AttackRecordItem
 )
 
 router = APIRouter(prefix="/attacks", tags=["attacks"])
@@ -76,6 +77,27 @@ async def get_attack(attack_id: str):
         raise HTTPException(status_code=404, detail="Attack not found")
 
     return _attack_to_response(attack)
+
+
+@router.get("/{attack_id}/records", response_model=AttackRecordsResponse)
+async def get_records(
+    attack_id: str,
+    page: int = 1,
+    page_size: int = 50,
+    criteria: str = None,
+):
+    """Get paginated records (prompts/responses) for an attack."""
+    try:
+        result = get_attack_records(attack_id, page, page_size, criteria)
+        return AttackRecordsResponse(
+            attack_id=result["attack_id"],
+            total=result["total"],
+            page=result["page"],
+            page_size=result["page_size"],
+            records=[AttackRecordItem(**r) for r in result["records"]],
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/{attack_id}/delete-preview")

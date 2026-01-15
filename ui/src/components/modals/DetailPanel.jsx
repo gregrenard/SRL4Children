@@ -4,7 +4,7 @@ import { shortId, getStatusIcon, getStatusColor, getScoreColor, isJobRunning, fo
 import { ProgressBar } from '../common';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
-export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints, attacks, scores }) => {
+export const DetailPanel = ({ item, type, onClose, onReport, onViewRecords, onDelete, endpoints, attacks, scores }) => {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -144,7 +144,15 @@ export const DetailPanel = ({ item, type, onClose, onReport, onDelete, endpoints
                 </div>
               )}
             </div>
-            <div className="mt-6">
+            <div className="mt-6 space-y-2">
+              {item.status === 'completed' && (
+                <button onClick={() => onViewRecords(item)} className="w-full py-2 px-4 bg-everyone-blue hover:bg-everyone-blue-dark rounded-xl text-white text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  View Records
+                </button>
+              )}
               <button onClick={handleDeleteClick} className="w-full py-2 px-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-600 text-sm font-medium transition-colors">
                 Delete Attack
               </button>

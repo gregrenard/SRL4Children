@@ -220,3 +220,59 @@ def run_attack(
             metadata={"error": str(e)}
         )
         raise
+
+
+def get_attack_records(
+    attack_id: str,
+    page: int = 1,
+    page_size: int = 50,
+    criteria_filter: str = None,
+) -> dict:
+    """Get paginated records for an attack.
+
+    Args:
+        attack_id: Attack ID
+        page: Page number (1-indexed)
+        page_size: Records per page
+        criteria_filter: Optional criteria ID substring filter
+
+    Returns:
+        dict with attack_id, total, page, page_size, records
+
+    Raises:
+        ValueError: If attack not found
+    """
+    attack = AttackRepository.get_by_id(attack_id)
+    if not attack:
+        raise ValueError(f"Attack not found: {attack_id}")
+
+    # Get all records for this attack
+    all_records = RecordRepository.get_by_attack(attack.id)
+
+    # Filter by criteria if specified
+    if criteria_filter:
+        all_records = [r for r in all_records if r.criteria_id and criteria_filter in r.criteria_id]
+
+    total = len(all_records)
+
+    # Paginate
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_records = all_records[start:end]
+
+    return {
+        "attack_id": attack.id,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "records": [
+            {
+                "id": r.id,
+                "criteria_id": r.criteria_id or "",
+                "prompt": r.prompt,
+                "response": r.response,
+                "error": r.error,
+            }
+            for r in page_records
+        ],
+    }

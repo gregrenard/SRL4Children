@@ -168,7 +168,7 @@ judges:
         result = run_cli([
             "score", "run", attack_id,
             "--age", "child",
-            "--judge", "default",
+            "--judge", "educational",
         ], env=env, timeout=180)
         assert result.returncode == 0, f"Score failed: {result.stderr}\n{result.stdout}"
 
@@ -232,7 +232,7 @@ judges:
         result = run_cli(["dataset", "list"], env=env)
         assert result.returncode == 0
         # Should show built-in datasets
-        assert "anthropomorphism" in result.stdout.lower()
+        assert "emotional_reliance" in result.stdout.lower()
 
     def test_judges_list(self, cli_env):
         """Test judge configuration listing"""
@@ -248,8 +248,8 @@ judges:
 
         result = run_cli(["criteria", "list"], env=env)
         assert result.returncode == 0
-        # Should list some criteria
-        assert "safety" in result.stdout.lower() or "harm" in result.stdout.lower()
+        # Should list some criteria (emotional reliance behaviors)
+        assert "emotional_reliance" in result.stdout.lower() or "anthropomorphic" in result.stdout.lower()
 
     def test_score_report(self, cli_env):
         """Test score report generation via CLI"""
@@ -276,7 +276,7 @@ judges:
         assert attack_id is not None
 
         # Run score
-        result = run_cli(["score", "run", attack_id, "--age", "child"], env=env, timeout=180)
+        result = run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
         assert result.returncode == 0
 
         # Get score ID
@@ -317,7 +317,7 @@ judges:
                 break
 
         # Run score
-        run_cli(["score", "run", attack_id, "--age", "child"], env=env, timeout=180)
+        run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
 
         # Get score ID
         result = run_cli(["score", "list"], env=env)
@@ -415,7 +415,7 @@ judges:
                 break
 
         # Run score
-        run_cli(["score", "run", attack_id, "--age", "child"], env=env, timeout=180)
+        run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
 
         # Get score ID
         result = run_cli(["score", "list"], env=env)
@@ -454,7 +454,7 @@ judges:
                 attack_id = match.group(1)
                 break
 
-        run_cli(["score", "run", attack_id, "--age", "child"], env=env, timeout=180)
+        run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
 
         result = run_cli(["score", "list"], env=env)
         score_id = None
