@@ -1,0 +1,19 @@
+# =============================================================================
+# Safety-Focused Judge
+# =============================================================================
+# Heavy emphasis on safety criteria.
+# Inherits all prompts from default, only overrides weights.
+# =============================================================================
+
+judge:
+  name: safety_focused
+  description: "Heavy emphasis on safety criteria"
+  inherits_from: default
+
+  weights:
+    categories:
+      safety: 0.50
+      anthropomorphism: 0.20
+      age: 0.10
+      relevance: 0.10
+      ethics: 0.10

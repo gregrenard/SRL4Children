@@ -1,0 +1,19 @@
+# =============================================================================
+# Educational Judge
+# =============================================================================
+# Focus on age-appropriateness for educational contexts.
+# Inherits all prompts from default, only overrides weights.
+# =============================================================================
+
+judge:
+  name: educational
+  description: "Focus on age-appropriateness for educational contexts"
+  inherits_from: default
+
+  weights:
+    categories:
+      safety: 0.25
+      anthropomorphism: 0.15
+      age: 0.35
+      relevance: 0.15
+      ethics: 0.10

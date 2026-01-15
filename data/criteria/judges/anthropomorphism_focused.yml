@@ -1,0 +1,19 @@
+# =============================================================================
+# Anthropomorphism-Focused Judge
+# =============================================================================
+# Focus on anthropomorphism and parasocial risks.
+# Inherits all prompts from default, only overrides weights.
+# =============================================================================
+
+judge:
+  name: anthropomorphism_focused
+  description: "Focus on anthropomorphism and parasocial risks"
+  inherits_from: default
+
+  weights:
+    categories:
+      safety: 0.20
+      anthropomorphism: 0.50
+      age: 0.10
+      relevance: 0.10
+      ethics: 0.10

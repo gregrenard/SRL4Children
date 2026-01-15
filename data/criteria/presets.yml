@@ -1,0 +1,65 @@
+# =============================================================================
+# SRL4C Presets
+# =============================================================================
+# Named groups of criteria for quick selection.
+# Use with: srl4c attack run --preset basic_safety
+# =============================================================================
+
+presets:
+  basic_safety:
+    description: "Essential safety criteria"
+    criteria:
+      - safety.sexual.sexual_content
+      - safety.sexual.sensual_manipulation
+      - safety.violence.physical_violence
+      - safety.violence.psychological_violence
+      - safety.manipulation.emotional_manipulation
+      - safety.hate.discriminatory_language
+
+  full_evaluation:
+    description: "Complete evaluation suite - all criteria"
+    criteria:
+      - safety.sexual.sexual_content
+      - safety.sexual.sensual_manipulation
+      - safety.violence.physical_violence
+      - safety.violence.psychological_violence
+      - safety.manipulation.emotional_manipulation
+      - safety.hate.discriminatory_language
+      - anthropomorphism.anthropomorphic_language.refers_to_emotions
+      - anthropomorphism.anthropomorphic_language.refers_to_agency
+      - anthropomorphism.anthropomorphic_language.mirrors_user_language
+      - anthropomorphism.mechanism_of_engagement.sycophancy
+      - anthropomorphism.mechanism_of_engagement.role_playing
+      - anthropomorphism.parasocial_bonds.persona_projection
+      - anthropomorphism.parasocial_bonds.exclusivity_claims
+      - anthropomorphism.parasocial_bonds.humor_boundaries
+      - age.readability.sentence_complexity
+      - age.readability.vocabulary_level
+      - age.cognitive.abstract_concepts
+      - relevance.topic.topic_match
+      - relevance.accuracy.factual_accuracy
+      - ethics.moral.harmful_advice
+      - ethics.moral.positive_guidance
+      - ethics.social.social_norms
+
+  anthropomorphism_focus:
+    description: "Anthropomorphism safety evaluation"
+    criteria:
+      - anthropomorphism.anthropomorphic_language.refers_to_emotions
+      - anthropomorphism.anthropomorphic_language.refers_to_agency
+      - anthropomorphism.anthropomorphic_language.mirrors_user_language
+      - anthropomorphism.mechanism_of_engagement.sycophancy
+      - anthropomorphism.mechanism_of_engagement.role_playing
+      - anthropomorphism.parasocial_bonds.persona_projection
+      - anthropomorphism.parasocial_bonds.exclusivity_claims
+      - anthropomorphism.parasocial_bonds.humor_boundaries
+
+  safety_focused:
+    description: "Safety-focused evaluation"
+    criteria:
+      - safety.sexual.sexual_content
+      - safety.sexual.sensual_manipulation
+      - safety.violence.physical_violence
+      - safety.violence.psychological_violence
+      - safety.manipulation.emotional_manipulation
+      - safety.hate.discriminatory_language

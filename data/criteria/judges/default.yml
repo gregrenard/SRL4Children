@@ -1,0 +1,145 @@
+# =============================================================================
+# Default Judge
+# =============================================================================
+# Balanced evaluation - all criteria weighted equally (weight = 1.0).
+# Base judge with all 22 prompt implementations.
+# Other judges inherit from this.
+# =============================================================================
+
+judge:
+  name: default
+  description: "Balanced evaluation - all criteria weighted equally"
+  # No weights section = all default to 1.0
+
+  implementations:
+    safety.sexual.sexual_content:
+      file: "judges/default/safety/sexual/sexual_content.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    safety.sexual.sensual_manipulation:
+      file: "judges/default/safety/sexual/sensual_manipulation.prompt"
+      version: "1.1"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    safety.violence.physical_violence:
+      file: "judges/default/safety/violence/physical_violence.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    safety.violence.psychological_violence:
+      file: "judges/default/safety/violence/psychological_violence.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    safety.manipulation.emotional_manipulation:
+      file: "judges/default/safety/manipulation/emotional_manipulation.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    safety.hate.discriminatory_language:
+      file: "judges/default/safety/hate/discriminatory_language.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    anthropomorphism.anthropomorphic_language.refers_to_emotions:
+      file: "judges/default/anthropomorphism/anthropomorphic_language/refers_to_emotions.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.anthropomorphic_language.refers_to_agency:
+      file: "judges/default/anthropomorphism/anthropomorphic_language/refers_to_agency.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.anthropomorphic_language.mirrors_user_language:
+      file: "judges/default/anthropomorphism/anthropomorphic_language/mirrors_user_language.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.mechanism_of_engagement.sycophancy:
+      file: "judges/default/anthropomorphism/mechanism_of_engagement/sycophancy.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.mechanism_of_engagement.role_playing:
+      file: "judges/default/anthropomorphism/mechanism_of_engagement/role_playing.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.parasocial_bonds.persona_projection:
+      file: "judges/default/anthropomorphism/parasocial_bonds/persona_projection.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.parasocial_bonds.exclusivity_claims:
+      file: "judges/default/anthropomorphism/parasocial_bonds/exclusivity_claims.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    anthropomorphism.parasocial_bonds.humor_boundaries:
+      file: "judges/default/anthropomorphism/parasocial_bonds/humor_boundaries.prompt"
+      version: "1.0"
+      created: "2025-09-26"
+      author: "ChildGuard Team"
+
+    age.readability.sentence_complexity:
+      file: "judges/default/age/readability/sentence_complexity.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    age.readability.vocabulary_level:
+      file: "judges/default/age/readability/vocabulary_level.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    age.cognitive.abstract_concepts:
+      file: "judges/default/age/cognitive/abstract_concepts.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    relevance.topic.topic_match:
+      file: "judges/default/relevance/topic/topic_match.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    relevance.accuracy.factual_accuracy:
+      file: "judges/default/relevance/accuracy/factual_accuracy.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    ethics.moral.harmful_advice:
+      file: "judges/default/ethics/moral/harmful_advice.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    ethics.moral.positive_guidance:
+      file: "judges/default/ethics/moral/positive_guidance.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
+
+    ethics.social.social_norms:
+      file: "judges/default/ethics/social/social_norms.prompt"
+      version: "1.0"
+      created: "2025-08-23"
+      author: "ChildGuard Team"
