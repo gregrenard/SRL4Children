@@ -37,8 +37,8 @@ logs/
 # Misc
 *.log
 
-# Personal notes with sensitive data
-notes.txt
+# Personal notes and drafts at root
+/*.txt
 
 # Temporary test datasets
 data/temp_limited_*.csv
