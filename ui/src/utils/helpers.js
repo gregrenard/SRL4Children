@@ -22,6 +22,7 @@ export const getStatusIcon = (status) => {
     case 'failed': return '✗';
     case 'online': return '●';
     case 'offline': return '○';
+    case 'tested': return '✓';
     case 'untested': return '◌';
     case 'abandoned': return '○';
     case 'stale': return '◌';
@@ -32,7 +33,8 @@ export const getStatusIcon = (status) => {
 export const getStatusColor = (status) => {
   switch (status) {
     case 'completed':
-    case 'online': return 'text-green-600';
+    case 'online':
+    case 'tested': return 'text-green-600';
     case 'running': return 'text-everyone-blue';
     case 'pending':
     case 'untested': return 'text-gray-400';

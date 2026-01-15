@@ -194,7 +194,7 @@ export const Dashboard = () => {
       title: 'New Attack',
       fields: [
         { name: 'endpoint', label: 'Endpoint', type: 'select', required: true, options: endpoints.map(e => ({ value: e.name, label: e.name })) },
-        { name: 'dataset', label: 'Dataset', type: 'select', required: true, options: datasets.map(d => ({ value: d.name, label: `${d.name} (${d.rows} prompts)` })), helpLink: { text: 'View prompts', urlTemplate: '/datasets?dataset={value}' } },
+        { name: 'dataset', label: 'Dataset', type: 'select', required: true, options: datasets.map(d => ({ value: d.name, label: `${d.name} (${d.prompt_count || 0} prompts)` })), helpLink: { text: 'View prompts', urlTemplate: '/datasets?dataset={value}' } },
       ]
     },
     score: {
