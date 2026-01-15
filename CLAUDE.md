@@ -23,7 +23,7 @@ SRL4Children/
 │   │   ├── schemas.py         # Pydantic request/response models
 │   │   └── routes/            # Route handlers
 │   ├── registry/              # Registry loader
-│   │   └── loader.py          # Loads criteria & judges from registry.yml
+│   │   └── loader.py          # Loads criteria & judges from split files
 │   ├── db/                    # SQLite persistence
 │   │   ├── models.py          # Data models + dataclasses
 │   │   ├── repository.py      # CRUD operations
@@ -36,15 +36,22 @@ SRL4Children/
 │   └── wrapper.py             # OpenAI proxy wrapper
 │
 ├── data/
-│   ├── criteria/              # Registry + judge prompt files
-│   │   ├── registry.yml       # Master registry (criteria, judges, presets)
-│   │   └── judges/            # Judge implementations
-│   │       └── default/       # Default judge prompts (22 .prompt files)
-│   │           ├── safety/
-│   │           ├── anthropomorphism/
-│   │           ├── age/
-│   │           ├── relevance/
-│   │           └── ethics/
+│   ├── criteria/              # Registry configuration (split files)
+│   │   ├── criteria.yml       # 22 abstract criteria definitions
+│   │   ├── presets.yml        # Named criteria selections
+│   │   └── judges/            # Judge configs (one .yml per judge)
+│   │       ├── default.yml
+│   │       ├── safety_focused.yml
+│   │       ├── anthropomorphism_focused.yml
+│   │       ├── educational.yml
+│   │       └── research.yml
+│   ├── judges/                # Judge prompt implementations
+│   │   └── default/           # Default judge prompts (22 .prompt files)
+│   │       ├── safety/
+│   │       ├── anthropomorphism/
+│   │       ├── age/
+│   │       ├── relevance/
+│   │       └── ethics/
 │   └── datasets/              # Attack CSV files (auto-discovered)
 │
 ├── templates/                 # Copied to ~/.srl4c/ on init
@@ -177,7 +184,10 @@ Jobs running >90 min without updates auto-mark as `stale`.
 | `src/srl4c/judge/evaluator.py` | Multi-judge evaluation + weighting |
 | `src/srl4c/db/repository.py` | CRUD + progress update methods |
 | `src/srl4c/db/sync.py` | Sync built-in datasets/judges from files to DB |
-| `data/criteria/registry.yml` | Master registry (criteria, judges, presets) |
+| `data/criteria/criteria.yml` | Abstract criteria definitions (22 total) |
+| `data/criteria/presets.yml` | Named criteria selections |
+| `data/criteria/judges/*.yml` | Judge configs with inheritance and weights |
+| `data/judges/default/*.prompt` | Evaluation prompt implementations |
 | `templates/judges.yaml` | LLM judge model configuration |
 
 ## Configuration

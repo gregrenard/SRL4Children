@@ -796,24 +796,32 @@ The `data/` directory contains the evaluation criteria, judge implementations, a
 
 ```
 data/
-├── criteria/                    # Registry + judge implementations
-│   ├── registry.yml             # Master registry (criteria, judges, presets)
-│   └── judges/                  # Judge implementations
-│       └── default/             # Default judge (22 .prompt files)
-│           ├── safety/
-│           │   ├── sexual/
-│           │   │   ├── sexual_content__v1_0.prompt
-│           │   │   └── sensual_manipulation__v1_1.prompt
-│           │   ├── violence/
-│           │   ├── manipulation/
-│           │   └── hate/
-│           ├── anthropomorphism/
-│           │   ├── anthropomorphic_language/
-│           │   ├── mechanism_of_engagement/
-│           │   └── parasocial_bonds/
-│           ├── age/
-│           ├── relevance/
-│           └── ethics/
+├── criteria/                    # Registry configuration (split files)
+│   ├── criteria.yml             # 22 abstract criteria definitions
+│   ├── presets.yml              # Named criteria selections
+│   └── judges/                  # Judge configs (one .yml per judge)
+│       ├── default.yml          # Base judge - all 22 implementations
+│       ├── safety_focused.yml   # Inherits default, higher safety weights
+│       ├── anthropomorphism_focused.yml
+│       ├── educational.yml
+│       └── research.yml
+│
+├── judges/                      # Judge prompt implementations
+│   └── default/                 # Default judge (22 .prompt files)
+│       ├── safety/
+│       │   ├── sexual/
+│       │   │   ├── sexual_content.prompt
+│       │   │   └── sensual_manipulation.prompt
+│       │   ├── violence/
+│       │   ├── manipulation/
+│       │   └── hate/
+│       ├── anthropomorphism/
+│       │   ├── anthropomorphic_language/
+│       │   ├── mechanism_of_engagement/
+│       │   └── parasocial_bonds/
+│       ├── age/
+│       ├── relevance/
+│       └── ethics/
 │
 └── datasets/                    # Attack prompts (auto-discovered)
     ├── anthropomorphism_question.csv
@@ -834,11 +842,11 @@ data/
 
 Built-in judges: `default`, `safety_focused`, `anthropomorphism_focused`, `educational`, `research`
 
-### Criteria Files (`.prompt`)
+### Prompt Files (`.prompt`)
 
 Each `.prompt` file defines how to evaluate AI responses for a specific safety principle. Used by `srl4c score run`.
 
-**Example**: `data/criteria/anthropomorphism/parasocial_bonds/persona_projection__v1_0.prompt`
+**Example**: `data/judges/default/anthropomorphism/parasocial_bonds/persona_projection.prompt`
 
 ```yaml
 role: "You are an expert anthropomorphism safety evaluator..."
@@ -866,44 +874,52 @@ output_format: |
 
 **How it's used**: During `srl4c score run`, judges use these prompts to evaluate each response. The scoring guide ensures consistent 0-5 ratings across different judges.
 
-### Registry File (`registry.yml`)
+### Registry Files (Split Structure)
 
-The master registry defines criteria, judges, and presets. Used by `srl4c criteria list` and `srl4c eval-judges list`.
+The registry is split into multiple files for maintainability. Used by `srl4c criteria list` and `srl4c eval-judges list`.
 
+**`data/criteria/criteria.yml`** - Abstract definitions (WHAT to evaluate):
 ```yaml
-# Abstract criteria definitions (WHAT to evaluate)
 criteria:
   safety.sexual.sexual_content:
     category: safety
     subcategory: sexual
     name: Sexual Content
     description: Detects inappropriate sexual content for minors
+    tags: [core, child-safety]
+```
 
-# Judge implementations (HOW to evaluate)
-judges:
-  default:
-    description: Balanced evaluation - all criteria weighted equally
-    implementations:
-      safety.sexual.sexual_content:
-        file: judges/default/safety/sexual/sexual_content__v1_0.prompt
-        version: "1.0"
-        author: SRL4C Team
+**`data/criteria/judges/default.yml`** - Judge config (HOW to evaluate):
+```yaml
+judge:
+  name: default
+  description: Balanced evaluation - all criteria weighted equally
+  implementations:
+    safety.sexual.sexual_content:
+      file: "judges/default/safety/sexual/sexual_content.prompt"
+      version: "1.0"
+      author: SRL4C Team
+```
 
-  safety_focused:
-    inherits_from: default
-    description: Higher weights for safety criteria
-    weights:
-      categories:
-        safety: 2.0
-      subcategories:
-        violence: 2.5
+**`data/criteria/judges/safety_focused.yml`** - Specialized judge with weight overrides:
+```yaml
+judge:
+  name: safety_focused
+  description: Higher weights for safety criteria
+  inherits_from: default
+  weights:
+    categories:
+      safety: 2.0
+    subcategories:
+      safety.violence: 2.5
+```
 
-# Criteria presets for quick selection
+**`data/criteria/presets.yml`** - Named criteria selections:
+```yaml
 presets:
   basic_safety:
+    description: Core safety criteria only
     criteria: [safety.*, ethics.*]
-  full_evaluation:
-    criteria: [all 22 criteria]
 ```
 
 **Key concepts**:
@@ -961,8 +977,8 @@ PromptID,Category,Prompt
 │                              ▼                                              │
 │     For each record in attack:                                              │
 │       1. Get category from record (e.g., "anthropomorphism.parasocial...")  │
-│       2. Look up in data/criteria/registry.yml                              │
-│       3. Load data/criteria/.../persona_projection__v1_0.prompt             │
+│       2. Look up in data/criteria/criteria.yml + judges/*.yml               │
+│       3. Load data/judges/default/.../persona_projection.prompt             │
 │       4. Send to judges: prompt + response + scoring guide                  │
 │       5. Store score (0-5) + explanation + evidence                         │
 │                                                                             │
