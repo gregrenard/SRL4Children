@@ -3,7 +3,7 @@ Sync service for populating DB from files.
 
 Handles:
 - Built-in datasets: Sync from data/datasets/*.csv
-- Built-in judges: Sync from registry.yml + prompt files
+- Built-in judges: Sync from criteria/judges/*.yml + prompt files
 """
 
 import csv
@@ -12,11 +12,10 @@ import json
 import logging
 from pathlib import Path
 
-import yaml
-
 from srl4c.db.models import db_connection
 from srl4c.db.repository import generate_id
-from srl4c.paths import DATA_DIR, DATASETS_DIR, REGISTRY_FILE
+from srl4c.paths import DATA_DIR, DATASETS_DIR
+from srl4c.registry import get_registry_loader
 
 logger = logging.getLogger(__name__)
 
@@ -148,16 +147,20 @@ def compute_judge_content_hash(judge_def: dict) -> str:
 
 def sync_builtin_judges(tenant_id: str = None) -> int:
     """
-    Sync built-in judges from registry.yml to DB.
+    Sync built-in judges from registry to DB.
+
+    Uses the registry loader which handles both split files (criteria.yml, presets.yml,
+    judges/*.yml) and legacy monolithic registry.yml.
 
     Returns number of judges synced/updated.
     """
-    if not REGISTRY_FILE.exists():
-        logger.warning(f"Registry file not found: {REGISTRY_FILE}")
-        return 0
+    loader = get_registry_loader()
 
-    with open(REGISTRY_FILE, encoding="utf-8") as f:
-        registry = yaml.safe_load(f)
+    try:
+        registry = loader.load_registry()
+    except FileNotFoundError as e:
+        logger.warning(f"Registry files not found: {e}")
+        return 0
 
     judges_data = registry.get("judges", {})
     synced = 0

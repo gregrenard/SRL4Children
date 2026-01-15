@@ -17,7 +17,15 @@ from typing import Any
 
 import yaml
 
-from srl4c.paths import DATA_DIR, DATASETS_DIR, JUDGES_DIR, REGISTRY_FILE
+from srl4c.paths import (
+    CRITERIA_DIR,
+    CRITERIA_FILE,
+    DATA_DIR,
+    DATASETS_DIR,
+    JUDGES_REGISTRY_DIR,
+    PRESETS_FILE,
+    REGISTRY_FILE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +103,15 @@ class RegistryLoader:
     """Unified loader for registry: criteria, judges, datasets, presets."""
 
     def __init__(self, registry_file: Path | None = None, data_dir: Path | None = None):
-        self.registry_file = registry_file or REGISTRY_FILE
+        self.registry_file = registry_file or REGISTRY_FILE  # Legacy fallback
         self.data_dir = data_dir or DATA_DIR
         self.datasets_dir = self.data_dir / "datasets"
-        self.judges_dir = self.data_dir / "judges"
+        self.criteria_dir = self.data_dir / "criteria"
+
+        # New split file paths
+        self.criteria_file = self.criteria_dir / "criteria.yml"
+        self.presets_file = self.criteria_dir / "presets.yml"
+        self.judges_registry_dir = self.criteria_dir / "judges"
 
         self._registry_cache: dict | None = None
         self._criteria_cache: dict[str, CriteriaConfig] = {}
@@ -106,20 +119,62 @@ class RegistryLoader:
         self._dataset_cache: dict[str, DatasetConfig] = {}
         self._prompt_cache: dict[str, dict[str, Any]] = {}  # file -> content
 
-        logger.info(f"RegistryLoader initialized: {self.registry_file}")
+        logger.info(f"RegistryLoader initialized: criteria_dir={self.criteria_dir}")
 
     # -------------------------------------------------------------------------
     # Registry Loading
     # -------------------------------------------------------------------------
 
     def load_registry(self, force_reload: bool = False) -> dict[str, Any]:
-        """Load the full registry.yml file."""
-        if self._registry_cache is None or force_reload:
-            if not self.registry_file.exists():
-                raise FileNotFoundError(f"Registry file not found: {self.registry_file}")
+        """Load registry from split files (criteria.yml, presets.yml, judges/*.yml).
 
-            with open(self.registry_file, encoding="utf-8") as f:
-                self._registry_cache = yaml.safe_load(f)
+        Falls back to legacy registry.yml if split files don't exist.
+        """
+        if self._registry_cache is None or force_reload:
+            registry: dict[str, Any] = {"criteria": {}, "judges": {}, "presets": {}, "metadata": {}}
+
+            # Try loading from split files first
+            if self.criteria_file.exists():
+                # Load criteria definitions
+                with open(self.criteria_file, encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                    registry["criteria"] = data.get("criteria", {})
+                    registry["metadata"] = data.get("metadata", {})
+
+                # Load presets
+                if self.presets_file.exists():
+                    with open(self.presets_file, encoding="utf-8") as f:
+                        data = yaml.safe_load(f) or {}
+                        registry["presets"] = data.get("presets", {})
+
+                # Load judges from judges/ directory
+                if self.judges_registry_dir.exists():
+                    for judge_file in sorted(self.judges_registry_dir.glob("*.yml")):
+                        with open(judge_file, encoding="utf-8") as f:
+                            data = yaml.safe_load(f) or {}
+                            if "judge" in data:
+                                judge_data = data["judge"]
+                                judge_name = judge_data.get("name", judge_file.stem)
+                                # Store without the outer "judge" wrapper
+                                registry["judges"][judge_name] = {
+                                    k: v for k, v in judge_data.items() if k != "name"
+                                }
+
+                logger.info(f"Loaded registry from split files: {self.criteria_dir}")
+
+            # Fall back to legacy monolithic registry.yml
+            elif self.registry_file.exists():
+                with open(self.registry_file, encoding="utf-8") as f:
+                    self._registry_cache = yaml.safe_load(f)
+                logger.info(f"Loaded registry from legacy file: {self.registry_file}")
+                return self._registry_cache
+
+            else:
+                raise FileNotFoundError(
+                    f"No registry files found. Expected {self.criteria_file} or {self.registry_file}"
+                )
+
+            self._registry_cache = registry
 
             criteria_count = len(self._registry_cache.get("criteria", {}))
             judges_count = len(self._registry_cache.get("judges", {}))
