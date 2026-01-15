@@ -62,7 +62,8 @@ def run_attack(console: Console, endpoint_name: str, dataset_name: str):
     console.print(f"\n[green]✓[/green] Attack completed")
     console.print(f"  ID:        [cyan]{attack.id}[/cyan]")
     console.print(f"  Prompts:   {attack.completed_prompts} sent, {errors} errors")
-    console.print(f"\nNext step: [cyan]srl4c score run {attack.id} --age child --judge default[/cyan]\n")
+    console.print(f"\nNext step: [cyan]srl4c score run {attack.id} --age child --judge <JUDGE>[/cyan]")
+    console.print(f"  (see available judges: [cyan]srl4c eval-judges list[/cyan])\n")
 
 
 def list_attacks(console: Console):

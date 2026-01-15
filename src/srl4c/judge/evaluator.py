@@ -586,7 +586,7 @@ def evaluate_records_batch(
             registry = loader.load_registry()
             criterion_ids = list(registry.get("criteria", {}).keys())
 
-        criteria = loader.load_multiple_criteria(criterion_ids)
+        criteria = loader.load_multiple_criteria(criterion_ids, judge_name)
 
         for criterion in criteria:
             for judge_config in config.judges:
@@ -711,6 +711,7 @@ def evaluate_response(
     response: str,
     age_group: str,
     criteria_selection: Optional[str] = None,
+    judge_name: str = None,
 ) -> BenchmarkResult:
     """
     Main evaluation function - evaluates a response against selected criteria.
@@ -728,7 +729,7 @@ def evaluate_response(
         registry = loader.load_registry()
         criterion_ids = list(registry.get("criteria", {}).keys())
 
-    criteria = loader.load_multiple_criteria(criterion_ids)
+    criteria = loader.load_multiple_criteria(criterion_ids, judge_name)
 
     # Create evaluator
     evaluator = MultiJudgeEvaluator(config)

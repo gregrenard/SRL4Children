@@ -143,8 +143,15 @@ def simple_chat(request: SimpleRequest):
 
 
 if __name__ == "__main__":
-    host = config.get("host", "0.0.0.0")
-    port = config.get("port", 8080)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Kid Chatbot - Sample vulnerable chatbot for SRL4C testing")
+    parser.add_argument("--port", "-p", type=int, default=None, help="Port to run on (default: 8080 or config.yaml)")
+    parser.add_argument("--host", type=str, default=None, help="Host to bind to (default: 0.0.0.0)")
+    args = parser.parse_args()
+
+    host = args.host or config.get("host", "0.0.0.0")
+    port = args.port or config.get("port", 8080)
     worker_url = config.get("guardrails_worker_url") or os.environ.get("SRL4C_WORKER_URL")
     guarded = bool(worker_url and srl4c)
 

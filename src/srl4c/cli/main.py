@@ -215,7 +215,7 @@ def attack_delete(
 def score_run(
     attack: str = typer.Argument(..., help="Attack ID"),
     age: str = typer.Option("child", "--age", "-a", help="Age context: child, teen, young_adult, emerging"),
-    judge: str = typer.Option("default", "--judge", "-j", help="Evaluation judge (e.g., default, safety_focused)"),
+    judge: str = typer.Option(..., "--judge", "-j", help="Evaluation judge name (see: srl4c eval-judges list)"),
     format: str = typer.Option("table", "--format", "-f", help="Output format: table, json, markdown"),
     threshold: float = typer.Option(None, "--threshold", "-t", help="Fail if score below threshold"),
 ):
@@ -448,7 +448,7 @@ def eval_judges_list():
 
 
 @eval_judges_app.command("show")
-def eval_judges_show(name: str = typer.Argument(..., help="Judge name (e.g., default, safety_focused)")):
+def eval_judges_show(name: str = typer.Argument(..., help="Judge name (see: srl4c eval-judges list)")):
     """Show evaluation judge details"""
     from srl4c.cli.commands.criteria import show_judge_registry
     show_judge_registry(console, name)

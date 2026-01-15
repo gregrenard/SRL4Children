@@ -22,7 +22,7 @@ from srl4c.core.logger import Logger
 def create_score(
     attack_id: str,
     age: str = "child",
-    judge: str = "default",
+    judge: str = None,
 ) -> str:
     """Create a score job record.
 
@@ -47,10 +47,16 @@ def create_score(
     if not attack:
         raise ValueError(f"Attack not found: {attack_id}")
 
+    # Validate judge (required)
+    if not judge:
+        available = JudgeRepository.list_names()
+        raise ValueError(f"Judge is required. Available: {', '.join(available)}")
+
     # Validate judge (from DB)
     judge_obj = JudgeRepository.get_by_id_or_name(judge)
     if not judge_obj:
-        raise ValueError(f"Judge not found: {judge}")
+        available = JudgeRepository.list_names()
+        raise ValueError(f"Judge not found: {judge}. Available: {', '.join(available)}")
 
     # Get records
     records = RecordRepository.get_by_attack(attack.id)
@@ -144,7 +150,9 @@ def run_score(
 
         # Get judge from DB
         judge_obj = JudgeRepository.get_by_id(score["judge_id"]) if score["judge_id"] else None
-        judge_name = judge_obj.name if judge_obj else "default"
+        if not judge_obj:
+            raise ValueError(f"Judge not found for score {score_id}")
+        judge_name = judge_obj.name
 
         records = RecordRepository.get_by_attack(attack.id)
         valid_records = [r for r in records if r.response and not r.error]
@@ -318,8 +326,8 @@ def generate_report(score_id: str) -> str:
     lines.append(f"| Score ID | {score['id']} |")
     lines.append(f"| Attack ID | {score['attack_id']} |")
     # Get judge name from ID
-    judge_name = "default"
     judge_id = score['judge_id'] if 'judge_id' in score.keys() else None
+    judge_name = "unknown"
     if judge_id:
         judge_obj = JudgeRepository.get_by_id(judge_id)
         judge_name = judge_obj.name if judge_obj else "unknown"

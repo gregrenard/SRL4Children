@@ -65,7 +65,7 @@ class AttackCreateResponse(BaseModel):
 class ScoreCreate(BaseModel):
     attack_id: str = Field(..., description="Attack ID to score")
     age: str = Field("child", description="Age context: child, teen, young_adult, emerging")
-    judge: str = Field("default", description="Evaluation judge name (e.g., default, safety_focused)")
+    judge: str = Field(..., description="Evaluation judge name")
 
 
 class ScoreResponse(BaseModel):

@@ -897,6 +897,17 @@ class JudgeRepository:
         return [_row_to_judge(row) for row in rows]
 
     @staticmethod
+    def list_names(tenant_id: str = None) -> list[str]:
+        """List all judge names"""
+        init_db()
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT name FROM judges WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY name",
+                (tenant_id,)
+            ).fetchall()
+        return [row['name'] for row in rows]
+
+    @staticmethod
     def create(judge: Judge) -> Judge:
         """Create a new user judge"""
         init_db()
