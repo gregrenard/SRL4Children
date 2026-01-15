@@ -1,101 +1,101 @@
 # =============================================================================
-# Educational Context Judge
+# Entertainment Context Judge
 # =============================================================================
-# For tutoring, homework help, learning apps.
-# Rewards professional distance, penalizes person-like behavior.
+# For games, creative writing, roleplay, storytelling.
+# Rewards in-character engagement, penalizes breaking fourth wall with real claims.
 # =============================================================================
 
 judge:
-  name: educational
-  description: "Educational context - rewards professional distance, penalizes person-like behavior"
+  name: entertainment
+  description: "Entertainment context - rewards in-character engagement, penalizes real emotional claims"
 
   implementations:
     emotional_reliance.anthropomorphic.persona_and_backstories:
-      file: "judges/educational/emotional_reliance/anthropomorphic/persona_and_backstories.prompt"
+      file: "judges/entertainment/emotional_reliance/anthropomorphic/persona_and_backstories.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.anthropomorphic.emotional_state_expression:
-      file: "judges/educational/emotional_reliance/anthropomorphic/emotional_state_expression.prompt"
+      file: "judges/entertainment/emotional_reliance/anthropomorphic/emotional_state_expression.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.anthropomorphic.ai_physical_sensation_claims:
-      file: "judges/educational/emotional_reliance/anthropomorphic/ai_physical_sensation_claims.prompt"
+      file: "judges/entertainment/emotional_reliance/anthropomorphic/ai_physical_sensation_claims.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.anthropomorphic.agency_desires_intentions:
-      file: "judges/educational/emotional_reliance/anthropomorphic/agency_desires_intentions.prompt"
+      file: "judges/entertainment/emotional_reliance/anthropomorphic/agency_desires_intentions.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.anthropomorphic.sentience:
-      file: "judges/educational/emotional_reliance/anthropomorphic/sentience.prompt"
+      file: "judges/entertainment/emotional_reliance/anthropomorphic/sentience.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.interactional.human_markers_of_communication:
-      file: "judges/educational/emotional_reliance/interactional/human_markers_of_communication.prompt"
+      file: "judges/entertainment/emotional_reliance/interactional/human_markers_of_communication.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.interactional.mimicry:
-      file: "judges/educational/emotional_reliance/interactional/mimicry.prompt"
+      file: "judges/entertainment/emotional_reliance/interactional/mimicry.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.interactional.proactivity:
-      file: "judges/educational/emotional_reliance/interactional/proactivity.prompt"
+      file: "judges/entertainment/emotional_reliance/interactional/proactivity.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.interactional.flattery:
-      file: "judges/educational/emotional_reliance/interactional/flattery.prompt"
+      file: "judges/entertainment/emotional_reliance/interactional/flattery.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.interactional.empathy:
-      file: "judges/educational/emotional_reliance/interactional/empathy.prompt"
+      file: "judges/entertainment/emotional_reliance/interactional/empathy.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.interactional.validation:
-      file: "judges/educational/emotional_reliance/interactional/validation.prompt"
+      file: "judges/entertainment/emotional_reliance/interactional/validation.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.relational.intrusiveness:
-      file: "judges/educational/emotional_reliance/relational/intrusiveness.prompt"
+      file: "judges/entertainment/emotional_reliance/relational/intrusiveness.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.relational.relatability:
-      file: "judges/educational/emotional_reliance/relational/relatability.prompt"
+      file: "judges/entertainment/emotional_reliance/relational/relatability.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.relational.relationship_status:
-      file: "judges/educational/emotional_reliance/relational/relationship_status.prompt"
+      file: "judges/entertainment/emotional_reliance/relational/relationship_status.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"
 
     emotional_reliance.relational.exclusivity:
-      file: "judges/educational/emotional_reliance/relational/exclusivity.prompt"
+      file: "judges/entertainment/emotional_reliance/relational/exclusivity.prompt"
       version: "1.0"
       created: "2025-01-15"
       author: "SRL4C Team"

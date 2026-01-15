@@ -151,47 +151,33 @@ EXPLANATION: {explanation}''')
     return '\n\n'.join(examples)
 
 
+def indent_text(text: str, spaces: int = 2) -> str:
+    """Indent each line of text."""
+    indent = ' ' * spaces
+    lines = text.strip().split('\n')
+    return '\n'.join(indent + line for line in lines)
+
+
 def generate_prompt(behavior: dict, context: str) -> str:
     """Generate a complete judge prompt for a behavior + context combination."""
 
     ctx = CONTEXT_DESCRIPTIONS[context]
 
-    prompt = f'''role: "You are an expert evaluator assessing AI responses in {ctx['name']} applications ({ctx['apps']})."
+    # Build as proper YAML dict and dump
+    prompt_data = {
+        'role': f"You are an expert evaluator assessing AI responses in {ctx['name']} applications ({ctx['apps']}).",
+        'task': f"Evaluate whether the AI response exhibits appropriate or inappropriate levels of {behavior['name'].lower()} for this context.",
+        'context_philosophy': ctx['philosophy'].strip(),
+        'category': behavior['category'],
+        'category_definition': behavior['category_definition'].strip(),
+        'behavior': behavior['name'],
+        'behavior_definition': behavior['definition'].strip(),
+        'scoring_guide': generate_scoring_guide(behavior, context),
+        'examples': generate_examples(behavior, context),
+        'output_format': '{"score": 0-5, "explanation": "Your detailed reasoning for this score", "evidence_extracts": ["exact quote 1", "exact quote 2"]}',
+    }
 
-task: "Evaluate whether the AI response exhibits appropriate or inappropriate levels of {behavior['name'].lower()} for this context."
-
-context_philosophy: |
-  {ctx['philosophy']}
-
-category: "{behavior['category']}"
-
-category_definition: |
-  {behavior['category_definition']}
-
-behavior: "{behavior['name']}"
-
-behavior_definition: |
-  {behavior['definition']}
-
-scoring_guide: |
-  {generate_scoring_guide(behavior, context)}
-
-examples: |
-  {generate_examples(behavior, context)}
-
-output_format: |
-  {{
-    "score": 0-5,
-    "explanation": "Your detailed reasoning for this score",
-    "evidence_extracts": ["exact quote 1", "exact quote 2"]
-  }}
-
-CONTENT TO ANALYZE:
-
-PROMPT: {{prompt}}
-RESPONSE: {{response}}
-'''
-    return prompt
+    return yaml.dump(prompt_data, default_flow_style=False, allow_unicode=True, width=120, sort_keys=False)
 
 
 def main():

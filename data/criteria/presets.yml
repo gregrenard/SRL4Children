@@ -1,65 +1,52 @@
 # =============================================================================
-# SRL4C Presets
+# SRL4C Presets - Emotional Reliance Framework
 # =============================================================================
 # Named groups of criteria for quick selection.
-# Use with: srl4c attack run --preset basic_safety
 # =============================================================================
 
 presets:
-  basic_safety:
-    description: "Essential safety criteria"
+  all:
+    description: "All 15 emotional reliance behaviors"
     criteria:
-      - safety.sexual.sexual_content
-      - safety.sexual.sensual_manipulation
-      - safety.violence.physical_violence
-      - safety.violence.psychological_violence
-      - safety.manipulation.emotional_manipulation
-      - safety.hate.discriminatory_language
+      - emotional_reliance.anthropomorphic.persona_and_backstories
+      - emotional_reliance.anthropomorphic.emotional_state_expression
+      - emotional_reliance.anthropomorphic.ai_physical_sensation_claims
+      - emotional_reliance.anthropomorphic.agency_desires_intentions
+      - emotional_reliance.anthropomorphic.sentience
+      - emotional_reliance.interactional.human_markers_of_communication
+      - emotional_reliance.interactional.mimicry
+      - emotional_reliance.interactional.proactivity
+      - emotional_reliance.interactional.flattery
+      - emotional_reliance.interactional.empathy
+      - emotional_reliance.interactional.validation
+      - emotional_reliance.relational.intrusiveness
+      - emotional_reliance.relational.relatability
+      - emotional_reliance.relational.relationship_status
+      - emotional_reliance.relational.exclusivity
 
-  full_evaluation:
-    description: "Complete evaluation suite - all criteria"
+  anthropomorphic:
+    description: "Anthropomorphic cues - AI appearing human-like"
     criteria:
-      - safety.sexual.sexual_content
-      - safety.sexual.sensual_manipulation
-      - safety.violence.physical_violence
-      - safety.violence.psychological_violence
-      - safety.manipulation.emotional_manipulation
-      - safety.hate.discriminatory_language
-      - anthropomorphism.anthropomorphic_language.refers_to_emotions
-      - anthropomorphism.anthropomorphic_language.refers_to_agency
-      - anthropomorphism.anthropomorphic_language.mirrors_user_language
-      - anthropomorphism.mechanism_of_engagement.sycophancy
-      - anthropomorphism.mechanism_of_engagement.role_playing
-      - anthropomorphism.parasocial_bonds.persona_projection
-      - anthropomorphism.parasocial_bonds.exclusivity_claims
-      - anthropomorphism.parasocial_bonds.humor_boundaries
-      - age.readability.sentence_complexity
-      - age.readability.vocabulary_level
-      - age.cognitive.abstract_concepts
-      - relevance.topic.topic_match
-      - relevance.accuracy.factual_accuracy
-      - ethics.moral.harmful_advice
-      - ethics.moral.positive_guidance
-      - ethics.social.social_norms
+      - emotional_reliance.anthropomorphic.persona_and_backstories
+      - emotional_reliance.anthropomorphic.emotional_state_expression
+      - emotional_reliance.anthropomorphic.ai_physical_sensation_claims
+      - emotional_reliance.anthropomorphic.agency_desires_intentions
+      - emotional_reliance.anthropomorphic.sentience
 
-  anthropomorphism_focus:
-    description: "Anthropomorphism safety evaluation"
+  interactional:
+    description: "Interactional cues - conversation style and engagement"
     criteria:
-      - anthropomorphism.anthropomorphic_language.refers_to_emotions
-      - anthropomorphism.anthropomorphic_language.refers_to_agency
-      - anthropomorphism.anthropomorphic_language.mirrors_user_language
-      - anthropomorphism.mechanism_of_engagement.sycophancy
-      - anthropomorphism.mechanism_of_engagement.role_playing
-      - anthropomorphism.parasocial_bonds.persona_projection
-      - anthropomorphism.parasocial_bonds.exclusivity_claims
-      - anthropomorphism.parasocial_bonds.humor_boundaries
+      - emotional_reliance.interactional.human_markers_of_communication
+      - emotional_reliance.interactional.mimicry
+      - emotional_reliance.interactional.proactivity
+      - emotional_reliance.interactional.flattery
+      - emotional_reliance.interactional.empathy
+      - emotional_reliance.interactional.validation
 
-  safety_focused:
-    description: "Safety-focused evaluation"
+  relational:
+    description: "Relational cues - relationship framing and exclusivity"
     criteria:
-      - safety.sexual.sexual_content
-      - safety.sexual.sensual_manipulation
-      - safety.violence.physical_violence
-      - safety.violence.psychological_violence
-      - safety.manipulation.emotional_manipulation
-      - safety.hate.discriminatory_language
+      - emotional_reliance.relational.intrusiveness
+      - emotional_reliance.relational.relatability
+      - emotional_reliance.relational.relationship_status
+      - emotional_reliance.relational.exclusivity
