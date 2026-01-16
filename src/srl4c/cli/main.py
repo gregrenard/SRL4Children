@@ -70,10 +70,13 @@ def endpoint_list():
 
 
 @endpoint_app.command("test")
-def endpoint_test(id: str = typer.Argument(..., help="Endpoint ID or name")):
-    """Test endpoint connectivity"""
+def endpoint_test(
+    id: str = typer.Argument(..., help="Endpoint ID or name"),
+    prompt: str = typer.Option(None, "--prompt", "-p", help="Custom prompt to send"),
+):
+    """Test endpoint connectivity with optional custom prompt"""
     from srl4c.cli.commands.endpoint import test_endpoint
-    test_endpoint(console, id)
+    test_endpoint(console, id, prompt=prompt)
 
 
 @endpoint_app.command("remove")

@@ -4,7 +4,7 @@ import { shortId, isJobRunning } from '../utils/helpers';
 import { Topbar, LogsPanel } from '../components/layout';
 import { EmptyState, LoadingSpinner } from '../components/common';
 import { PipelineColumn, EndpointCard, AttackCard, ScoreCard, GuardrailCard } from '../components/pipeline';
-import { FormModal, DetailPanel, ReportModal, AttackRecordsModal, JudgesModal, GeneratorsModal } from '../components/modals';
+import { FormModal, DetailPanel, ReportModal, AttackRecordsModal, GuardrailsModal, JudgesModal, GeneratorsModal } from '../components/modals';
 
 export const Dashboard = () => {
   // Data state
@@ -25,8 +25,10 @@ export const Dashboard = () => {
 
   // UI state
   const [detailPanel, setDetailPanel] = useState({ item: null, type: null });
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [reportModal, setReportModal] = useState(null);
   const [attackRecordsModal, setAttackRecordsModal] = useState(null);
+  const [guardrailsModal, setGuardrailsModal] = useState(null);
   const [formModal, setFormModal] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [showJudgesModal, setShowJudgesModal] = useState(false);
@@ -171,6 +173,7 @@ export const Dashboard = () => {
 
   const openReport = (score) => setReportModal(score);
   const openAttackRecords = (attack) => setAttackRecordsModal(attack);
+  const openGuardrails = (guardrail) => setGuardrailsModal(guardrail);
 
   const refreshAll = () => {
     fetchEndpoints();
@@ -221,6 +224,9 @@ export const Dashboard = () => {
     },
   };
 
+  const panelWidth = panelCollapsed ? 48 : 420;
+  const showPanel = detailPanel.item !== null;
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Topbar
@@ -230,36 +236,36 @@ export const Dashboard = () => {
       {showJudgesModal && <JudgesModal onClose={() => setShowJudgesModal(false)} />}
       {showGeneratorsModal && <GeneratorsModal onClose={() => setShowGeneratorsModal(false)} />}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Main Content Area - 70% */}
-        <div className="h-[70%] p-6 flex flex-col">
-          {/* Main Layout */}
-          <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
-            {/* Flow Stepper */}
-            <div className={`flex items-center transition-all duration-300 flex-shrink-0 ${detailPanel.item ? 'pr-[396px]' : ''}`}>
-              {[
-                { name: 'Endpoints', subtitle: null },
-                { name: 'Attacks', subtitle: selectedEndpoint?.name },
-                { name: 'Scores', subtitle: selectedAttack ? shortId(selectedAttack.id) : null },
-                { name: 'Guardrails', subtitle: selectedScore ? shortId(selectedScore.id) : null },
-              ].map((step, i, arr) => (
-                <div key={step.name} className="flex items-center gap-3 flex-1">
-                  <div className="w-7 h-7 rounded-full bg-everyone-blue flex items-center justify-center flex-shrink-0 shadow-sm">
-                    <span className="text-sm text-white font-bold">{i + 1}</span>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden" style={{ marginRight: showPanel ? panelWidth : 0 }}>
+          {/* Top section - 70% */}
+          <div className="h-[70%] p-6 flex flex-col">
+            {/* Main Layout */}
+            <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-hidden">
+              {/* Flow Stepper */}
+              <div className="flex items-center flex-shrink-0">
+                {[
+                  { name: 'Endpoints', subtitle: null },
+                  { name: 'Attacks', subtitle: selectedEndpoint?.name },
+                  { name: 'Scores', subtitle: selectedAttack ? shortId(selectedAttack.id) : null },
+                  { name: 'Guardrails', subtitle: selectedScore ? shortId(selectedScore.id) : null },
+                ].map((step, i, arr) => (
+                  <div key={step.name} className="flex items-center gap-3 flex-1">
+                    <div className="w-7 h-7 rounded-full bg-everyone-blue flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <span className="text-sm text-white font-bold">{i + 1}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-700">{step.name}</span>
+                    {step.subtitle && (
+                      <span className="text-xs text-everyone-blue truncate max-w-[100px]">for {step.subtitle}</span>
+                    )}
+                    {i < arr.length - 1 && (
+                      <div className="flex-1 h-0.5 bg-gradient-to-r from-everyone-blue/50 to-everyone-blue/10 ml-2 rounded-full" />
+                    )}
                   </div>
-                  <span className="text-sm font-semibold text-gray-700">{step.name}</span>
-                  {step.subtitle && (
-                    <span className="text-xs text-everyone-blue truncate max-w-[100px]">for {step.subtitle}</span>
-                  )}
-                  {i < arr.length - 1 && (
-                    <div className="flex-1 h-0.5 bg-gradient-to-r from-everyone-blue/50 to-everyone-blue/10 ml-2 rounded-full" />
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Pipeline + Detail Panel Row */}
-            <div className="flex gap-6 flex-1 min-h-0 overflow-hidden">
               {/* Pipeline Columns */}
               <div className="grid gap-6 flex-1 grid-cols-4 overflow-hidden">
                 <PipelineColumn
@@ -318,61 +324,93 @@ export const Dashboard = () => {
                   }
                 </PipelineColumn>
               </div>
-
-              {/* Detail Panel - Static Sidebar */}
-              {detailPanel.item && (
-                <div className="w-[380px] flex-shrink-0">
-                  <DetailPanel
-                    item={detailPanel.item}
-                    type={detailPanel.type}
-                    onClose={() => setDetailPanel({ item: null, type: null })}
-                    onReport={openReport}
-                    onViewRecords={openAttackRecords}
-                    onDelete={refreshAll}
-                    endpoints={endpoints}
-                    attacks={attacks}
-                    scores={scores}
-                  />
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Report Modal */}
-          {reportModal && (
-            <ReportModal
-              score={reportModal}
-              attacks={attacks}
-              endpoints={endpoints}
-              onClose={() => setReportModal(null)}
-            />
-          )}
-
-          {/* Attack Records Modal */}
-          {attackRecordsModal && (
-            <AttackRecordsModal
-              attack={attackRecordsModal}
-              onClose={() => setAttackRecordsModal(null)}
-            />
-          )}
-
-          {/* Form Modal */}
-          {formModal && (
-            <FormModal
-              key={`${formModal.type}-${JSON.stringify(formModal.initialValues || {})}`}
-              title={formConfigs[formModal.type].title}
-              fields={formConfigs[formModal.type].fields}
-              onSubmit={handleFormSubmit}
-              onClose={() => setFormModal(null)}
-              loading={formLoading}
-              initialValues={formModal.initialValues || {}}
-            />
-          )}
+          {/* Logs Panel - Always visible at bottom */}
+          <LogsPanel />
         </div>
 
-        {/* Logs Panel - Always visible at bottom */}
-        <LogsPanel />
+        {/* Right Sidebar */}
+        {showPanel && (
+          <div
+            className="fixed top-[57px] right-0 bottom-0 bg-white border-l border-gray-200 flex flex-col transition-all duration-300"
+            style={{ width: panelWidth }}
+          >
+            {/* Collapse/Expand Toggle */}
+            <button
+              onClick={() => setPanelCollapsed(!panelCollapsed)}
+              className="absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-16 bg-white border border-r-0 border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            >
+              <svg className={`w-4 h-4 text-gray-400 transition-transform ${panelCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            {panelCollapsed ? (
+              /* Collapsed state - vertical label */
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-gray-400 text-xs uppercase tracking-wider font-medium" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                  {detailPanel.type} Details
+                </div>
+              </div>
+            ) : (
+              /* Expanded state - full content */
+              <DetailPanel
+                item={detailPanel.item}
+                type={detailPanel.type}
+                onClose={() => setDetailPanel({ item: null, type: null })}
+                onReport={openReport}
+                onViewRecords={openAttackRecords}
+                onViewGuardrails={openGuardrails}
+                onDelete={refreshAll}
+                endpoints={endpoints}
+                attacks={attacks}
+                scores={scores}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Report Modal */}
+      {reportModal && (
+        <ReportModal
+          score={reportModal}
+          attacks={attacks}
+          endpoints={endpoints}
+          onClose={() => setReportModal(null)}
+        />
+      )}
+
+      {/* Attack Records Modal */}
+      {attackRecordsModal && (
+        <AttackRecordsModal
+          attack={attackRecordsModal}
+          onClose={() => setAttackRecordsModal(null)}
+        />
+      )}
+
+      {/* Guardrails Modal */}
+      {guardrailsModal && (
+        <GuardrailsModal
+          guardrail={guardrailsModal}
+          onClose={() => setGuardrailsModal(null)}
+        />
+      )}
+
+      {/* Form Modal */}
+      {formModal && (
+        <FormModal
+          key={`${formModal.type}-${JSON.stringify(formModal.initialValues || {})}`}
+          title={formConfigs[formModal.type].title}
+          fields={formConfigs[formModal.type].fields}
+          onSubmit={handleFormSubmit}
+          onClose={() => setFormModal(null)}
+          loading={formLoading}
+          initialValues={formModal.initialValues || {}}
+        />
+      )}
     </div>
   );
 };

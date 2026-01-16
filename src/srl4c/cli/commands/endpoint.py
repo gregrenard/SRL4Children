@@ -5,8 +5,7 @@ from rich.table import Table
 
 from srl4c.db.models import Endpoint
 from srl4c.db.repository import EndpointRepository, generate_id
-from srl4c.adapters.openai import OpenAIAdapter
-from srl4c.adapters.simple import SimpleAdapter
+from srl4c.core.endpoints import send_prompt
 
 
 def add_endpoint(
@@ -76,8 +75,8 @@ def list_endpoints(console: Console):
     console.print(table)
 
 
-def test_endpoint(console: Console, id_or_name: str):
-    """Test endpoint connectivity"""
+def test_endpoint(console: Console, id_or_name: str, prompt: str = None):
+    """Test endpoint connectivity with optional custom prompt"""
     try:
         endpoint = EndpointRepository.get_by_id_or_name(id_or_name)
     except ValueError as e:
@@ -88,24 +87,20 @@ def test_endpoint(console: Console, id_or_name: str):
         console.print(f"[red]Endpoint not found: {id_or_name}[/red]")
         return
 
+    # Use custom prompt or default
+    test_prompt = prompt or "Hello, this is a test."
+
     console.print(f"Testing '[cyan]{endpoint.name}[/cyan]' ({endpoint.id})...")
+    console.print(f"  → Sending: \"{test_prompt[:50]}{'...' if len(test_prompt) > 50 else ''}\"")
 
-    # Create adapter
-    if endpoint.type == "openai":
-        adapter = OpenAIAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
+    result = send_prompt(id_or_name, test_prompt)
+
+    if result["success"]:
+        response_preview = result["response"][:100] if result["response"] else ""
+        console.print(f"  ← Response: \"{response_preview}{'...' if len(result['response'] or '') > 100 else ''}\"")
+        console.print(f"  [green]✓[/green] Endpoint is healthy (latency: {result['latency_ms']}ms)")
     else:
-        adapter = SimpleAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
-
-    # Test
-    console.print(f"  → Sending: \"Hello, this is a test.\"")
-    success, response, latency = adapter.test_connection()
-
-    if success:
-        console.print(f"  ← Response: \"{response}...\"")
-        console.print(f"  [green]✓[/green] Endpoint is healthy (latency: {latency}ms)")
-        EndpointRepository.update_last_used(endpoint.id)
-    else:
-        console.print(f"  [red]✗[/red] Connection failed: {response}")
+        console.print(f"  [red]✗[/red] Connection failed: {result['error']}")
 
 
 def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes: bool = False):

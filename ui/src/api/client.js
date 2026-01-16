@@ -19,7 +19,11 @@ export const api = {
   }).then(handleResponse),
   previewDeleteEndpoint: (id) => fetch(`${API_BASE}/endpoints/${id}/delete-preview`).then(handleResponse),
   deleteEndpoint: (id, force = false) => fetch(`${API_BASE}/endpoints/${id}?force=${force}`, { method: 'DELETE' }).then(handleResponse),
-  testEndpoint: (id) => fetch(`${API_BASE}/endpoints/${id}/test`, { method: 'POST' }).then(handleResponse),
+  testEndpoint: (id, prompt = null) => fetch(`${API_BASE}/endpoints/${id}/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(prompt ? { prompt } : {})
+  }).then(handleResponse),
 
   // Attacks
   getAttacks: () => fetch(`${API_BASE}/attacks`).then(handleResponse),

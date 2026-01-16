@@ -26,6 +26,10 @@ class EndpointResponse(BaseModel):
     last_used_at: Optional[str] = None
 
 
+class EndpointTestRequest(BaseModel):
+    prompt: Optional[str] = Field(None, description="Custom prompt to send (defaults to 'Hello, this is a test.')")
+
+
 class EndpointTestResponse(BaseModel):
     success: bool
     response: Optional[str] = None

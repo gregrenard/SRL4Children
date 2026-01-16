@@ -4,12 +4,11 @@ from fastapi import APIRouter, HTTPException
 
 from srl4c.db.models import Endpoint
 from srl4c.db.repository import EndpointRepository, generate_id
-from srl4c.adapters.openai import OpenAIAdapter
-from srl4c.adapters.simple import SimpleAdapter
 from srl4c.api.schemas import (
-    EndpointCreate, EndpointResponse, EndpointTestResponse
+    EndpointCreate, EndpointResponse, EndpointTestRequest, EndpointTestResponse
 )
 from srl4c.core.logger import Logger
+from srl4c.core.endpoints import send_prompt, test_endpoint as core_test_endpoint
 
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 
@@ -81,49 +80,37 @@ async def get_endpoint(endpoint_id: str):
 
 
 @router.post("/{endpoint_id}/test", response_model=EndpointTestResponse)
-async def test_endpoint(endpoint_id: str):
-    """Test endpoint connectivity."""
+async def test_endpoint(endpoint_id: str, request: EndpointTestRequest = None):
+    """Test endpoint with optional custom prompt."""
     try:
-        endpoint = EndpointRepository.get_by_id_or_name(endpoint_id)
+        # Use custom prompt or default test
+        if request and request.prompt:
+            result = send_prompt(endpoint_id, request.prompt)
+        else:
+            result = core_test_endpoint(endpoint_id)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
-    if not endpoint:
-        raise HTTPException(status_code=404, detail="Endpoint not found")
-
-    # Create adapter
-    if endpoint.type == "openai":
-        adapter = OpenAIAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
-    else:
-        adapter = SimpleAdapter(endpoint.base_url, endpoint.api_key_env, endpoint.config)
-
-    # Test
-    success, response, latency = adapter.test_connection()
-
-    if success:
-        EndpointRepository.update_last_used(endpoint.id)
+    # Log the result
+    endpoint = EndpointRepository.get_by_id_or_name(endpoint_id)
+    if result["success"]:
         Logger.info(
             "endpoint",
-            f"Endpoint test successful: '{endpoint.name}' ({latency:.0f}ms)",
+            f"Endpoint test successful: '{endpoint.name}' ({result['latency_ms']}ms)",
             entity_type="endpoint",
             entity_id=endpoint.id,
-            metadata={"latency_ms": latency}
+            metadata={"latency_ms": result["latency_ms"]}
         )
     else:
         Logger.warning(
             "endpoint",
-            f"Endpoint test failed: '{endpoint.name}' - {response}",
+            f"Endpoint test failed: '{endpoint.name}' - {result['error']}",
             entity_type="endpoint",
             entity_id=endpoint.id,
-            metadata={"error": response}
+            metadata={"error": result["error"]}
         )
 
-    return EndpointTestResponse(
-        success=success,
-        response=response if success else None,
-        latency_ms=latency if success else None,
-        error=response if not success else None,
-    )
+    return EndpointTestResponse(**result)
 
 
 @router.get("/{endpoint_id}/delete-preview")
