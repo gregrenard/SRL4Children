@@ -33,7 +33,7 @@ export const Topbar = ({ onJudgesClick, onGeneratorsClick }) => {
             <span className="text-lg font-bold font-display">
               <span className="text-everyone-blue">everyone</span><span className="text-everyone-purple">.AI</span>
             </span>
-            <span className="text-gray-400 font-normal text-sm ml-2">/ SRL4C</span>
+            <span className="text-gray-400 font-normal text-sm ml-2">/ Emotional Reliance</span>
           </div>
         </div>
 
