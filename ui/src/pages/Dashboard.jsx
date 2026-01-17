@@ -4,16 +4,19 @@ import { shortId, isJobRunning } from '../utils/helpers';
 import { Topbar, LogsPanel } from '../components/layout';
 import { EmptyState, LoadingSpinner } from '../components/common';
 import { PipelineColumn, EndpointCard, AttackCard, ScoreCard, GuardrailCard } from '../components/pipeline';
-import { FormModal, DetailPanel, ReportModal, AttackRecordsModal, GuardrailsModal, JudgesModal, GeneratorsModal } from '../components/modals';
+import { FormModal, DetailPanel, ReportModal, AttackRecordsModal, GuardrailsModal, JudgesModal, GeneratorsModal, MatricesModal } from '../components/modals';
+import { useTour } from '../components/tour';
 
 export const Dashboard = () => {
+  const { hasCompletedTour, startTour, isActive: tourActive } = useTour();
+
   // Data state
   const [endpoints, setEndpoints] = useState([]);
   const [attacks, setAttacks] = useState([]);
   const [scores, setScores] = useState([]);
   const [guardrails, setGuardrails] = useState([]);
   const [datasets, setDatasets] = useState([]);
-  const [evalJudges, setEvalJudges] = useState([]);
+  const [matrices, setMatrices] = useState([]);
   const [loading, setLoading] = useState({ endpoints: true, attacks: true, scores: true, guardrails: true });
   const [error, setError] = useState({});
 
@@ -33,6 +36,7 @@ export const Dashboard = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [showJudgesModal, setShowJudgesModal] = useState(false);
   const [showGeneratorsModal, setShowGeneratorsModal] = useState(false);
+  const [showMatricesModal, setShowMatricesModal] = useState(false);
 
   // Check if any jobs are running (for polling)
   const hasRunningJobs = [...attacks, ...scores, ...guardrails].some(isJobRunning);
@@ -70,8 +74,8 @@ export const Dashboard = () => {
     api.getDatasets().then(data => setDatasets(Array.isArray(data) ? data : [])).catch(console.error);
   }, []);
 
-  const fetchEvalJudges = useCallback(() => {
-    api.getEvalJudges().then(data => setEvalJudges(Array.isArray(data) ? data : [])).catch(console.error);
+  const fetchMatrices = useCallback(() => {
+    api.getMatrices().then(data => setMatrices(Array.isArray(data) ? data : [])).catch(console.error);
   }, []);
 
   // Initial fetch
@@ -81,20 +85,29 @@ export const Dashboard = () => {
     fetchScores();
     fetchGuardrails();
     fetchDatasets();
-    fetchEvalJudges();
+    fetchMatrices();
   }, []);
 
-  // Polling for running jobs
+  // Polling for running jobs (5 second interval to reduce API load)
   useEffect(() => {
     if (hasRunningJobs) {
       const interval = setInterval(() => {
         fetchAttacks();
         fetchScores();
         fetchGuardrails();
-      }, 2000);
+      }, 5000);
       return () => clearInterval(interval);
     }
   }, [hasRunningJobs, fetchAttacks, fetchScores, fetchGuardrails]);
+
+  // Auto-start tour for first-time users with no data
+  useEffect(() => {
+    if (!loading.endpoints && endpoints.length === 0 && !hasCompletedTour && !tourActive) {
+      // Small delay to let the UI settle
+      const timeout = setTimeout(startTour, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [loading.endpoints, endpoints.length, hasCompletedTour, tourActive, startTour]);
 
   // Filter data based on selections
   const filteredAttacks = selectedEndpoint
@@ -149,8 +162,8 @@ export const Dashboard = () => {
         case 'score':
           await api.createScore({
             attack_id: values.attack_id,
-            age: values.age,
-            judge: values.judge || 'default'
+            age: values.age || 'child',
+            matrix: values.matrix || 'educational'
           });
           fetchScores();
           break;
@@ -206,12 +219,12 @@ export const Dashboard = () => {
       title: 'New Score',
       fields: [
         { name: 'attack_id', label: 'Attack', type: 'select', required: true, options: attacks.filter(a => a.status === 'completed').map(a => ({ value: a.id, label: `${shortId(a.id)} - ${a.dataset_name}` })) },
-        { name: 'age', label: 'Age Context', type: 'select', required: true, options: [
+        { name: 'age', label: 'Age Group', type: 'select', required: true, options: [
           { value: 'child', label: 'Child (6-12)' },
-          { value: 'teen', label: 'Teen (13-17)' },
+          { value: 'teenager', label: 'Teenager (13-17)' },
           { value: 'young_adult', label: 'Young Adult (18-25)' },
         ]},
-        { name: 'judge', label: 'Evaluation Judge', type: 'select', required: false, options: evalJudges.map(j => ({ value: j.name, label: j.name === 'default' ? 'default (balanced weights)' : j.name })) },
+        { name: 'matrix', label: 'Context', type: 'select', required: true, options: matrices.filter(m => m.name !== 'flat').map(m => ({ value: m.name, label: m.is_builtin ? `${m.name.charAt(0).toUpperCase() + m.name.slice(1)}` : m.name })) },
       ]
     },
     guardrail: {
@@ -232,9 +245,11 @@ export const Dashboard = () => {
       <Topbar
         onJudgesClick={() => setShowJudgesModal(true)}
         onGeneratorsClick={() => setShowGeneratorsModal(true)}
+        onMatricesClick={() => setShowMatricesModal(true)}
       />
       {showJudgesModal && <JudgesModal onClose={() => setShowJudgesModal(false)} />}
       {showGeneratorsModal && <GeneratorsModal onClose={() => setShowGeneratorsModal(false)} />}
+      {showMatricesModal && <MatricesModal onClose={() => setShowMatricesModal(false)} />}
 
       <div className="flex-1 flex overflow-hidden">
         {/* Main Content Area */}
@@ -269,6 +284,7 @@ export const Dashboard = () => {
               {/* Pipeline Columns */}
               <div className="grid gap-6 flex-1 grid-cols-4 overflow-hidden">
                 <PipelineColumn
+                  tourId="endpoints"
                   addLabel="Add Endpoint"
                   onAdd={() => setFormModal({ type: 'endpoint' })}
                   description="AI chatbots, assistants or raw models you want to test. Connect any OpenAI-compatible API or simple HTTP endpoint."
@@ -283,6 +299,7 @@ export const Dashboard = () => {
                 </PipelineColumn>
 
                 <PipelineColumn
+                  tourId="attacks"
                   addLabel="New Attack"
                   onAdd={() => setFormModal({ type: 'attack' })}
                   description="Send adversarial prompts to test how an endpoint responds to challenging scenarios designed to probe safety boundaries."
@@ -297,6 +314,7 @@ export const Dashboard = () => {
                 </PipelineColumn>
 
                 <PipelineColumn
+                  tourId="scores"
                   addLabel="New Score"
                   onAdd={() => setFormModal({ type: 'score' })}
                   description="Evaluate attack responses against 22 child safety principles. Each response gets a 0-5 score across categories like safety, age-appropriateness, and ethics."
@@ -311,6 +329,7 @@ export const Dashboard = () => {
                 </PipelineColumn>
 
                 <PipelineColumn
+                  tourId="guardrails"
                   addLabel="Generate Rules"
                   onAdd={() => setFormModal({ type: 'guardrail' })}
                   description="Auto-generate guardrail rules based on scoring failures. These rules can be added to your AI system prompt to prevent future issues."

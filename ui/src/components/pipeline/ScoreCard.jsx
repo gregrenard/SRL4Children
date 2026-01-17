@@ -22,7 +22,7 @@ export const ScoreCard = ({ score, selected, onClick, onReport, onNewGuardrail }
       )}
     </div>
     <div className="text-xs text-gray-400 mt-0.5">
-      {score.age_context} · {shortId(score.attack_id)}
+      {score.age_context}{score.context ? ` · ${score.context}` : ''} · {shortId(score.attack_id)}
     </div>
     {score.status === 'completed' && score.final_score != null ? (
       <div className={`text-lg font-semibold mt-1.5 ${getScoreColor(score.final_score)}`}>

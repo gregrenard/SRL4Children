@@ -1,16 +1,20 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Dashboard, Datasets, Editor, Judges } from './pages';
+import { Dashboard, Datasets, Judges, ScoringConfig } from './pages';
+import { TourProvider, Tour } from './components/tour';
 import './index.css';
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/datasets" element={<Datasets />} />
-        <Route path="/editor" element={<Editor />} />
-        <Route path="/judges" element={<Judges />} />
-      </Routes>
+      <TourProvider>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/datasets" element={<Datasets />} />
+          <Route path="/judges" element={<Judges />} />
+          <Route path="/scoring-config" element={<ScoringConfig />} />
+        </Routes>
+        <Tour />
+      </TourProvider>
     </BrowserRouter>
   );
 }

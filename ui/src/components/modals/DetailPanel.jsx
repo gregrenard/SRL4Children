@@ -204,9 +204,21 @@ export const DetailPanel = ({ item, type, onClose, onReport, onViewRecords, onVi
                 <div className="text-xs text-gray-400">{scoreAttack?.dataset_name}</div>
               </div>
               <div>
-                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Age Context</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Age Group</div>
                 <div className="text-gray-700 capitalize">{item.age_context}</div>
               </div>
+              {item.context && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Context</div>
+                  <div className="text-gray-700 capitalize">{item.context}</div>
+                </div>
+              )}
+              {item.matrix_name && (
+                <div>
+                  <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Matrix</div>
+                  <div className="text-gray-700">{item.matrix_name}</div>
+                </div>
+              )}
               {item.status === 'completed' && item.final_score != null ? (
                 <>
                   <div>

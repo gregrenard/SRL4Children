@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import api from '../../api/client';
+import { useTour } from '../tour';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { href: '/editor', label: 'Editor', icon: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z' },
-  { href: '/datasets', label: 'Datasets', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
-  { href: '/judges', label: 'Judges', icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3' },
+  { href: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', tourId: 'dashboard-nav' },
+  { href: '/datasets', label: 'Datasets', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', tourId: 'datasets-nav' },
+  { href: '/scoring-config', label: 'Scoring', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4', tourId: 'scoring-nav' },
 ];
 
-export const Topbar = ({ onJudgesClick, onGeneratorsClick }) => {
+export const Topbar = ({ onJudgesClick, onGeneratorsClick, onMatricesClick }) => {
   const [activeJudge, setActiveJudge] = useState(null);
   const [activeGenerator, setActiveGenerator] = useState(null);
+  const { startTour } = useTour();
 
   // Fetch active configs on mount and periodically
   useEffect(() => {
@@ -38,7 +39,7 @@ export const Topbar = ({ onJudgesClick, onGeneratorsClick }) => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs" data-tour="config-buttons">
             {activeJudge && (
               <button
                 onClick={onJudgesClick}
@@ -69,6 +70,7 @@ export const Topbar = ({ onJudgesClick, onGeneratorsClick }) => {
               <NavLink
                 key={item.href}
                 to={item.href}
+                data-tour={item.tourId}
                 className={({ isActive }) =>
                   `flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                     isActive
@@ -83,6 +85,15 @@ export const Topbar = ({ onJudgesClick, onGeneratorsClick }) => {
                 {item.label}
               </NavLink>
             ))}
+            <button
+              onClick={startTour}
+              className="ml-2 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Take a tour"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
           </nav>
         </div>
       </div>
