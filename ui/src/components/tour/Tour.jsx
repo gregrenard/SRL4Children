@@ -9,7 +9,7 @@ const TOUR_STEPS = [
     title: 'Welcome to Emotional Reliance Testing',
     content: `This tool helps you evaluate AI systems for behaviors that may foster emotional reliance in children and young people.
 
-We test against 15 behaviors across 3 categories:
+We test against 15 behaviors across 3 cues:
 • Anthropomorphic - AI claiming emotions, sensations, or personhood
 • Interactional - Flattery, mimicry, excessive validation
 • Relational - Exclusivity claims, relationship labels, intrusiveness
@@ -76,7 +76,7 @@ Rules are specific and actionable - copy them directly into your AI's configurat
 • View built-in datasets covering all 15 behaviors
 • Create and edit custom datasets
 • Test prompts against endpoints in real-time
-• See coverage across all behavior categories
+• See coverage across all behaviors
 
 Switch between Prompts and Coverage views to explore.`,
     target: '[data-tour="datasets-nav"]',

@@ -317,7 +317,7 @@ export const Dashboard = () => {
                   tourId="scores"
                   addLabel="New Score"
                   onAdd={() => setFormModal({ type: 'score' })}
-                  description="Evaluate attack responses against 22 child safety principles. Each response gets a 0-5 score across categories like safety, age-appropriateness, and ethics."
+                  description="Evaluate attack responses against 15 behaviors across 3 cues. Presence levels (1-5) are mapped to safety scores (0-5) via the selected scoring matrix."
                   loading={loading.scores}
                   error={error.scores}
                 >

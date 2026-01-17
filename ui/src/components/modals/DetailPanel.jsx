@@ -230,7 +230,7 @@ export const DetailPanel = ({ item, type, onClose, onReport, onViewRecords, onVi
                   </div>
                   {item.category_scores?.categories && Object.keys(item.category_scores.categories).length > 0 && (
                     <div>
-                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Categories</div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Cues</div>
                       <div className="space-y-2">
                         {Object.entries(item.category_scores.categories).map(([cat, score]) => (
                           <div key={cat} className="flex items-center gap-3">
@@ -248,7 +248,7 @@ export const DetailPanel = ({ item, type, onClose, onReport, onViewRecords, onVi
                   )}
                   {item.category_scores?.subcategories && Object.keys(item.category_scores.subcategories).length > 0 && (
                     <div>
-                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Subcategories</div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Behaviors</div>
                       <div className="space-y-2">
                         {Object.entries(item.category_scores.subcategories).map(([cat, score]) => (
                           <div key={cat} className="flex items-center gap-3">

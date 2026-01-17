@@ -46,7 +46,7 @@ const formatLabel = (label) => label.replace(/_/g, ' ');
 
 export const RadarChart = ({ categoryScores }) => {
   if (!categoryScores || Object.keys(categoryScores).length === 0) {
-    return <div className="text-center text-gray-400 py-8">No category scores available</div>;
+    return <div className="text-center text-gray-400 py-8">No scores available</div>;
   }
 
   const categories = Object.keys(categoryScores);
