@@ -19,7 +19,7 @@ export const LogsPanel = () => {
 
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(fetchLogs, 3000);
+    const interval = setInterval(fetchLogs, 10000); // 10 seconds to reduce load
     return () => clearInterval(interval);
   }, []);
 

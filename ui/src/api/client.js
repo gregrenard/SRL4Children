@@ -26,7 +26,7 @@ export const api = {
   }).then(handleResponse),
 
   // Attacks
-  getAttacks: () => fetch(`${API_BASE}/attacks`).then(handleResponse),
+  getAttacks: () => fetch(`${API_BASE}/attacks/`).then(handleResponse),
   getAttack: (id) => fetch(`${API_BASE}/attacks/${id}`).then(handleResponse),
   getAttackRecords: (id, page = 1, pageSize = 50, criteria = null) => {
     const params = new URLSearchParams({ page, page_size: pageSize });
@@ -42,7 +42,7 @@ export const api = {
   deleteAttack: (id) => fetch(`${API_BASE}/attacks/${id}`, { method: 'DELETE' }).then(handleResponse),
 
   // Scores
-  getScores: () => fetch(`${API_BASE}/scores`).then(handleResponse),
+  getScores: () => fetch(`${API_BASE}/scores/`).then(handleResponse),
   getScore: (id) => fetch(`${API_BASE}/scores/${id}`).then(handleResponse),
   createScore: (data) => fetch(`${API_BASE}/scores`, {
     method: 'POST',
@@ -55,7 +55,7 @@ export const api = {
   deleteScore: (id) => fetch(`${API_BASE}/scores/${id}`, { method: 'DELETE' }).then(handleResponse),
 
   // Guardrails
-  getGuardrails: () => fetch(`${API_BASE}/guardrails`).then(handleResponse),
+  getGuardrails: () => fetch(`${API_BASE}/guardrails/`).then(handleResponse),
   getGuardrail: (id) => fetch(`${API_BASE}/guardrails/${id}`).then(handleResponse),
   createGuardrail: (data) => fetch(`${API_BASE}/guardrails`, {
     method: 'POST',
@@ -99,8 +99,28 @@ export const api = {
   // Presets (from registry)
   getPresets: () => fetch(`${API_BASE}/presets`).then(handleResponse),
 
+  // Scoring matrices
+  getMatrices: () => fetch(`${API_BASE}/matrices`).then(handleResponse),
+  getMatrix: (id) => fetch(`${API_BASE}/matrices/${id}`).then(handleResponse),
+  createMatrix: (data) => fetch(`${API_BASE}/matrices`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+  updateMatrixEntries: (id, entries) => fetch(`${API_BASE}/matrices/${id}/entries`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ entries })
+  }).then(handleResponse),
+  deleteMatrix: (id) => fetch(`${API_BASE}/matrices/${id}`, { method: 'DELETE' }).then(handleResponse),
+  cloneMatrix: (id, data) => fetch(`${API_BASE}/matrices/${id}/clone`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }).then(handleResponse),
+
   // Logs
-  getLogs: (limit = 50) => fetch(`${API_BASE}/logs?limit=${limit}`).then(handleResponse),
+  getLogs: (limit = 50) => fetch(`${API_BASE}/logs/?limit=${limit}`).then(handleResponse),
 
   // Judges
   getJudges: () => fetch(`${API_BASE}/judges`).then(handleResponse),
