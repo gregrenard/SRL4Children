@@ -54,14 +54,20 @@ def calculate_agreement_score(scores: List[float]) -> float:
 # === WEIGHTING SYSTEM ===
 
 def load_weights(judge_name: str = "default") -> Dict[str, Any]:
-    """Load weights from registry for a judge."""
+    """Load weights from registry for a judge.
+
+    For presence-based scoring, weights are optional. The presence judge
+    detects behavior presence (1-5), and the scoring matrix handles
+    age/context-specific mapping. Weights can still be used for final
+    aggregation (e.g., weighting some categories more heavily).
+    """
     from srl4c.registry import get_registry_loader
 
     loader = get_registry_loader()
     try:
         return loader.get_judge_weights(judge_name)
     except ValueError:
-        logger.warning(f"Judge '{judge_name}' not found, using empty weights")
+        # No weights defined - use equal weighting (simple mean)
         return {"categories": {}, "subcategories": {}, "criteria": {}}
 
 
@@ -141,6 +147,7 @@ class CriterionEvaluationResult:
     outliers_detected: List[str]
     processing_time_ms: int
     metadata: Dict[str, Any]
+    presence_level: Optional[int] = None  # For presence-based evaluation (1-5)
 
 
 @dataclass
@@ -183,7 +190,10 @@ def _extract_json_block(s: str) -> Optional[str]:
 
 def parse_judge_response(raw_response: str) -> Dict[str, Any]:
     """
-    Parse judge response - ported from existing judge.py parse_and_validate
+    Parse presence judge response.
+    Expects: {"presence_level": 1-5, "explanation": "...", "evidence_extracts": [...]}
+
+    Returns dict with "presence_level" (int 1-5) used for multi-judge aggregation.
     """
     try:
         logger.debug(f"Raw response (first 500 chars): {raw_response[:500] if raw_response else 'EMPTY'}")
@@ -192,7 +202,6 @@ def parse_judge_response(raw_response: str) -> Dict[str, Any]:
         block = _extract_json_block(s) or s
         logger.debug(f"Extracted block (first 300 chars): {block[:300] if block else 'EMPTY'}")
 
-        # Try json_repair first, then fall back to standard json
         try:
             repaired = repair_json(block, return_objects=True)
             if isinstance(repaired, dict):
@@ -202,23 +211,26 @@ def parse_judge_response(raw_response: str) -> Dict[str, Any]:
         except Exception:
             parsed = json.loads(block)
 
+        presence_level = int(parsed.get("presence_level", 3))
+        presence_level = max(1, min(5, presence_level))
+
         return {
-            "score": float(parsed.get("score", 0.0)),
+            "presence_level": presence_level,
             "explanation": str(parsed.get("explanation", "")),
             "evidence_extracts": list(parsed.get("evidence_extracts", []))
         }
     except Exception as e:
         logger.warning(f"Failed to parse judge response: {e}")
-        # Try to extract score from text
-        score_match = re.search(r'score["\s:]+(\d+(?:\.\d+)?)', raw_response, re.IGNORECASE)
-        if score_match:
+        match = re.search(r'presence[_\s]*level["\s:]+(\d+)', raw_response, re.IGNORECASE)
+        if match:
+            presence_level = max(1, min(5, int(match.group(1))))
             return {
-                "score": float(score_match.group(1)),
+                "presence_level": presence_level,
                 "explanation": "Parsed from text (JSON failed)",
                 "evidence_extracts": []
             }
         return {
-            "score": 0.0,
+            "presence_level": 3,
             "explanation": f"Failed to parse: {e}",
             "evidence_extracts": []
         }
@@ -233,45 +245,49 @@ def build_evaluation_prompt(
     age_group: str,
 ) -> str:
     """
-    Build evaluation prompt - ported from existing _build_evaluation_prompt
+    Build presence evaluation prompt.
+    Uses presence_guide to detect presence level (1-5).
     """
     if not criterion.prompt_content:
         raise ValueError(f"No prompt content loaded for criterion {criterion.id}")
 
     role = criterion.prompt_content.get("role", "")
     task = criterion.prompt_content.get("task", "")
-    age_context = criterion.prompt_content.get("age_context", "")
-    scoring_guide = criterion.prompt_content.get("scoring_guide", "")
+    category = criterion.prompt_content.get("category", "")
+    category_definition = criterion.prompt_content.get("category_definition", "")
+    behavior = criterion.prompt_content.get("behavior", "")
+    behavior_definition = criterion.prompt_content.get("behavior_definition", "")
+    presence_guide = criterion.prompt_content.get("presence_guide", "")
     examples = criterion.prompt_content.get("examples", "")
     output_format = criterion.prompt_content.get("output_format", "")
-
-    # Format age context
-    try:
-        age_context = age_context.format(age_group=age_group)
-    except KeyError:
-        age_context = age_context.replace("{age_group}", age_group)
 
     formatted_prompt = f"""{role}
 
 {task}
 
-{age_context}
+## Category: {category}
+{category_definition}
 
-{scoring_guide}
+## Behavior: {behavior}
+{behavior_definition}
 
+## Presence Level Guide
+{presence_guide}
+
+## Examples
 {examples}
 
+---
+
 CONTENT TO ANALYZE:
----
+
 PROMPT: {prompt}
+
 RESPONSE: {response}
+
 ---
 
-# Output Format
-
-Respond with valid JSON only. No extra text before or after.
-
-{{"score": 0-5, "explanation": "Your reasoning", "evidence_extracts": ["quote1", "quote2"]}}"""
+{output_format}"""
 
     return formatted_prompt
 
@@ -442,10 +458,10 @@ class MultiJudgeEvaluator:
                 })
                 raw_responses.append(f"ERROR: {str(e)}")
 
-        # Calculate consistency variance (same as existing)
-        scores = [pr.get("score", 0.0) for pr in pass_results]
-        final_score = statistics.mean(scores) if scores else 0.0
-        consistency_variance = statistics.variance(scores) if len(scores) > 1 else 0.0
+        # Calculate consistency variance across passes (using presence_level)
+        presence_levels = [pr.get("presence_level", 3) for pr in pass_results]
+        final_score = statistics.mean(presence_levels) if presence_levels else 3.0
+        consistency_variance = statistics.variance(presence_levels) if len(presence_levels) > 1 else 0.0
 
         execution_time_ms = int((time.time() - start_time) * 1000)
 
@@ -550,7 +566,7 @@ def _run_single_eval(task: EvalTask) -> EvalTaskResult:
     parsed = parse_judge_response(content)
 
     with _print_lock:
-        print(f"    ✓ R{task.record_idx+1} {short_model} p{task.pass_idx+1} → {parsed['score']:.0f} ({elapsed_ms/1000:.1f}s)")
+        print(f"    ✓ R{task.record_idx+1} {short_model} p{task.pass_idx+1} → L{parsed['presence_level']} ({elapsed_ms/1000:.1f}s)")
 
     return EvalTaskResult(
         record_idx=task.record_idx,
@@ -655,16 +671,17 @@ def _aggregate_results(
         for criterion_id, judges_data in grouped[record_id].items():
             judge_results = []
 
-            for judge_name, pass_results in judges_data.items():
+            for llm_judge_name, pass_results in judges_data.items():
                 # Sort by pass_idx
                 pass_results.sort(key=lambda x: x.pass_idx)
 
-                scores = [pr.parsed_result["score"] for pr in pass_results]
-                final_score = statistics.mean(scores) if scores else 0.0
-                variance = statistics.variance(scores) if len(scores) > 1 else 0.0
+                # Aggregate presence levels across passes for this judge
+                presence_levels = [pr.parsed_result["presence_level"] for pr in pass_results]
+                final_score = statistics.mean(presence_levels) if presence_levels else 3.0
+                variance = statistics.variance(presence_levels) if len(presence_levels) > 1 else 0.0
 
                 judge_results.append(JudgeResult(
-                    judge_id=judge_name,
+                    judge_id=llm_judge_name,
                     criterion_id=criterion_id,
                     pass_results=[pr.parsed_result for pr in pass_results],
                     final_score=final_score,
@@ -673,10 +690,14 @@ def _aggregate_results(
                     raw_responses=[pr.raw_response for pr in pass_results],
                 ))
 
-            # Calculate criterion-level scores
+            # Aggregate presence levels across all judges
             all_judge_scores = [jr.final_score for jr in judge_results]
-            criterion_final = statistics.mean(all_judge_scores) if all_judge_scores else 0.0
+            criterion_final = statistics.mean(all_judge_scores) if all_judge_scores else 3.0
             agreement = calculate_agreement_score(all_judge_scores)
+
+            # Round to nearest integer for final presence level
+            presence_level = int(round(criterion_final))
+            presence_level = max(1, min(5, presence_level))
 
             detailed_criteria.append(CriterionEvaluationResult(
                 criterion=criteria_cache[criterion_id],
@@ -686,6 +707,7 @@ def _aggregate_results(
                 outliers_detected=[],
                 processing_time_ms=0,
                 metadata={},
+                presence_level=presence_level,
             ))
 
         # Calculate weighted aggregate scores

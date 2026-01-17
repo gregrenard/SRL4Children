@@ -22,6 +22,7 @@ criteria_app = typer.Typer(help="View criteria definitions")
 judges_app = typer.Typer(help="Manage LLM judge configurations")
 eval_judges_app = typer.Typer(help="View evaluation judges (scoring policies)")
 generators_app = typer.Typer(help="Manage guardrail generator configurations")
+matrices_app = typer.Typer(help="Manage scoring matrices")
 config_app = typer.Typer(help="Manage configuration")
 
 app.add_typer(endpoint_app, name="endpoint")
@@ -33,6 +34,7 @@ app.add_typer(criteria_app, name="criteria")
 app.add_typer(judges_app, name="judges")
 app.add_typer(eval_judges_app, name="eval-judges")
 app.add_typer(generators_app, name="generators")
+app.add_typer(matrices_app, name="matrices")
 app.add_typer(config_app, name="config")
 
 
@@ -217,14 +219,14 @@ def attack_delete(
 @score_app.command("run")
 def score_run(
     attack: str = typer.Argument(..., help="Attack ID"),
-    age: str = typer.Option("child", "--age", "-a", help="Age context: child, teen, young_adult, emerging"),
-    judge: str = typer.Option(..., "--judge", "-j", help="Evaluation judge name (see: srl4c eval-judges list)"),
+    age: str = typer.Option("child", "--age", "-a", help="Age group: child, teenager, young_adult"),
+    matrix: str = typer.Option("educational", "--matrix", "-m", help="Scoring matrix (educational, companionship, entertainment, flat)"),
     format: str = typer.Option("table", "--format", "-f", help="Output format: table, json, markdown"),
     threshold: float = typer.Option(None, "--threshold", "-t", help="Fail if score below threshold"),
 ):
-    """Score an attack's results"""
+    """Score an attack's results. Matrix selection determines the context scoring rules."""
     from srl4c.cli.commands.score import run_score
-    run_score(console, attack, age, judge, format, threshold)
+    run_score(console, attack, age, matrix, format, threshold)
 
 
 @score_app.command("list")
@@ -655,6 +657,53 @@ def generators_test():
 
     table.add_row(r["name"], r["model"], status, time_str)
     console.print(table)
+
+
+# === MATRICES ===
+
+@matrices_app.command("list")
+def matrices_list():
+    """List scoring matrices"""
+    from srl4c.cli.commands.matrices import list_matrices
+    list_matrices(console)
+
+
+@matrices_app.command("show")
+def matrices_show(name: str = typer.Argument(..., help="Matrix name or ID")):
+    """Show matrix details"""
+    from srl4c.cli.commands.matrices import show_matrix
+    show_matrix(console, name)
+
+
+@matrices_app.command("create")
+def matrices_create(
+    name: str = typer.Argument(..., help="Name for the new matrix"),
+    description: str = typer.Option(None, "--description", "-d", help="Matrix description"),
+):
+    """Create a new empty scoring matrix"""
+    from srl4c.cli.commands.matrices import create_matrix
+    create_matrix(console, name, description)
+
+
+@matrices_app.command("clone")
+def matrices_clone(
+    source: str = typer.Argument(..., help="Source matrix name or ID"),
+    new_name: str = typer.Option(..., "--name", "-n", help="Name for the cloned matrix"),
+    description: str = typer.Option(None, "--description", "-d", help="Description for the clone"),
+):
+    """Clone an existing matrix (useful to customize built-in matrices)"""
+    from srl4c.cli.commands.matrices import clone_matrix
+    clone_matrix(console, source, new_name, description)
+
+
+@matrices_app.command("delete")
+def matrices_delete(
+    name: str = typer.Argument(..., help="Matrix name or ID"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+):
+    """Delete a scoring matrix (cannot delete built-in matrices)"""
+    from srl4c.cli.commands.matrices import delete_matrix
+    delete_matrix(console, name, yes)
 
 
 # === CONFIG ===

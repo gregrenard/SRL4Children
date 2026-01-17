@@ -8,17 +8,17 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.table import Table
 
 from srl4c.db.models import db_connection
-from srl4c.db.repository import ScoreRepository
+from srl4c.db.repository import ScoreRepository, ScoringMatrixRepository
 from srl4c.judge.config import load_judge_config
 
 
-def run_score(console: Console, attack_id: str, age: str, weights: str, format: str, threshold: float = None):
-    """Score an attack's results using the judge system"""
+def run_score(console: Console, attack_id: str, age: str, matrix: str, format: str, threshold: float = None):
+    """Score an attack's results using the presence judge system"""
     from srl4c.core.score import create_score, run_score as execute_score, get_score_details
 
     # Create score job (shared with API)
     try:
-        score_id = create_score(attack_id, age=age, judge=weights)
+        score_id = create_score(attack_id, age=age, matrix=matrix)
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
         return
@@ -32,9 +32,14 @@ def run_score(console: Console, attack_id: str, age: str, weights: str, format: 
     # Load judge config for display
     judge_config = load_judge_config()
 
+    # Get matrix name for display
+    matrix_obj = ScoringMatrixRepository.get_by_name(matrix) or ScoringMatrixRepository.get_by_id(matrix)
+    matrix_display = matrix_obj.name if matrix_obj else matrix
+
     console.print(f"\nScoring attack [cyan]{attack_id}[/cyan]...")
-    console.print(f"  Age context: [cyan]{age}[/cyan]")
-    console.print(f"  Judges: [cyan]{len(judge_config.judges)}[/cyan] ({', '.join(j.name for j in judge_config.judges)})")
+    console.print(f"  Age group: [cyan]{age}[/cyan]")
+    console.print(f"  Matrix: [cyan]{matrix_display}[/cyan] (context)")
+    console.print(f"  LLM Judges: [cyan]{len(judge_config.judges)}[/cyan] ({', '.join(j.name for j in judge_config.judges)})")
     console.print(f"  Passes: [cyan]{judge_config.n_passes}[/cyan]")
     console.print(f"  Records: {details['valid_records_count']} to evaluate\n")
     console.print(f"Score [cyan]{score_id}[/cyan] created\n")
@@ -82,20 +87,28 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
     console.print()
 
     if category_scores:
+        presence = category_scores.get("presence", {})
+
         if category_scores.get("categories"):
             console.print("[bold]Category Scores:[/bold]")
+            cat_presence = presence.get("categories", {})
             for cat, score_val in sorted(category_scores["categories"].items()):
                 cat_icon = "✓" if score_val >= 3.5 else "⚠️" if score_val >= 2.5 else "✗"
                 cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
-                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}]")
+                pres_val = cat_presence.get(cat)
+                pres_str = f"(P:{pres_val:.1f})" if pres_val is not None else ""
+                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}] [dim]{pres_str}[/dim]")
             console.print()
 
         if category_scores.get("subcategories"):
-            console.print("[bold]Subcategory Scores:[/bold]")
+            console.print("[bold]Subcategory Scores:[/bold]  [dim](P = presence level)[/dim]")
+            sub_presence = presence.get("subcategories", {})
             for cat, score_val in sorted(category_scores["subcategories"].items()):
                 cat_icon = "✓" if score_val >= 3.5 else "⚠️" if score_val >= 2.5 else "✗"
                 cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
-                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}]")
+                pres_val = sub_presence.get(cat)
+                pres_str = f"(P:{pres_val:.1f})" if pres_val is not None else ""
+                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}] [dim]{pres_str}[/dim]")
 
     if threshold is not None:
         console.print()
@@ -124,15 +137,17 @@ def list_scores(console: Console):
     table.add_column("ID", style="dim", no_wrap=True)
     table.add_column("Attack", style="cyan", no_wrap=True)
     table.add_column("Age", no_wrap=True)
+    table.add_column("Matrix", no_wrap=True)
     table.add_column("Score", justify="right", no_wrap=True)
     table.add_column("Status", no_wrap=True)
     table.add_column("Date", style="dim", no_wrap=True)
 
     for row in rows:
-        final = f"{row['final_score']:.1f}" if row['final_score'] else "-"
+        r = dict(row)  # Convert Row to dict for .get() access
+        final = f"{r['final_score']:.1f}" if r['final_score'] else "-"
 
         # Status styling
-        status = row['status']
+        status = r['status']
         if status == "completed":
             status_color = "green"
         elif status == "failed":
@@ -142,12 +157,20 @@ def list_scores(console: Console):
         else:
             status_color = "dim"
 
-        date = row['started_at'][:10] if row['started_at'] else ""
+        date = r['started_at'][:10] if r['started_at'] else ""
+
+        # Get matrix name (matrix = context)
+        matrix_name = "-"
+        if r.get('matrix_id'):
+            matrix = ScoringMatrixRepository.get_by_id(r['matrix_id'])
+            if matrix:
+                matrix_name = matrix.name
 
         table.add_row(
-            row['id'][:8],
-            row['attack_id'][:8],
-            row['age_context'],
+            r['id'][:8],
+            r['attack_id'][:8],
+            r['age_context'] or "-",
+            matrix_name,
             final,
             f"[{status_color}]{status}[/{status_color}]",
             date,
@@ -158,15 +181,25 @@ def list_scores(console: Console):
 
 def show_score(console: Console, score_id: str):
     """Show score details"""
-    score = ScoreRepository.get_by_id(score_id)
+    row = ScoreRepository.get_by_id(score_id)
 
-    if not score:
+    if not row:
         console.print(f"[red]Score not found: {score_id}[/red]")
         return
 
+    score = dict(row)  # Convert Row to dict for .get() access
+
+    # Get matrix name
+    matrix_name = None
+    if score.get('matrix_id'):
+        matrix = ScoringMatrixRepository.get_by_id(score['matrix_id'])
+        if matrix:
+            matrix_name = matrix.name
+
     console.print(f"\n[bold]Score:[/bold] {score['id']}")
     console.print(f"[bold]Attack:[/bold] {score['attack_id']}")
-    console.print(f"[bold]Age:[/bold] {score['age_context']}")
+    console.print(f"[bold]Age Group:[/bold] {score['age_context']}")
+    console.print(f"[bold]Matrix:[/bold] {matrix_name or 'N/A'}")
     console.print(f"[bold]Status:[/bold] {score['status']}")
     if score.get('error_message'):
         console.print(f"[bold]Error:[/bold] [red]{score['error_message']}[/red]")
