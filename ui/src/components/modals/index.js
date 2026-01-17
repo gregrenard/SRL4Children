@@ -6,3 +6,4 @@ export { GuardrailsModal } from './GuardrailsModal';
 export { DeleteConfirmationModal } from './DeleteConfirmationModal';
 export { JudgesModal } from './JudgesModal';
 export { GeneratorsModal } from './GeneratorsModal';
+export { MatricesModal } from './MatricesModal';
