@@ -74,26 +74,6 @@ class JudgeConfig:
     implementations: dict[str, JudgeImplementation]  # criteria_id -> implementation
 
 
-@dataclass
-class DatasetPrompt:
-    """A single prompt from a dataset."""
-
-    id: str
-    criteria_id: str  # The criteria this prompt tests
-    prompt: str
-
-
-@dataclass
-class DatasetConfig:
-    """Dataset configuration - discovered from filesystem."""
-
-    name: str
-    file: Path
-    description: str | None = None
-    prompt_count: int = 0
-    criteria_breakdown: dict[str, int] = field(default_factory=dict)
-
-
 # =============================================================================
 # Registry Loader
 # =============================================================================
@@ -105,7 +85,6 @@ class RegistryLoader:
     def __init__(self, registry_file: Path | None = None, data_dir: Path | None = None):
         self.registry_file = registry_file or REGISTRY_FILE  # Legacy fallback
         self.data_dir = data_dir or DATA_DIR
-        self.datasets_dir = self.data_dir / "datasets"
         self.criteria_dir = self.data_dir / "criteria"
 
         # New split file paths
@@ -116,7 +95,6 @@ class RegistryLoader:
         self._registry_cache: dict | None = None
         self._criteria_cache: dict[str, CriteriaConfig] = {}
         self._judge_cache: dict[str, JudgeConfig] = {}
-        self._dataset_cache: dict[str, DatasetConfig] = {}
         self._prompt_cache: dict[str, dict[str, Any]] = {}  # file -> content
 
         logger.info(f"RegistryLoader initialized: criteria_dir={self.criteria_dir}")
@@ -380,107 +358,6 @@ class RegistryLoader:
             except Exception as e:
                 logger.error(f"Failed to load criterion {cid}: {e}")
         return loaded
-
-    # -------------------------------------------------------------------------
-    # Datasets (Auto-discovered from filesystem)
-    # -------------------------------------------------------------------------
-
-    def discover_datasets(self, force_reload: bool = False) -> dict[str, DatasetConfig]:
-        """Discover all datasets from the datasets directory."""
-        if self._dataset_cache and not force_reload:
-            return self._dataset_cache
-
-        self._dataset_cache = {}
-
-        if not self.datasets_dir.exists():
-            logger.warning(f"Datasets directory not found: {self.datasets_dir}")
-            return self._dataset_cache
-
-        for csv_file in sorted(self.datasets_dir.glob("*.csv")):
-            # Skip hidden files and files in subdirectories
-            if csv_file.name.startswith(".") or csv_file.name.startswith("_"):
-                continue
-
-            dataset_name = csv_file.stem
-            try:
-                breakdown = self._analyze_dataset(csv_file)
-                self._dataset_cache[dataset_name] = DatasetConfig(
-                    name=dataset_name,
-                    file=csv_file,
-                    prompt_count=sum(breakdown.values()),
-                    criteria_breakdown=breakdown,
-                )
-            except Exception as e:
-                logger.warning(f"Failed to analyze dataset {csv_file}: {e}")
-
-        logger.info(f"Discovered {len(self._dataset_cache)} datasets")
-        return self._dataset_cache
-
-    def _detect_delimiter(self, csv_file: Path) -> str:
-        """Detect CSV delimiter (comma or semicolon)."""
-        with open(csv_file, encoding="utf-8") as f:
-            first_line = f.readline()
-            if ";" in first_line and "," not in first_line:
-                return ";"
-            return ","
-
-    def _analyze_dataset(self, csv_file: Path) -> dict[str, int]:
-        """Analyze a dataset CSV and return criteria breakdown."""
-        breakdown: dict[str, int] = {}
-        delimiter = self._detect_delimiter(csv_file)
-
-        with open(csv_file, encoding="utf-8") as f:
-            reader = csv.DictReader(f, delimiter=delimiter)
-            for row in reader:
-                # Handle both old "Category" and potential new "criteria_id" column names
-                criteria_id = row.get("Category") or row.get("criteria_id") or row.get("category")
-                if criteria_id:
-                    # Strip version suffix if present (e.g., "__v1_0")
-                    if "__" in criteria_id:
-                        criteria_id = criteria_id.split("__")[0]
-                    breakdown[criteria_id] = breakdown.get(criteria_id, 0) + 1
-
-        return breakdown
-
-    def get_dataset(self, dataset_name: str) -> DatasetConfig:
-        """Get a dataset by name."""
-        datasets = self.discover_datasets()
-        if dataset_name not in datasets:
-            raise ValueError(f"Dataset not found: {dataset_name}")
-        return datasets[dataset_name]
-
-    def list_datasets(self) -> list[DatasetConfig]:
-        """List all available datasets."""
-        datasets = self.discover_datasets()
-        return sorted(datasets.values(), key=lambda d: d.name)
-
-    def load_dataset_prompts(self, dataset_name: str) -> list[DatasetPrompt]:
-        """Load all prompts from a dataset."""
-        dataset = self.get_dataset(dataset_name)
-        prompts = []
-        delimiter = self._detect_delimiter(dataset.file)
-
-        with open(dataset.file, encoding="utf-8") as f:
-            reader = csv.DictReader(f, delimiter=delimiter)
-            for row in reader:
-                prompt_id = row.get("PromptID") or row.get("prompt_id") or row.get("id")
-                criteria_id = row.get("Category") or row.get("criteria_id") or row.get("category")
-                prompt_text = row.get("Prompt") or row.get("prompt")
-
-                if prompt_id and criteria_id and prompt_text:
-                    # Strip version suffix if present
-                    if "__" in criteria_id:
-                        criteria_id = criteria_id.split("__")[0]
-
-                    prompts.append(
-                        DatasetPrompt(
-                            id=prompt_id,
-                            criteria_id=criteria_id,
-                            prompt=prompt_text,
-                        )
-                    )
-
-        return prompts
 
     # -------------------------------------------------------------------------
     # Presets (Criteria Selections)

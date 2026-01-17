@@ -120,7 +120,23 @@ def dataset_add(
     name: str = typer.Option(..., "--name", "-n", help="Name for the dataset"),
 ):
     """Add a custom dataset"""
-    console.print(f"[yellow]TODO:[/yellow] Add dataset '{file}' as '{name}'")
+    from srl4c.core.datasets import create_dataset
+    from srl4c.db.models import init_db
+
+    init_db()
+
+    if not file.exists():
+        console.print(f"[red]File not found:[/red] {file}")
+        raise typer.Exit(1)
+
+    csv_content = file.read_text()
+
+    try:
+        dataset = create_dataset(name=name, csv_content=csv_content)
+        console.print(f"[green]Created dataset:[/green] {dataset.name} ({dataset.prompt_count} prompts)")
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
 
 
 # === ATTACK ===

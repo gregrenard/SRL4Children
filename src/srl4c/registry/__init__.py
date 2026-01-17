@@ -1,7 +1,8 @@
 """
 SRL4C Registry Module
 
-Provides unified access to criteria, judges, datasets, and presets.
+Provides unified access to criteria, judges, and presets.
+Datasets are handled by core.datasets (database-backed).
 """
 
 from srl4c.registry.loader import (
@@ -11,8 +12,6 @@ from srl4c.registry.loader import (
     CriterionConfig,  # Alias for evaluator compatibility
     JudgeConfig,
     JudgeImplementation,
-    DatasetConfig,
-    DatasetPrompt,
 )
 
 # Alias for backward compatibility
@@ -26,6 +25,4 @@ __all__ = [
     "CriterionConfig",  # Alias
     "JudgeConfig",
     "JudgeImplementation",
-    "DatasetConfig",
-    "DatasetPrompt",
 ]
