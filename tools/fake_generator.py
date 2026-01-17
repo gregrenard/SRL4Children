@@ -69,8 +69,8 @@ class FakeGeneratorHandler(BaseHTTPRequestHandler):
         model = data.get("model", "fake-generator")
         messages = data.get("messages", [])
 
-        # Simulate some processing time
-        time.sleep(random.uniform(0.1, 0.3))
+        # Minimal delay for faster tests
+        time.sleep(random.uniform(0.01, 0.03))
 
         # Generate fake guardrail rules
         num_rules = random.randint(1, 3)

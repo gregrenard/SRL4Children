@@ -54,8 +54,8 @@ class FakeEndpointHandler(BaseHTTPRequestHandler):
         self._send_json({"status": "ok", "service": "Fake Endpoint"})
 
     def do_POST(self):
-        # Add realistic delay (100-500ms)
-        time.sleep(random.uniform(0.1, 0.5))
+        # Minimal delay for faster tests
+        time.sleep(random.uniform(0.01, 0.03))
 
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length).decode() if content_length else "{}"
