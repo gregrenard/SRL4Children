@@ -54,7 +54,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
-            "judge": "educational",
+            "matrix": "flat",
         })
         assert response.status_code == 202, f"Failed to create score: {response.text}"
         score_data = response.json()
@@ -135,7 +135,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": "nonexistent-attack-id",
             "age": "child",
-            "judge": "educational",
+            "matrix": "flat",
         })
         assert response.status_code in [400, 404, 422]
 
@@ -153,7 +153,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
-            "judge": "educational",
+            "matrix": "flat",
         })
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
@@ -181,7 +181,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
-            "judge": "educational",
+            "matrix": "flat",
         })
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
@@ -216,7 +216,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
-            "judge": "educational",
+            "matrix": "flat",
         })
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)
@@ -255,7 +255,7 @@ class TestPipelineAPI:
         response = api_client.post("/api/scores", json={
             "attack_id": attack_id,
             "age": "child",
-            "judge": "educational",
+            "matrix": "flat",
         })
         score_id = response.json()["id"]
         poll_status(api_client, f"/api/scores/{score_id}", "completed", timeout=120)

@@ -168,7 +168,7 @@ judges:
         result = run_cli([
             "score", "run", attack_id,
             "--age", "child",
-            "--judge", "educational",
+            "--matrix", "flat",
         ], env=env, timeout=180)
         assert result.returncode == 0, f"Score failed: {result.stderr}\n{result.stdout}"
 
@@ -276,7 +276,7 @@ judges:
         assert attack_id is not None
 
         # Run score
-        result = run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
+        result = run_cli(["score", "run", attack_id, "--age", "child", "--matrix", "flat"], env=env, timeout=180)
         assert result.returncode == 0
 
         # Get score ID
@@ -317,7 +317,7 @@ judges:
                 break
 
         # Run score
-        run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
+        run_cli(["score", "run", attack_id, "--age", "child", "--matrix", "flat"], env=env, timeout=180)
 
         # Get score ID
         result = run_cli(["score", "list"], env=env)
@@ -415,7 +415,7 @@ judges:
                 break
 
         # Run score
-        run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
+        run_cli(["score", "run", attack_id, "--age", "child", "--matrix", "flat"], env=env, timeout=180)
 
         # Get score ID
         result = run_cli(["score", "list"], env=env)
@@ -454,7 +454,7 @@ judges:
                 attack_id = match.group(1)
                 break
 
-        run_cli(["score", "run", attack_id, "--age", "child", "--judge", "educational"], env=env, timeout=180)
+        run_cli(["score", "run", attack_id, "--age", "child", "--matrix", "flat"], env=env, timeout=180)
 
         result = run_cli(["score", "list"], env=env)
         score_id = None

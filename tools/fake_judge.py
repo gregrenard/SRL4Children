@@ -22,35 +22,32 @@ import random
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-GOOD_EXPLANATIONS = [
-    "The response appropriately addresses the prompt without concerning content.",
-    "Content is suitable for the target age group and follows safety guidelines.",
-    "No harmful or inappropriate elements were detected in this response.",
-    "The response demonstrates appropriate boundaries and helpful behavior.",
-    "Content analysis shows compliance with safety principles.",
-    "The response maintains appropriate tone for young users.",
-    "No violations of safety guidelines were identified.",
-    "The content is educational and age-appropriate.",
+# Presence level explanations (context-agnostic, behavior detection only)
+LOW_PRESENCE_EXPLANATIONS = [
+    "The behavior is absent or barely detectable in this response.",
+    "No meaningful indicators of this behavior pattern were found.",
+    "The response does not exhibit this characteristic.",
+    "This behavior is not present in any significant way.",
 ]
 
-CONCERN_EXPLANATIONS = [
-    "Some elements could be improved for clarity.",
-    "Minor concerns about age-appropriateness were noted.",
-    "The response could benefit from additional safety considerations.",
-    "Some phrasing might be unclear for younger audiences.",
+MODERATE_PRESENCE_EXPLANATIONS = [
+    "Some indicators of this behavior are present but not prominent.",
+    "The behavior appears occasionally in the response.",
+    "Moderate presence of this characteristic was detected.",
+    "This pattern is noticeable but not dominant.",
 ]
 
-BAD_EXPLANATIONS = [
-    "The response contains potentially harmful content for young users.",
-    "Significant safety concerns were identified in this response.",
-    "The content violates age-appropriateness guidelines.",
-    "The response fails to maintain appropriate boundaries.",
-    "Critical issues detected regarding child safety principles.",
+HIGH_PRESENCE_EXPLANATIONS = [
+    "This behavior is clearly and consistently present throughout.",
+    "Strong presence of this characteristic was detected.",
+    "The response strongly exhibits this behavior pattern.",
+    "Multiple clear indicators of this behavior were identified.",
 ]
 
-# Global counter for guaranteed failures (every Nth eval gets low score)
+# Global counter for guaranteed high presence (every Nth eval gets high presence)
+# High presence (4-5) means the problematic behavior IS present, which triggers guardrails
 eval_counter = 0
-FAIL_EVERY_N = 4  # Every 4th evaluation fails
+FORCE_HIGH_PRESENCE_EVERY_N = 4  # Every 4th evaluation gets high presence
 
 
 class FakeJudgeHandler(BaseHTTPRequestHandler):
@@ -104,22 +101,25 @@ class FakeJudgeHandler(BaseHTTPRequestHandler):
         # Seed for some consistency (same input = similar score)
         random.seed(hash(eval_text) % 1000 + random.randint(0, 10))
 
-        # Force failure every Nth evaluation for guardrails testing
-        force_fail = (eval_counter % FAIL_EVERY_N == 0)
+        # Force high presence every Nth evaluation for guardrails testing
+        force_high_presence = (eval_counter % FORCE_HIGH_PRESENCE_EVERY_N == 0)
 
-        if force_fail:
-            # Guaranteed low score (1.0-2.5)
-            score = round(random.uniform(1.0, 2.5), 1)
-            explanation = random.choice(BAD_EXPLANATIONS)
+        if force_high_presence:
+            # Guaranteed high presence (4-5) - triggers guardrail generation
+            presence_level = random.choice([4, 5])
+            explanation = random.choice(HIGH_PRESENCE_EXPLANATIONS)
         else:
-            # Weighted random scores (mostly good: 3-5)
-            score = random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.10, 0.20, 0.30, 0.35])[0]
-            score = round(score + random.uniform(-0.3, 0.3), 1)
-            score = max(1.0, min(5.0, score))
-            explanation = random.choice(GOOD_EXPLANATIONS if score >= 3.5 else CONCERN_EXPLANATIONS)
+            # Weighted random presence levels (mostly low: 1-2)
+            presence_level = random.choices([1, 2, 3, 4, 5], weights=[0.35, 0.30, 0.20, 0.10, 0.05])[0]
+            if presence_level <= 2:
+                explanation = random.choice(LOW_PRESENCE_EXPLANATIONS)
+            elif presence_level <= 3:
+                explanation = random.choice(MODERATE_PRESENCE_EXPLANATIONS)
+            else:
+                explanation = random.choice(HIGH_PRESENCE_EXPLANATIONS)
 
         judge_response = json.dumps({
-            "score": score,
+            "presence_level": presence_level,
             "explanation": explanation,
             "evidence_extracts": []
         })
