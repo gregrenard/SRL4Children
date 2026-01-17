@@ -8,7 +8,7 @@ from typing import Optional
 from srl4c.db.models import (
     get_connection, init_db, db_connection,
     Endpoint, Attack, Record, Score, Evaluation, Guardrail, Log,
-    Dataset, Judge, JudgeCriteria
+    Dataset, Judge, JudgeCriteria, ScoringMatrix, ScoringMatrixEntry
 )
 
 
@@ -990,3 +990,185 @@ class JudgeRepository:
                 (judge_id, criteria_id)
             ).fetchone()
         return row["prompt_content"] if row else None
+
+
+def _row_to_scoring_matrix(row) -> ScoringMatrix:
+    """Convert a database row to a ScoringMatrix object"""
+    return ScoringMatrix(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        is_builtin=bool(row["is_builtin"]),
+        tenant_id=row["tenant_id"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
+
+def _row_to_scoring_matrix_entry(row) -> ScoringMatrixEntry:
+    """Convert a database row to a ScoringMatrixEntry object"""
+    return ScoringMatrixEntry(
+        id=row["id"],
+        matrix_id=row["matrix_id"],
+        behavior_id=row["behavior_id"],
+        age_group=row["age_group"],
+        presence_level=row["presence_level"],
+        score=row["score"],
+        created_at=row["created_at"],
+    )
+
+
+class ScoringMatrixRepository:
+    """CRUD operations for scoring matrices"""
+
+    @staticmethod
+    def get_by_id(id: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+        """Get matrix by ID"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM scoring_matrices WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                (id, tenant_id)
+            ).fetchone()
+            if not row:
+                # Try prefix match
+                rows = conn.execute(
+                    "SELECT * FROM scoring_matrices WHERE id LIKE ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                    (f"{id}%", tenant_id)
+                ).fetchall()
+                if len(rows) == 1:
+                    row = rows[0]
+                elif len(rows) > 1:
+                    raise ValueError(f"Ambiguous ID '{id}' matches: {[r['id'] for r in rows]}")
+        return _row_to_scoring_matrix(row) if row else None
+
+    @staticmethod
+    def get_by_name(name: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+        """Get matrix by name"""
+        init_db()
+        with db_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM scoring_matrices WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
+                (name, tenant_id)
+            ).fetchone()
+        return _row_to_scoring_matrix(row) if row else None
+
+    @staticmethod
+    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+        """Get matrix by ID (prefix) or name"""
+        matrix = ScoringMatrixRepository.get_by_name(id_or_name, tenant_id)
+        if matrix:
+            return matrix
+        return ScoringMatrixRepository.get_by_id(id_or_name, tenant_id)
+
+    @staticmethod
+    def list_all(tenant_id: str = None) -> list[ScoringMatrix]:
+        """List all matrices (built-in + user's)"""
+        init_db()
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scoring_matrices WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY is_builtin DESC, name",
+                (tenant_id,)
+            ).fetchall()
+        return [_row_to_scoring_matrix(row) for row in rows]
+
+    @staticmethod
+    def list_names(tenant_id: str = None) -> list[str]:
+        """List all matrix names"""
+        init_db()
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT name FROM scoring_matrices WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY name",
+                (tenant_id,)
+            ).fetchall()
+        return [row['name'] for row in rows]
+
+    @staticmethod
+    def create(matrix: ScoringMatrix) -> ScoringMatrix:
+        """Create a new matrix"""
+        init_db()
+        with db_connection() as conn:
+            conn.execute(
+                """INSERT INTO scoring_matrices
+                    (id, name, description, is_builtin, tenant_id)
+                VALUES (?, ?, ?, ?, ?)""",
+                (
+                    matrix.id,
+                    matrix.name,
+                    matrix.description,
+                    1 if matrix.is_builtin else 0,
+                    matrix.tenant_id,
+                )
+            )
+        return matrix
+
+    @staticmethod
+    def delete(id: str, tenant_id: str = None) -> bool:
+        """Delete a matrix (cannot delete built-in)"""
+        matrix = ScoringMatrixRepository.get_by_id(id, tenant_id)
+        if not matrix:
+            return False
+        if matrix.is_builtin:
+            raise ValueError("Cannot delete built-in matrix")
+
+        with db_connection() as conn:
+            # Delete entries first
+            conn.execute("DELETE FROM scoring_matrix_entries WHERE matrix_id = ?", (matrix.id,))
+            conn.execute("DELETE FROM scoring_matrices WHERE id = ?", (matrix.id,))
+        return True
+
+    @staticmethod
+    def get_entries(matrix_id: str) -> list[ScoringMatrixEntry]:
+        """Get all entries for a matrix"""
+        with db_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scoring_matrix_entries WHERE matrix_id = ? ORDER BY behavior_id, age_group, presence_level",
+                (matrix_id,)
+            ).fetchall()
+        return [_row_to_scoring_matrix_entry(row) for row in rows]
+
+    @staticmethod
+    def set_entries(matrix_id: str, entries: list[ScoringMatrixEntry]) -> None:
+        """Replace all entries for a matrix"""
+        with db_connection() as conn:
+            # Delete existing entries
+            conn.execute("DELETE FROM scoring_matrix_entries WHERE matrix_id = ?", (matrix_id,))
+            # Insert new entries
+            for entry in entries:
+                conn.execute(
+                    """INSERT INTO scoring_matrix_entries
+                        (id, matrix_id, behavior_id, age_group, presence_level, score)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        entry.id,
+                        matrix_id,
+                        entry.behavior_id,
+                        entry.age_group,
+                        entry.presence_level,
+                        entry.score,
+                    )
+                )
+
+    @staticmethod
+    def lookup_score(
+        matrix_id: str,
+        behavior_id: str,
+        age_group: str,
+        presence_level: int
+    ) -> float:
+        """Look up mapped score from matrix.
+
+        Each matrix represents a context (educational, companionship, etc.).
+        If no entry exists, returns presence_level as identity mapping (for 'flat' matrix).
+        """
+        with db_connection() as conn:
+            row = conn.execute(
+                """SELECT score FROM scoring_matrix_entries
+                   WHERE matrix_id = ? AND behavior_id = ? AND age_group = ?
+                   AND presence_level = ?""",
+                (matrix_id, behavior_id, age_group, presence_level)
+            ).fetchone()
+        if row:
+            return row["score"]
+        # Identity mapping fallback (for 'flat' matrix with no entries)
+        return float(presence_level)

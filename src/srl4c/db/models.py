@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS scores (
     id TEXT PRIMARY KEY,
     attack_id TEXT NOT NULL,
     age_context TEXT NOT NULL,
-    judge_id TEXT,
+    matrix_id TEXT,
     final_score REAL,
     category_scores_json TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS scores (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     FOREIGN KEY (attack_id) REFERENCES attacks(id),
-    FOREIGN KEY (judge_id) REFERENCES judges(id)
+    FOREIGN KEY (matrix_id) REFERENCES scoring_matrices(id)
 );
 
 CREATE TABLE IF NOT EXISTS evaluations (
@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS evaluations (
     score_id TEXT NOT NULL,
     record_id TEXT NOT NULL,
     criteria_id TEXT NOT NULL,
+    presence_level INTEGER,
     final_score REAL,
     agreement_score REAL,
     explanation TEXT,
@@ -172,6 +173,35 @@ CREATE TABLE IF NOT EXISTS judge_criteria (
     FOREIGN KEY (judge_id) REFERENCES judges(id)
 );
 
+-- Scoring matrices for presence-to-score mapping
+CREATE TABLE IF NOT EXISTS scoring_matrices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    is_builtin INTEGER NOT NULL DEFAULT 0,
+    tenant_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(name, tenant_id)
+);
+
+-- Matrix entries: (behavior, age_group, presence_level) -> score
+-- Each matrix represents a context (educational, companionship, entertainment, etc.)
+CREATE TABLE IF NOT EXISTS scoring_matrix_entries (
+    id TEXT PRIMARY KEY,
+    matrix_id TEXT NOT NULL,
+    behavior_id TEXT NOT NULL,
+    age_group TEXT NOT NULL,
+    presence_level INTEGER NOT NULL,
+    score REAL NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (matrix_id) REFERENCES scoring_matrices(id),
+    UNIQUE(matrix_id, behavior_id, age_group, presence_level)
+);
+
+CREATE INDEX IF NOT EXISTS idx_matrix_entries_lookup
+ON scoring_matrix_entries(matrix_id, behavior_id, age_group);
+
 CREATE INDEX IF NOT EXISTS idx_datasets_tenant ON datasets(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_judges_tenant ON judges(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_judge_criteria_judge ON judge_criteria(judge_id);
@@ -223,7 +253,8 @@ class Score:
     attack_id: str
     age_context: str
     status: str = "pending"
-    judge_id: Optional[str] = None
+    context: Optional[str] = None
+    matrix_id: Optional[str] = None
     final_score: Optional[float] = None
     category_scores: Optional[dict] = None
     progress_current: int = 0
@@ -240,7 +271,9 @@ class Evaluation:
     score_id: str
     record_id: str
     criteria_id: str
+    presence_level: Optional[int] = None
     final_score: Optional[float] = None
+    agreement_score: Optional[float] = None
     explanation: Optional[str] = None
     evidence: Optional[list] = None
     judge_details: Optional[dict] = None
@@ -322,6 +355,28 @@ class JudgeCriteria:
     version: Optional[str] = None
     author: Optional[str] = None
     prompt_content: str = ""
+    created_at: Optional[datetime] = None
+
+
+@dataclass
+class ScoringMatrix:
+    id: str
+    name: str
+    description: Optional[str] = None
+    is_builtin: bool = False
+    tenant_id: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+@dataclass
+class ScoringMatrixEntry:
+    id: str
+    matrix_id: str
+    behavior_id: str
+    age_group: str
+    presence_level: int
+    score: float
     created_at: Optional[datetime] = None
 
 
