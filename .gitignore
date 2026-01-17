@@ -42,3 +42,4 @@ logs/
 
 # Temporary test datasets
 data/temp_limited_*.csv
+.sync_hash

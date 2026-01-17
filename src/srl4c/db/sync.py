@@ -497,6 +497,8 @@ def sync_prompt_and_guardrail_files() -> dict[str, int]:
     - .prompt files: Full judge prompts for presence detection
     - .guardrail files: Presence level definitions for guardrail generation
 
+    Uses hash-based caching to skip regeneration if spreadsheet unchanged.
+
     Returns dict with counts of files generated.
     """
     import yaml
@@ -505,6 +507,17 @@ def sync_prompt_and_guardrail_files() -> dict[str, int]:
     if not spreadsheet_path.exists():
         logger.warning(f"Spreadsheet not found: {spreadsheet_path}")
         return {"prompts": 0, "guardrails": 0}
+
+    # Check if we can skip regeneration (hash unchanged)
+    judges_dir = DATA_DIR / "judges" / "presence" / "emotional_reliance"
+    hash_file = judges_dir / ".sync_hash"
+    current_hash = compute_file_hash(spreadsheet_path)
+
+    if hash_file.exists():
+        cached_hash = hash_file.read_text().strip()
+        if cached_hash == current_hash:
+            logger.debug("Spreadsheet unchanged, skipping prompt/guardrail file generation")
+            return {"prompts": 0, "guardrails": 0}
 
     with open(spreadsheet_path, encoding="utf-8") as f:
         spreadsheet = yaml.safe_load(f)
@@ -593,6 +606,10 @@ def sync_prompt_and_guardrail_files() -> dict[str, int]:
         with open(guardrail_path, "w", encoding="utf-8") as f:
             yaml.dump(guardrail_content, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
         guardrails_synced += 1
+
+    # Cache the hash to skip regeneration next time
+    hash_file.parent.mkdir(parents=True, exist_ok=True)
+    hash_file.write_text(current_hash)
 
     logger.info(f"Generated {prompts_synced} prompt files and {guardrails_synced} guardrail definition files")
     return {"prompts": prompts_synced, "guardrails": guardrails_synced}
