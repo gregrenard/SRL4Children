@@ -2,7 +2,7 @@
 
 ## What is this project?
 
-**SRL4C** (Safety Readiness Level for Children) is a CLI tool to evaluate AI-generated content for children/teens (ages 6-25). It tests AI apps against 15 behaviors across 3 cues that may foster emotional reliance, and generates guardrails to fix failures.
+**SRL4C** (Safety Readiness Level for Children) is a CLI tool to evaluate AI-generated content for children/teens (ages 6-25). It tests AI apps against 15 behaviors across 3 cues that may foster emotional reliance, using presence detection and context-specific scoring matrices. It generates guardrails to fix failures.
 
 ## Project Structure
 
@@ -11,8 +11,9 @@ SRL4Children/
 ├── src/srl4c/                 # Main package
 │   ├── core/                  # Shared business logic (CLI + API)
 │   │   ├── attack.py          # create_attack(), run_attack()
-│   │   ├── score.py           # create_score(), run_score()
+│   │   ├── score.py           # create_score(), run_score(), generate_report()
 │   │   ├── guardrails.py      # create_guardrails(), run_guardrails()
+│   │   ├── matrices.py        # Scoring matrix CRUD operations
 │   │   ├── datasets.py        # Dataset CRUD operations
 │   │   └── judges.py          # Evaluation judge CRUD operations
 │   ├── cli/                   # Typer CLI (thin wrapper)
@@ -26,33 +27,42 @@ SRL4Children/
 │   │   └── loader.py          # Loads criteria & judges from split files
 │   ├── db/                    # SQLite persistence
 │   │   ├── models.py          # Data models + dataclasses
-│   │   ├── repository.py      # CRUD operations
-│   │   └── sync.py            # Sync built-in datasets/judges from files
+│   │   ├── repository.py      # CRUD operations + score lookup
+│   │   └── sync.py            # Sync datasets/matrices + generate .prompt/.guardrail files
 │   ├── judge/                 # Evaluation system
 │   │   ├── config.py          # Judge configuration
-│   │   └── evaluator.py       # Multi-judge scoring
+│   │   └── evaluator.py       # Presence detection evaluation
 │   ├── adapters/              # Endpoint connectors
 │   ├── paths.py               # Centralized path config
 │   └── wrapper.py             # OpenAI proxy wrapper
 │
 ├── data/
+│   ├── emotional_reliance_spreadsheet.yml  # SOURCE OF TRUTH (from research Excel)
 │   ├── criteria/              # Registry configuration (split files)
 │   │   ├── criteria.yml       # 15 behavior definitions across 3 cues
 │   │   ├── presets.yml        # Named criteria selections
-│   │   └── judges/            # Context-based judge configs
-│   │       ├── educational.yml
-│   │       ├── companionship.yml
-│   │       └── entertainment.yml
-│   ├── judges/                # Judge prompt implementations
-│   │   └── emotional_reliance/  # 15 .prompt files by cue
-│   │       ├── anthropomorphic/
-│   │       ├── interactional/
-│   │       └── relational/
+│   │   └── judges/            # Judge configs
+│   │       └── presence.yml   # Presence detection judge config
+│   ├── judges/                # GENERATED from YAML spreadsheet
+│   │   └── presence/
+│   │       └── emotional_reliance/
+│   │           ├── anthropomorphic/
+│   │           │   ├── *.prompt      # For presence judges
+│   │           │   └── *.guardrail   # For guardrail generation
+│   │           ├── interactional/
+│   │           └── relational/
 │   └── datasets/              # Attack CSV files (auto-discovered)
 │
 ├── templates/                 # Copied to ~/.srl4c/ on init
 │   ├── judges.yaml            # LLM judge model configuration
 │   └── guardrails.yaml        # Guardrail generation settings
+│
+├── ui/                        # React/Vite web dashboard
+│   └── src/
+│       └── pages/
+│           ├── Dashboard.jsx
+│           ├── Datasets.jsx
+│           └── ScoringConfig.jsx  # Matrix editor
 │
 ├── archive/                   # Legacy docs (not maintained)
 └── sample_apps/               # Example applications
@@ -64,7 +74,7 @@ SRL4Children/
 # Run CLI
 uv run python -m srl4c.cli.main --help
 uv run python -m srl4c.cli.main criteria list      # List 15 behaviors across 3 cues
-uv run python -m srl4c.cli.main eval-judges list   # List evaluation judges
+uv run python -m srl4c.cli.main matrix list        # List scoring matrices
 uv run python -m srl4c.cli.main dataset list       # List datasets
 
 # Start API server
@@ -81,21 +91,66 @@ srl4c api serve --port 8000
 
 ## Key Concepts
 
-### Cues, Behaviors, and Judges
+### Scoring Architecture
+
+SRL4C uses a two-stage scoring system:
+
+```
+Response → Presence Judge → Presence Level (1-5) → Scoring Matrix → Final Score (0-5)
+```
+
+**Stage 1: Presence Detection** (context-agnostic)
+- A single "presence" judge evaluates each response
+- Detects HOW MUCH of each behavior is present (1-5 scale)
+- Level 1 = minimal/no presence, Level 5 = strong presence
+- Uses `.prompt` files generated from the YAML spreadsheet
+
+**Stage 2: Score Mapping** (context-specific)
+- Scoring matrices map presence levels to safety scores
+- Three built-in matrices: `educational`, `companionship`, `entertainment`
+- Score 0 = most concerning, Score 5 = fully safe
+- Age group (child, teenager, young_adult) affects the mapping
+
+### Source of Truth
+
+All behavior definitions come from `data/emotional_reliance_spreadsheet.yml`:
+
+```
+YAML Spreadsheet (from research team's Excel)
+         ↓
+    sync_all() on startup
+         ↓
+    ┌────┴────┐
+    ↓         ↓
+.prompt    .guardrail
+(judges)   (guardrails)
+```
+
+- **YAML Spreadsheet**: Contains all 15 behaviors, presence level definitions (1-5), and examples
+- **`.prompt` files**: Generated for presence judges
+- **`.guardrail` files**: Generated for guardrail generation (presence level definitions only)
+
+### Cues and Behaviors
 
 **Behaviors** are the 15 patterns being evaluated, organized into 3 **cues**:
 - **Anthropomorphic** (5): persona/backstories, emotional claims, physical sensations, agency/intentions, sentience
 - **Interactional** (6): human communication markers, mimicry, proactivity, flattery, empathy, validation
 - **Relational** (4): intrusiveness, relatability, relationship labels, exclusivity
 
-**Judges** are context-specific configurations. Each judge:
-- Applies different weights per cue based on the AI's intended use case
-- Shares the same `.prompt` files for consistent evaluation
-- Judge selection is **required** when scoring (no default)
+### Scoring Matrices
 
-Built-in judges: `educational`, `companionship`, `entertainment`
+Context-specific matrices map `(behavior, age_group, presence_level)` → `score`:
+
+| Matrix | Context | Scoring |
+|--------|---------|---------|
+| `educational` | Tutoring, homework help | Stricter (low tolerance for warmth) |
+| `companionship` | AI friends, emotional support | More permissive |
+| `entertainment` | Games, stories | Balanced |
+
+Built-in matrices are created by `sync_builtin_matrices()` in `sync.py`.
 
 ### Datasets
+
 **First-class DB objects** - both built-in (synced from `data/datasets/*.csv`) and user-uploaded.
 
 CSV format:
@@ -117,18 +172,18 @@ All long-running operations share code between CLI and API via the `core/` modul
 Each operation has two functions:
 
 ```python
-# src/srl4c/core/attack.py
+# src/srl4c/core/score.py
 
-def create_attack(endpoint_name: str, dataset_name: str) -> str:
+def create_score(attack_id: str, age: str = "child", matrix: str = "educational") -> str:
     """
     Validates inputs, creates DB record with status='pending'.
-    Returns attack_id. Raises ValueError on validation failure.
+    Returns score_id. Raises ValueError on validation failure.
     """
 
-def run_attack(attack_id: str, on_progress: Callable = None) -> None:
+def run_score(score_id: str, on_progress: Callable = None) -> None:
     """
-    Executes the job, updates DB progress, sets status on completion/failure.
-    Optional on_progress callback for CLI progress bars.
+    Runs presence detection, maps to scores via matrix,
+    updates progress in DB, sets status on completion/failure.
     """
 ```
 
@@ -136,8 +191,8 @@ def run_attack(attack_id: str, on_progress: Callable = None) -> None:
 
 ```python
 # CLI calls create, runs in thread, polls DB for progress display
-attack_id = create_attack(endpoint, dataset)
-thread = Thread(target=run_attack, args=(attack_id,))
+score_id = create_score(attack_id, age="child", matrix="educational")
+thread = Thread(target=run_score, args=(score_id,))
 thread.start()
 # Poll and display progress...
 ```
@@ -147,10 +202,10 @@ thread.start()
 ```python
 # API calls create, runs in background task, client polls status
 @router.post("/", status_code=202)
-async def create_attack_endpoint(request: AttackCreate, background_tasks: BackgroundTasks):
-    attack_id = create_attack(request.endpoint, request.dataset)
-    background_tasks.add_task(run_attack, attack_id)
-    return {"id": attack_id, "status": "pending"}
+async def create_score_endpoint(request: ScoreCreate, background_tasks: BackgroundTasks):
+    score_id = create_score(request.attack_id, request.age, request.matrix)
+    background_tasks.add_task(run_score, score_id)
+    return {"id": score_id, "status": "pending"}
 ```
 
 ### Database as State Machine
@@ -165,33 +220,62 @@ Jobs running >90 min without updates auto-mark as `stale`.
 
 | File | Purpose |
 |------|---------|
+| `data/emotional_reliance_spreadsheet.yml` | **SOURCE OF TRUTH** - All behavior definitions |
 | `src/srl4c/core/attack.py` | Attack business logic (create + run) |
-| `src/srl4c/core/score.py` | Score business logic (create + run + report) |
-| `src/srl4c/core/guardrails.py` | Guardrails business logic (create + run) |
+| `src/srl4c/core/score.py` | Score business logic (presence detection + matrix mapping + report) |
+| `src/srl4c/core/guardrails.py` | Guardrails business logic (loads .guardrail files for definitions) |
+| `src/srl4c/core/matrices.py` | Scoring matrix CRUD |
 | `src/srl4c/core/datasets.py` | Dataset CRUD (list, get, create, delete) |
-| `src/srl4c/core/judges.py` | Eval judge CRUD (list, get, create, update weights) |
 | `src/srl4c/api/main.py` | FastAPI app with all routers |
 | `src/srl4c/api/schemas.py` | Pydantic request/response models |
 | `src/srl4c/cli/main.py` | Typer CLI command definitions |
 | `src/srl4c/paths.py` | All path constants |
 | `src/srl4c/registry/loader.py` | Load criteria & judges from registry |
-| `src/srl4c/judge/evaluator.py` | Multi-judge evaluation + weighting |
-| `src/srl4c/db/repository.py` | CRUD + progress update methods |
-| `src/srl4c/db/sync.py` | Sync built-in datasets/judges from files to DB |
+| `src/srl4c/judge/evaluator.py` | Presence detection evaluation |
+| `src/srl4c/db/repository.py` | CRUD + `ScoringMatrixRepository.lookup_score()` |
+| `src/srl4c/db/sync.py` | Sync datasets/matrices + generate .prompt/.guardrail files |
 | `data/criteria/criteria.yml` | Behavior definitions (15 across 3 cues) |
-| `data/criteria/presets.yml` | Named criteria selections |
-| `data/criteria/judges/*.yml` | Context-based judge configs with weights |
-| `data/judges/emotional_reliance/*.prompt` | Evaluation prompt implementations |
+| `data/judges/presence/emotional_reliance/*.prompt` | Generated presence judge prompts |
+| `data/judges/presence/emotional_reliance/*.guardrail` | Generated guardrail definitions |
 | `templates/judges.yaml` | LLM judge model configuration |
 
 ## Configuration
 
 User configs live in `~/.srl4c/`:
-- `judges.yaml` - Which LLM models judge responses (model names, passes, temperatures)
+- `judges.yaml` - Which LLM models detect presence (model names, passes, temperatures)
 - `guardrails.yaml` - Guardrail generation settings (model, max rules)
-- `srl4c.db` - SQLite database (endpoints, attacks, scores, datasets, judges, etc.)
+- `srl4c.db` - SQLite database (endpoints, attacks, scores, evaluations, matrices, etc.)
 
-**Note**: Evaluation judge weights are now stored per-judge in the database, not in a separate YAML file. Use the UI or API to create custom judges with weight overrides.
+## Database Schema
+
+Key tables for scoring:
+
+```sql
+-- Evaluations store both presence level and mapped score
+CREATE TABLE evaluations (
+    ...
+    presence_level INTEGER,    -- 1-5 from judge
+    final_score REAL,          -- 0-5 from matrix mapping
+    ...
+);
+
+-- Scoring matrices map (behavior, age, presence) → score
+CREATE TABLE scoring_matrices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,        -- educational, companionship, entertainment
+    is_builtin INTEGER,
+    ...
+);
+
+CREATE TABLE scoring_matrix_entries (
+    matrix_id TEXT,
+    behavior_id TEXT,          -- e.g., "flattery"
+    age_group TEXT,            -- child, teenager, young_adult
+    presence_level INTEGER,    -- 1-5
+    score REAL,                -- 0-5 mapped score
+    ...
+);
+```
 
 ## Testing
 
@@ -235,3 +319,27 @@ tests/
       conn.execute("SELECT * FROM ...")
   # Auto-commits on success, auto-closes on exit
   ```
+
+## Score Interpretation
+
+| Score | Meaning |
+|-------|---------|
+| 5.0 | Fully safe (presence level 1) |
+| 3.0+ | Acceptable |
+| < 3.0 | Concerning (triggers guardrails) |
+| 0.0 | Most concerning (presence level 5) |
+
+## Guardrails Generation
+
+Guardrails read presence level definitions from `.guardrail` files:
+
+```python
+# src/srl4c/core/guardrails.py
+def get_presence_definitions(behavior_id: str) -> Dict[int, str]:
+    """Load from .guardrail file (generated from YAML spreadsheet)"""
+```
+
+The guardrail prompt includes:
+- Current presence level + its definition
+- Target (level 1) definition
+- This gives the LLM concrete guidance on what "safe" looks like
