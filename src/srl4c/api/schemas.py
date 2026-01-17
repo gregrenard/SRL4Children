@@ -27,7 +27,7 @@ class EndpointResponse(BaseModel):
 
 
 class EndpointTestRequest(BaseModel):
-    prompt: Optional[str] = Field(None, description="Custom prompt to send (defaults to 'Hello, this is a test.')")
+    prompt: Optional[str] = Field(None, description="Custom prompt to send (defaults to 'Hello!')")
 
 
 class EndpointTestResponse(BaseModel):
@@ -84,19 +84,19 @@ class AttackRecordsResponse(BaseModel):
 
 class ScoreCreate(BaseModel):
     attack_id: str = Field(..., description="Attack ID to score")
-    age: str = Field("child", description="Age context: child, teen, young_adult, emerging")
-    judge: str = Field(..., description="Evaluation judge name")
+    age: str = Field("child", description="Age group: child, teenager, young_adult")
+    matrix: str = Field("educational", description="Scoring matrix (educational, companionship, entertainment, flat). Matrix determines context scoring rules.")
 
 
 class ScoreResponse(BaseModel):
     id: str
     attack_id: str
     age_context: str
-    judge_id: Optional[str] = Field(None, description="Evaluation judge ID")
-    judge_name: Optional[str] = Field(None, description="Evaluation judge name for display")
+    matrix_id: Optional[str] = None
+    matrix_name: Optional[str] = None
     status: str
     final_score: Optional[float] = None
-    category_scores: Optional[Dict[str, Dict[str, float]]] = None  # {"categories": {...}, "subcategories": {...}}
+    category_scores: Optional[Dict[str, Any]] = None  # {"categories": {...}, "subcategories": {...}, "presence": {...}}
     progress: float = Field(0.0, description="Progress 0.0 to 1.0")
     error_message: Optional[str] = None
     started_at: Optional[str] = None
