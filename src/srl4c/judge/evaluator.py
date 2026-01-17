@@ -6,33 +6,34 @@ instead of just Ollama.
 """
 
 import json
-import re
-import time
-import statistics
 import logging
+import re
+import statistics
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any
 
-from openai import OpenAI
 from json_repair import repair_json
+from openai import OpenAI
+
+from srl4c.judge.config import JudgeConfig, JudgeSystemConfig
+from srl4c.registry import CriterionConfig, get_registry_loader
+
+logger = logging.getLogger(__name__)
 
 # Worker pool for concurrent API calls
 MAX_CONCURRENT_REQUESTS = 10
 
 # Thread-safe printing
-import threading
 _print_lock = threading.Lock()
-
-from srl4c.judge.config import JudgeConfig, JudgeSystemConfig
-from srl4c.registry import get_registry_loader, CriterionConfig
-
-logger = logging.getLogger(__name__)
 
 
 # === HELPER FUNCTIONS ===
 
-def calculate_agreement_score(scores: List[float]) -> float:
+
+def calculate_agreement_score(scores: list[float]) -> float:
     """Calculate agreement score between judges (1.0 = perfect agreement).
 
     Uses Coefficient of Variation (CV) to measure disagreement.
@@ -53,7 +54,8 @@ def calculate_agreement_score(scores: List[float]) -> float:
 
 # === WEIGHTING SYSTEM ===
 
-def load_weights(judge_name: str = "default") -> Dict[str, Any]:
+
+def load_weights(judge_name: str = "default") -> dict[str, Any]:
     """Load weights from registry for a judge.
 
     For presence-based scoring, weights are optional. The presence judge
@@ -71,7 +73,7 @@ def load_weights(judge_name: str = "default") -> Dict[str, Any]:
         return {"categories": {}, "subcategories": {}, "criteria": {}}
 
 
-def weighted_average(scores: Dict[str, float], weights: Dict[str, float]) -> float:
+def weighted_average(scores: dict[str, float], weights: dict[str, float]) -> float:
     """Compute weighted average, fallback to simple mean if no weights match."""
     total_w, total_s = 0.0, 0.0
     for name, score in scores.items():
@@ -81,7 +83,9 @@ def weighted_average(scores: Dict[str, float], weights: Dict[str, float]) -> flo
     return total_s / total_w if total_w > 0 else (statistics.mean(scores.values()) if scores else 0.0)
 
 
-def calculate_weighted_scores(criteria_results: List['CriterionEvaluationResult'], preset: str = None) -> Tuple[float, Dict[str, float], Dict[str, float]]:
+def calculate_weighted_scores(
+    criteria_results: list["CriterionEvaluationResult"], preset: str = None
+) -> tuple[float, dict[str, float], dict[str, float]]:
     """
     3-level weighted aggregation: criteria → subcategory → category → final.
     Returns: (final_score, category_scores, subcategory_scores)
@@ -102,8 +106,7 @@ def calculate_weighted_scores(criteria_results: List['CriterionEvaluationResult'
 
     # Level 3: criteria → subcategory
     subcategory_scores = {
-        sk: weighted_average(crits, weights.get("criteria", {}).get(sk, {}))
-        for sk, crits in by_subcat.items()
+        sk: weighted_average(crits, weights.get("criteria", {}).get(sk, {})) for sk, crits in by_subcat.items()
     }
 
     # Level 2: subcategory → category
@@ -113,8 +116,7 @@ def calculate_weighted_scores(criteria_results: List['CriterionEvaluationResult'
         by_cat.setdefault(cat, {})[sk.split(".")[1]] = score
 
     category_scores = {
-        cat: weighted_average(subcats, weights.get("subcategories", {}).get(cat, {}))
-        for cat, subcats in by_cat.items()
+        cat: weighted_average(subcats, weights.get("subcategories", {}).get(cat, {})) for cat, subcats in by_cat.items()
     }
 
     # Level 1: category → final
@@ -125,43 +127,48 @@ def calculate_weighted_scores(criteria_results: List['CriterionEvaluationResult'
 
 # === DATA CLASSES (same structure as existing judge.py) ===
 
+
 @dataclass
 class JudgeResult:
     """Result from a single judge (equivalent to existing JudgeResult)"""
+
     judge_id: str
     criterion_id: str
-    pass_results: List[Dict[str, Any]]
+    pass_results: list[dict[str, Any]]
     final_score: float
     consistency_variance: float
     execution_time_ms: int
-    raw_responses: List[str]
+    raw_responses: list[str]
 
 
 @dataclass
 class CriterionEvaluationResult:
     """Result for evaluating one criterion (equivalent to existing)"""
+
     criterion: CriterionConfig
-    judge_results: List[JudgeResult]
+    judge_results: list[JudgeResult]
     final_score: float
     judge_agreement_score: float
-    outliers_detected: List[str]
+    outliers_detected: list[str]
     processing_time_ms: int
-    metadata: Dict[str, Any]
-    presence_level: Optional[int] = None  # For presence-based evaluation (1-5)
+    metadata: dict[str, Any]
+    presence_level: int | None = None  # For presence-based evaluation (1-5)
 
 
 @dataclass
 class BenchmarkResult:
     """Complete benchmark result (equivalent to existing)"""
-    detailed_criteria: List[CriterionEvaluationResult]
+
+    detailed_criteria: list[CriterionEvaluationResult]
     final_aggregate_score: float
-    category_scores: Dict[str, float]
-    subcategory_scores: Dict[str, float]
-    consistency_metrics: Dict[str, Any]
-    metadata: Dict[str, Any]
+    category_scores: dict[str, float]
+    subcategory_scores: dict[str, float]
+    consistency_metrics: dict[str, Any]
+    metadata: dict[str, Any]
 
 
 # === JSON PARSING (ported from existing judge.py) ===
+
 
 def _remove_fences_and_think(raw: str) -> str:
     """Remove markdown fences and thinking tags"""
@@ -179,16 +186,16 @@ def _normalize_quotes_commas(s: str) -> str:
     return s
 
 
-def _extract_json_block(s: str) -> Optional[str]:
+def _extract_json_block(s: str) -> str | None:
     """Extract JSON block from string"""
     start = s.find("{")
     end = s.rfind("}")
     if start == -1 or end == -1 or end <= start:
         return None
-    return s[start:end+1]
+    return s[start : end + 1]
 
 
-def parse_judge_response(raw_response: str) -> Dict[str, Any]:
+def parse_judge_response(raw_response: str) -> dict[str, Any]:
     """
     Parse presence judge response.
     Expects: {"presence_level": 1-5, "explanation": "...", "evidence_extracts": [...]}
@@ -217,7 +224,7 @@ def parse_judge_response(raw_response: str) -> Dict[str, Any]:
         return {
             "presence_level": presence_level,
             "explanation": str(parsed.get("explanation", "")),
-            "evidence_extracts": list(parsed.get("evidence_extracts", []))
+            "evidence_extracts": list(parsed.get("evidence_extracts", [])),
         }
     except Exception as e:
         logger.warning(f"Failed to parse judge response: {e}")
@@ -227,16 +234,13 @@ def parse_judge_response(raw_response: str) -> Dict[str, Any]:
             return {
                 "presence_level": presence_level,
                 "explanation": "Parsed from text (JSON failed)",
-                "evidence_extracts": []
+                "evidence_extracts": [],
             }
-        return {
-            "presence_level": 3,
-            "explanation": f"Failed to parse: {e}",
-            "evidence_extracts": []
-        }
+        return {"presence_level": 3, "explanation": f"Failed to parse: {e}", "evidence_extracts": []}
 
 
 # === PROMPT BUILDING (ported from existing judge.py) ===
+
 
 def build_evaluation_prompt(
     criterion: CriterionConfig,
@@ -294,6 +298,7 @@ RESPONSE: {response}
 
 # === CORE EVALUATOR (ported from existing MultiJudgeEvaluator) ===
 
+
 class MultiJudgeEvaluator:
     """
     Multi-judge evaluator using OpenAI SDK.
@@ -314,7 +319,9 @@ class MultiJudgeEvaluator:
             api_key=judge.get_api_key(),
         )
 
-    def _generate(self, client: OpenAI, model: str, prompt: str, temperature: float, top_p: float, pass_num: int = 1) -> str:
+    def _generate(
+        self, client: OpenAI, model: str, prompt: str, temperature: float, top_p: float, pass_num: int = 1
+    ) -> str:
         """Generate response using OpenAI SDK (replaces ollama_generate)"""
         short_model = model.split("/")[-1][:10]
         start = time.time()
@@ -351,10 +358,7 @@ class MultiJudgeEvaluator:
         # Submit all judges to thread pool
         with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as executor:
             futures = {
-                executor.submit(
-                    self._evaluate_with_single_judge,
-                    judge, criterion, prompt, response, age_group
-                ): judge
+                executor.submit(self._evaluate_with_single_judge, judge, criterion, prompt, response, age_group): judge
                 for judge in self.config.judges
             }
 
@@ -391,8 +395,8 @@ class MultiJudgeEvaluator:
             metadata={
                 "n_judges": len(judge_results),
                 "consistency_checks_passed": agreement_score >= self.agreement_threshold,
-                "outliers_count": len(outliers)
-            }
+                "outliers_count": len(outliers),
+            },
         )
 
     def _evaluate_with_single_judge(
@@ -423,8 +427,7 @@ class MultiJudgeEvaluator:
             hyperparams = self.config.get_hyperparams(pass_idx)
 
             try:
-                # Retries with backoff (same as existing)
-                last_err = None
+                # Retries with backoff
                 backoffs = [5, 10, 20]
                 for attempt in range(3):
                     try:
@@ -437,8 +440,7 @@ class MultiJudgeEvaluator:
                             pass_num=pass_idx + 1,
                         )
                         break
-                    except Exception as e:
-                        last_err = e
+                    except Exception:
                         if attempt < 2:
                             time.sleep(backoffs[attempt])
                         else:
@@ -451,11 +453,9 @@ class MultiJudgeEvaluator:
 
             except Exception as e:
                 logger.warning(f"Pass {pass_idx + 1} failed for judge {judge.name}: {e}")
-                pass_results.append({
-                    "score": 0.0,
-                    "explanation": f"Failed to evaluate: {str(e)}",
-                    "evidence_extracts": []
-                })
+                pass_results.append(
+                    {"score": 0.0, "explanation": f"Failed to evaluate: {str(e)}", "evidence_extracts": []}
+                )
                 raw_responses.append(f"ERROR: {str(e)}")
 
         # Calculate consistency variance across passes (using presence_level)
@@ -472,10 +472,10 @@ class MultiJudgeEvaluator:
             final_score=final_score,
             consistency_variance=consistency_variance,
             execution_time_ms=execution_time_ms,
-            raw_responses=raw_responses
+            raw_responses=raw_responses,
         )
 
-    def _calculate_agreement_score(self, scores: List[float]) -> float:
+    def _calculate_agreement_score(self, scores: list[float]) -> float:
         """Calculate agreement score between judges (ported from existing)"""
         if len(scores) < 2:
             return 1.0
@@ -489,7 +489,7 @@ class MultiJudgeEvaluator:
         agreement = max(0.0, 1.0 - cv)
         return agreement
 
-    def _detect_outliers(self, judge_results: List[JudgeResult]) -> List[str]:
+    def _detect_outliers(self, judge_results: list[JudgeResult]) -> list[str]:
         """Detect outlier judges (ported from existing)"""
         if len(judge_results) < 3:
             return []
@@ -511,9 +511,11 @@ class MultiJudgeEvaluator:
 
 # === BATCH EVALUATION (parallel across all records × judges × passes) ===
 
+
 @dataclass
 class EvalTask:
     """A single evaluation task (one API call)"""
+
     record_idx: int
     record_id: str
     judge: JudgeConfig
@@ -522,18 +524,19 @@ class EvalTask:
     response: str
     age_group: str
     pass_idx: int
-    hyperparams: Dict[str, float]
+    hyperparams: dict[str, float]
 
 
 @dataclass
 class EvalTaskResult:
     """Result of a single evaluation task"""
+
     record_idx: int
     record_id: str
     judge_name: str
     criterion: CriterionConfig  # Keep full criterion for aggregation
     pass_idx: int
-    parsed_result: Dict[str, Any]
+    parsed_result: dict[str, Any]
     raw_response: str
     elapsed_ms: int
 
@@ -545,12 +548,9 @@ def _run_single_eval(task: EvalTask) -> EvalTaskResult:
         api_key=task.judge.get_api_key(),
     )
 
-    evaluation_prompt = build_evaluation_prompt(
-        task.criterion, task.prompt, task.response, task.age_group
-    )
+    evaluation_prompt = build_evaluation_prompt(task.criterion, task.prompt, task.response, task.age_group)
 
     short_model = task.judge.model.split("/")[-1][:10]
-    short_criterion = task.criterion.id.split(".")[-1][:15]
 
     start = time.time()
     response = client.chat.completions.create(
@@ -566,7 +566,9 @@ def _run_single_eval(task: EvalTask) -> EvalTaskResult:
     parsed = parse_judge_response(content)
 
     with _print_lock:
-        print(f"    ✓ R{task.record_idx+1} {short_model} p{task.pass_idx+1} → L{parsed['presence_level']} ({elapsed_ms/1000:.1f}s)")
+        print(
+            f"    ✓ R{task.record_idx + 1} {short_model} p{task.pass_idx + 1} → L{parsed['presence_level']} ({elapsed_ms / 1000:.1f}s)"
+        )
 
     return EvalTaskResult(
         record_idx=task.record_idx,
@@ -582,10 +584,10 @@ def _run_single_eval(task: EvalTask) -> EvalTaskResult:
 
 def evaluate_records_batch(
     config: JudgeSystemConfig,
-    records: List[Tuple[int, str, str, str, str]],  # (idx, id, prompt, response, criterion_id)
+    records: list[tuple[int, str, str, str, str]],  # (idx, id, prompt, response, criterion_id)
     age_group: str,
     judge_name: str = None,
-) -> Dict[str, BenchmarkResult]:
+) -> dict[str, BenchmarkResult]:
     """
     Evaluate multiple records in parallel.
     Returns dict mapping record_id -> BenchmarkResult
@@ -607,24 +609,28 @@ def evaluate_records_batch(
         for criterion in criteria:
             for judge_config in config.judges:
                 for pass_idx in range(config.n_passes):
-                    tasks.append(EvalTask(
-                        record_idx=record_idx,
-                        record_id=record_id,
-                        judge=judge_config,
-                        criterion=criterion,
-                        prompt=prompt,
-                        response=response,
-                        age_group=age_group,
-                        pass_idx=pass_idx,
-                        hyperparams=config.get_hyperparams(pass_idx),
-                    ))
+                    tasks.append(
+                        EvalTask(
+                            record_idx=record_idx,
+                            record_id=record_id,
+                            judge=judge_config,
+                            criterion=criterion,
+                            prompt=prompt,
+                            response=response,
+                            age_group=age_group,
+                            pass_idx=pass_idx,
+                            hyperparams=config.get_hyperparams(pass_idx),
+                        )
+                    )
 
     total_tasks = len(tasks)
-    print(f"    Queued {total_tasks} API calls ({len(records)} records × {len(config.judges)} judges × {config.n_passes} passes)")
+    print(
+        f"    Queued {total_tasks} API calls ({len(records)} records × {len(config.judges)} judges × {config.n_passes} passes)"
+    )
     print(f"    Running with {MAX_CONCURRENT_REQUESTS} concurrent workers\n")
 
     # Execute all tasks in parallel
-    results: List[EvalTaskResult] = []
+    results: list[EvalTaskResult] = []
     completed = 0
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as executor:
         futures = {executor.submit(_run_single_eval, task): task for task in tasks}
@@ -636,7 +642,7 @@ def evaluate_records_batch(
             except Exception as e:
                 task = futures[future]
                 with _print_lock:
-                    print(f"    ✗ R{task.record_idx+1} {task.judge.name} FAILED: {e}")
+                    print(f"    ✗ R{task.record_idx + 1} {task.judge.name} FAILED: {e}")
 
     print(f"\n    Completed {completed}/{total_tasks} API calls")
 
@@ -645,11 +651,11 @@ def evaluate_records_batch(
 
 
 def _aggregate_results(
-    results: List[EvalTaskResult],
-    records: List[Tuple[int, str, str, str, str]],
+    results: list[EvalTaskResult],
+    records: list[tuple[int, str, str, str, str]],
     config: JudgeSystemConfig,
     judge_name: str = None,
-) -> Dict[str, BenchmarkResult]:
+) -> dict[str, BenchmarkResult]:
     """Aggregate task results into BenchmarkResults per record"""
     from collections import defaultdict
 
@@ -680,15 +686,17 @@ def _aggregate_results(
                 final_score = statistics.mean(presence_levels) if presence_levels else 3.0
                 variance = statistics.variance(presence_levels) if len(presence_levels) > 1 else 0.0
 
-                judge_results.append(JudgeResult(
-                    judge_id=llm_judge_name,
-                    criterion_id=criterion_id,
-                    pass_results=[pr.parsed_result for pr in pass_results],
-                    final_score=final_score,
-                    consistency_variance=variance,
-                    execution_time_ms=sum(pr.elapsed_ms for pr in pass_results),
-                    raw_responses=[pr.raw_response for pr in pass_results],
-                ))
+                judge_results.append(
+                    JudgeResult(
+                        judge_id=llm_judge_name,
+                        criterion_id=criterion_id,
+                        pass_results=[pr.parsed_result for pr in pass_results],
+                        final_score=final_score,
+                        consistency_variance=variance,
+                        execution_time_ms=sum(pr.elapsed_ms for pr in pass_results),
+                        raw_responses=[pr.raw_response for pr in pass_results],
+                    )
+                )
 
             # Aggregate presence levels across all judges
             all_judge_scores = [jr.final_score for jr in judge_results]
@@ -699,16 +707,18 @@ def _aggregate_results(
             presence_level = int(round(criterion_final))
             presence_level = max(1, min(5, presence_level))
 
-            detailed_criteria.append(CriterionEvaluationResult(
-                criterion=criteria_cache[criterion_id],
-                judge_results=judge_results,
-                final_score=criterion_final,
-                judge_agreement_score=agreement,
-                outliers_detected=[],
-                processing_time_ms=0,
-                metadata={},
-                presence_level=presence_level,
-            ))
+            detailed_criteria.append(
+                CriterionEvaluationResult(
+                    criterion=criteria_cache[criterion_id],
+                    judge_results=judge_results,
+                    final_score=criterion_final,
+                    judge_agreement_score=agreement,
+                    outliers_detected=[],
+                    processing_time_ms=0,
+                    metadata={},
+                    presence_level=presence_level,
+                )
+            )
 
         # Calculate weighted aggregate scores
         final_aggregate, category_scores, subcategory_scores = calculate_weighted_scores(detailed_criteria, judge_name)
@@ -727,12 +737,13 @@ def _aggregate_results(
 
 # === SINGLE RECORD EVALUATION (legacy, uses batch internally) ===
 
+
 def evaluate_response(
     config: JudgeSystemConfig,
     prompt: str,
     response: str,
     age_group: str,
-    criteria_selection: Optional[str] = None,
+    criteria_selection: str | None = None,
     judge_name: str = None,
 ) -> BenchmarkResult:
     """
@@ -789,5 +800,5 @@ def evaluate_response(
             "n_criteria": len(detailed_criteria),
             "n_judges": len(config.judges),
             "n_passes": config.n_passes,
-        }
+        },
     )

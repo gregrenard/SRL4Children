@@ -1,8 +1,8 @@
 """Matrix commands - manage scoring matrices"""
 
 from rich.console import Console
-from rich.table import Table
 from rich.prompt import Confirm
+from rich.table import Table
 
 from srl4c.core import matrices as core_matrices
 
@@ -69,7 +69,7 @@ def show_matrix(console: Console, name: str):
         if len(entries) > 20:
             console.print(f"[dim]... and {len(entries) - 20} more entries[/dim]")
     else:
-        console.print(f"\n[dim]No entries (uses identity mapping: presence → score)[/dim]")
+        console.print("\n[dim]No entries (uses identity mapping: presence → score)[/dim]")
 
 
 def create_matrix(console: Console, name: str, description: str = None):

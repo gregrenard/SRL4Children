@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -17,21 +17,22 @@ load_dotenv(PROJECT_ROOT / ".env")
 @dataclass
 class GeneratorConfig:
     """Configuration for a guardrail generator"""
+
     name: str
     provider_openai_base_url: str
     model: str
-    api_key_env: Optional[str] = None
+    api_key_env: str | None = None
     temperature: float = 0.7
     max_tokens: int = 1000
 
-    def get_api_key(self) -> Optional[str]:
+    def get_api_key(self) -> str | None:
         """Get API key from environment"""
         if self.api_key_env:
             return os.environ.get(self.api_key_env)
         return "unused"  # For local models
 
 
-def get_settings() -> Dict[str, Any]:
+def get_settings() -> dict[str, Any]:
     """Load settings from ~/.srl4c/settings.yaml"""
     settings_path = USER_CONFIG_DIR / "settings.yaml"
     if settings_path.exists():
@@ -55,7 +56,7 @@ def set_active_generators(filename: str) -> None:
         yaml.dump(settings, f)
 
 
-def list_generator_files() -> List[Dict[str, Any]]:
+def list_generator_files() -> list[dict[str, Any]]:
     """List all available .generators files with metadata"""
     generator_files = []
 
@@ -64,27 +65,31 @@ def list_generator_files() -> List[Dict[str, Any]]:
             try:
                 with open(f) as fp:
                     data = yaml.safe_load(fp) or {}
-                generator_files.append({
-                    "name": f.name,
-                    "path": str(f),
-                    "model": data.get("model", "unknown"),
-                    "base_url": data.get("provider_openai_base_url", ""),
-                    "is_active": f.name == get_active_generators_file(),
-                })
+                generator_files.append(
+                    {
+                        "name": f.name,
+                        "path": str(f),
+                        "model": data.get("model", "unknown"),
+                        "base_url": data.get("provider_openai_base_url", ""),
+                        "is_active": f.name == get_active_generators_file(),
+                    }
+                )
             except Exception:
-                generator_files.append({
-                    "name": f.name,
-                    "path": str(f),
-                    "model": "error",
-                    "base_url": "",
-                    "is_active": f.name == get_active_generators_file(),
-                    "error": "Failed to parse",
-                })
+                generator_files.append(
+                    {
+                        "name": f.name,
+                        "path": str(f),
+                        "model": "error",
+                        "base_url": "",
+                        "is_active": f.name == get_active_generators_file(),
+                        "error": "Failed to parse",
+                    }
+                )
 
     return sorted(generator_files, key=lambda x: x["name"])
 
 
-def get_generator_file_content(filename: str) -> Optional[str]:
+def get_generator_file_content(filename: str) -> str | None:
     """Get the raw content of a generators file"""
     path = USER_CONFIG_DIR / filename
     if path.exists() and path.suffix == ".generators":
@@ -134,10 +139,11 @@ def get_default_generator() -> GeneratorConfig:
     )
 
 
-def test_generator(generator: GeneratorConfig) -> Dict[str, Any]:
+def test_generator(generator: GeneratorConfig) -> dict[str, Any]:
     """Test if a generator is reachable and responding"""
-    import httpx
     import time
+
+    import httpx
 
     result = {
         "name": generator.name,
@@ -183,14 +189,20 @@ def test_generator(generator: GeneratorConfig) -> Dict[str, Any]:
     return result
 
 
-def test_active_generator(config_name: str = None) -> Dict[str, Any]:
+def test_active_generator(config_name: str = None) -> dict[str, Any]:
     """Test the generator from a config file"""
     if config_name:
         if not config_name.endswith(".generators"):
             config_name = f"{config_name}.generators"
         config_path = USER_CONFIG_DIR / config_name
         if not config_path.exists():
-            return {"name": "Error", "model": "", "base_url": "", "success": False, "error": f"Config not found: {config_name}"}
+            return {
+                "name": "Error",
+                "model": "",
+                "base_url": "",
+                "success": False,
+                "error": f"Config not found: {config_name}",
+            }
         generator = load_generator_config(config_path)
     else:
         generator = load_generator_config()

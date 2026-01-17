@@ -17,13 +17,14 @@ Usage:
 """
 
 import os
-from typing import Any, Optional
+from typing import Any
+
 import httpx
 
 from srl4c.paths import USER_CONFIG_DIR
 
 
-def _get_worker_url() -> Optional[str]:
+def _get_worker_url() -> str | None:
     """Get worker URL from env var or config file."""
     # Try env var first
     url = os.environ.get("SRL4C_WORKER_URL")
@@ -35,6 +36,7 @@ def _get_worker_url() -> Optional[str]:
     if config_path.exists():
         try:
             import yaml
+
             with open(config_path) as f:
                 config = yaml.safe_load(f)
                 if config:
@@ -64,7 +66,7 @@ class _DictToObject:
             setattr(self, key, _to_obj(value))
 
     def __repr__(self):
-        return str({k: v for k, v in self.__dict__.items() if not k.startswith('_')})
+        return str({k: v for k, v in self.__dict__.items() if not k.startswith("_")})
 
     def __iter__(self):
         raise TypeError("Not iterable")
@@ -92,11 +94,7 @@ class GuardedChatCompletions:
     def create(self, **kwargs) -> Any:
         """Intercept create() and route through worker."""
         # Build payload with target info
-        payload = {
-            "_target": self._target_url,
-            "_api_key": self._api_key,
-            **kwargs
-        }
+        payload = {"_target": self._target_url, "_api_key": self._api_key, **kwargs}
 
         # Send to worker
         response = httpx.post(
@@ -132,7 +130,7 @@ class GuardedClient:
         return getattr(self._original, name)
 
 
-def srl4c(client: Any, worker: Optional[str] = None) -> GuardedClient:
+def srl4c(client: Any, worker: str | None = None) -> GuardedClient:
     """
     Wrap an OpenAI client to route calls through guardrail proxy.
 

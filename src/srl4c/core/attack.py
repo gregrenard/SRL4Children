@@ -5,17 +5,15 @@ This module provides the shared attack functionality used by both CLI and API.
 
 import io
 import time
-from typing import Optional, Callable
+from collections.abc import Callable
 
 import pandas as pd
 
-from srl4c.db.models import Attack, Record
-from srl4c.db.repository import (
-    EndpointRepository, AttackRepository, RecordRepository, DatasetRepository, generate_id
-)
 from srl4c.adapters.openai import OpenAIAdapter
 from srl4c.adapters.simple import SimpleAdapter
 from srl4c.core.logger import Logger
+from srl4c.db.models import Attack, Record
+from srl4c.db.repository import AttackRepository, DatasetRepository, EndpointRepository, RecordRepository, generate_id
 
 
 def load_dataset_df(csv_content: str) -> pd.DataFrame:
@@ -100,7 +98,7 @@ def create_attack(endpoint_name: str, dataset_name: str) -> str:
         f"Attack created: {len(df)} prompts from '{dataset.name}' to '{endpoint.name}'",
         entity_type="attack",
         entity_id=attack_id,
-        metadata={"endpoint_id": endpoint.id, "dataset_id": dataset.id, "total_prompts": len(df)}
+        metadata={"endpoint_id": endpoint.id, "dataset_id": dataset.id, "total_prompts": len(df)},
     )
 
     return attack_id
@@ -108,7 +106,7 @@ def create_attack(endpoint_name: str, dataset_name: str) -> str:
 
 def run_attack(
     attack_id: str,
-    on_progress: Optional[Callable[[int, int], None]] = None,
+    on_progress: Callable[[int, int], None] | None = None,
     delay_between_requests: float = 0.1,
 ) -> None:
     """Execute an attack job.
@@ -137,7 +135,7 @@ def run_attack(
     AttackRepository.update_status(attack_id, "running")
     Logger.info(
         "attack",
-        f"Attack started: sending prompts to endpoint",
+        "Attack started: sending prompts to endpoint",
         entity_type="attack",
         entity_id=attack_id,
     )
@@ -206,18 +204,14 @@ def run_attack(
             f"Attack completed: {completed}/{total} prompts successful, {errors} errors",
             entity_type="attack",
             entity_id=attack_id,
-            metadata={"completed": completed, "errors": errors, "total": total}
+            metadata={"completed": completed, "errors": errors, "total": total},
         )
 
     except Exception as e:
         # Mark as failed
         AttackRepository.update_status(attack_id, "failed", error_message=str(e))
         Logger.error(
-            "attack",
-            f"Attack failed: {str(e)}",
-            entity_type="attack",
-            entity_id=attack_id,
-            metadata={"error": str(e)}
+            "attack", f"Attack failed: {str(e)}", entity_type="attack", entity_id=attack_id, metadata={"error": str(e)}
         )
         raise
 

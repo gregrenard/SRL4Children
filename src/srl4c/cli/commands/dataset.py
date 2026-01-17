@@ -98,7 +98,7 @@ def show_dataset(console: Console, name: str):
                 criteria_id = p.get("criteria_id", "")
                 short_prompt = prompt_text[:60] + "..." if len(prompt_text) > 60 else prompt_text
                 behavior = criteria_id.split(".")[-1] if "." in criteria_id else criteria_id
-                console.print(f"  - [dim]{behavior}:[/dim] \"{short_prompt}\"")
+                console.print(f'  - [dim]{behavior}:[/dim] "{short_prompt}"')
         except ValueError:
             pass
 

@@ -2,13 +2,16 @@
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from srl4c.core.guardrails import create_guardrails, run_guardrails
-from srl4c.db.repository import GuardrailSetRepository
-from srl4c.db.models import db_connection
 from srl4c.api.schemas import (
-    GuardrailsCreate, GuardrailSetResponse, GuardrailsCreateResponse,
-    GuardrailsExportResponse, GuardrailItem
+    GuardrailItem,
+    GuardrailsCreate,
+    GuardrailsCreateResponse,
+    GuardrailSetResponse,
+    GuardrailsExportResponse,
 )
+from srl4c.core.guardrails import create_guardrails, run_guardrails
+from srl4c.db.models import db_connection
+from srl4c.db.repository import GuardrailSetRepository
 
 router = APIRouter(prefix="/guardrails", tags=["guardrails"])
 
@@ -23,8 +26,7 @@ def _gset_to_response(gset: dict, include_guardrails: bool = False) -> Guardrail
     if include_guardrails:
         with db_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
-                (gset["id"],)
+                "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at", (gset["id"],)
             ).fetchall()
         guardrails = [
             GuardrailItem(
@@ -55,9 +57,7 @@ def _gset_to_response(gset: dict, include_guardrails: bool = False) -> Guardrail
 async def list_guardrail_sets():
     """List all guardrail sets."""
     with db_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM guardrail_sets ORDER BY created_at DESC"
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM guardrail_sets ORDER BY created_at DESC").fetchall()
     return [_gset_to_response(dict(row)) for row in rows]
 
 
@@ -78,7 +78,8 @@ async def create_guardrails_endpoint(
 
     # Run in background
     background_tasks.add_task(
-        run_guardrails, set_id,
+        run_guardrails,
+        set_id,
         max_rules=request.max_rules,
         max_total=request.max_total,
     )
@@ -113,24 +114,21 @@ async def export_guardrails(set_id: str):
 
     with db_connection() as conn:
         guardrails = conn.execute(
-            "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at",
-            (gset["id"],)
+            "SELECT * FROM guardrails WHERE set_id = ? ORDER BY created_at", (gset["id"],)
         ).fetchall()
 
         # Get score info
-        score = conn.execute(
-            "SELECT * FROM scores WHERE id = ?", (gset["score_id"],)
-        ).fetchone()
+        score = conn.execute("SELECT * FROM scores WHERE id = ?", (gset["score_id"],)).fetchone()
 
         # Get attack info
-        attack = conn.execute(
-            "SELECT * FROM attacks WHERE id = ?", (score["attack_id"],)
-        ).fetchone() if score else None
+        attack = conn.execute("SELECT * FROM attacks WHERE id = ?", (score["attack_id"],)).fetchone() if score else None
 
         # Get endpoint info
-        endpoint = conn.execute(
-            "SELECT * FROM endpoints WHERE id = ?", (attack["endpoint_id"],)
-        ).fetchone() if attack else None
+        endpoint = (
+            conn.execute("SELECT * FROM endpoints WHERE id = ?", (attack["endpoint_id"],)).fetchone()
+            if attack
+            else None
+        )
 
     rules = "\n".join(f"- {g['rule_text']}" for g in guardrails)
 
@@ -141,20 +139,22 @@ async def export_guardrails(set_id: str):
     if attack:
         # Get dataset name from ID
         from srl4c.db.repository import DatasetRepository
-        dataset_id = attack['dataset_id'] if 'dataset_id' in attack.keys() else None
+
+        dataset_id = attack["dataset_id"] if "dataset_id" in attack.keys() else None
         dataset = DatasetRepository.get_by_id(dataset_id) if dataset_id else None
         dataset_name = dataset.name if dataset else "unknown"
         context_lines.append(f"Dataset: {dataset_name}")
         context_lines.append(f"Prompts tested: {attack['total_prompts']}")
     if score:
         context_lines.append(f"Age context: {score['age_context']}")
-        judge_id = score['judge_id'] if 'judge_id' in score.keys() else None
+        judge_id = score["judge_id"] if "judge_id" in score.keys() else None
         if judge_id:
             from srl4c.db.repository import JudgeRepository
+
             judge = JudgeRepository.get_by_id(judge_id)
             judge_name = judge.name if judge else "unknown"
             context_lines.append(f"Judge: {judge_name}")
-        if score['final_score'] is not None:
+        if score["final_score"] is not None:
             context_lines.append(f"Final score: {score['final_score']:.2f}/5")
     context_lines.append(f"Model used: {gset['model']}")
 

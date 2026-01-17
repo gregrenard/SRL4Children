@@ -1,20 +1,19 @@
 """Scoring matrices API routes"""
 
 from fastapi import APIRouter, HTTPException
-from typing import List, Optional
 from pydantic import BaseModel
 
 from srl4c.core import matrices as core_matrices
-
 
 router = APIRouter(prefix="/matrices", tags=["matrices"])
 
 
 # === Schemas ===
 
+
 class MatrixCreate(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class MatrixEntrySchema(BaseModel):
@@ -25,36 +24,37 @@ class MatrixEntrySchema(BaseModel):
 
 
 class MatrixEntriesUpdate(BaseModel):
-    entries: List[MatrixEntrySchema]
+    entries: list[MatrixEntrySchema]
 
 
 class MatrixClone(BaseModel):
     new_name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class MatrixResponse(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     is_builtin: bool = False
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 class MatrixDetailResponse(BaseModel):
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     is_builtin: bool = False
-    entries: List[MatrixEntrySchema] = []
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    entries: list[MatrixEntrySchema] = []
+    created_at: str | None = None
+    updated_at: str | None = None
 
 
 # === Endpoints ===
 
-@router.get("/", response_model=List[MatrixResponse])
+
+@router.get("/", response_model=list[MatrixResponse])
 async def list_matrices():
     """List all scoring matrices."""
     matrices = core_matrices.list_matrices()

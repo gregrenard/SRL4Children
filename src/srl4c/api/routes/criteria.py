@@ -6,25 +6,31 @@ Judges are first-class objects in DB (synced from registry for built-in).
 
 from fastapi import APIRouter, HTTPException
 
-from srl4c.registry import get_registry_loader
-from srl4c.core.judges import (
-    list_judges, get_judge, get_judge_criteria, create_judge,
-    update_judge_weights, delete_judge, get_resolved_weights
-)
-from srl4c.db.repository import JudgeRepository
 from srl4c.api.schemas import (
     CriteriaResponse,
-    EvalJudgeResponse,
     EvalJudgeDetailResponse,
-    PresetResponse,
+    EvalJudgeResponse,
     JudgeCreate,
     JudgeUpdateWeights,
+    PresetResponse,
 )
+from srl4c.core.judges import (
+    create_judge,
+    delete_judge,
+    get_judge,
+    get_judge_criteria,
+    get_resolved_weights,
+    list_judges,
+    update_judge_weights,
+)
+from srl4c.db.repository import JudgeRepository
+from srl4c.registry import get_registry_loader
 
 router = APIRouter(tags=["registry"])
 
 
 # === Criteria (from registry.yml) ===
+
 
 @router.get("/criteria", response_model=list[CriteriaResponse])
 async def list_criteria():
@@ -66,6 +72,7 @@ async def get_criteria(criteria_id: str):
 
 
 # === Evaluation Judges (from DB) ===
+
 
 def _judge_to_response(judge) -> EvalJudgeResponse:
     """Convert Judge model to response schema."""
@@ -181,6 +188,7 @@ async def delete_eval_judge(judge_id: str):
 
 
 # === Presets (from registry.yml) ===
+
 
 @router.get("/presets", response_model=list[PresetResponse])
 async def list_presets():

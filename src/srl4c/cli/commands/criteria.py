@@ -152,7 +152,7 @@ def show_judge_registry(console: Console, judge_name: str):
                 overrides.append(cid)
 
         if overrides:
-            console.print(f"\n[bold]Overridden criteria:[/bold]")
+            console.print("\n[bold]Overridden criteria:[/bold]")
             for cid in overrides:
                 console.print(f"  • {cid}")
 

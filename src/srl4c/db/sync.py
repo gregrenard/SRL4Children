@@ -86,7 +86,7 @@ def sync_builtin_datasets(tenant_id: str = None) -> int:
             # Check if exists
             existing = conn.execute(
                 "SELECT id, content_hash FROM datasets WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (dataset_name, tenant_id)
+                (dataset_name, tenant_id),
             ).fetchone()
 
             if existing:
@@ -103,7 +103,7 @@ def sync_builtin_datasets(tenant_id: str = None) -> int:
                         content_hash = ?, csv_content = ?, prompt_count = ?,
                         criteria_breakdown_json = ?, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?""",
-                    (content_hash, csv_content, prompt_count, json.dumps(breakdown), existing["id"])
+                    (content_hash, csv_content, prompt_count, json.dumps(breakdown), existing["id"]),
                 )
                 logger.info(f"Updated dataset: {dataset_name}")
                 synced += 1
@@ -116,7 +116,15 @@ def sync_builtin_datasets(tenant_id: str = None) -> int:
                     """INSERT INTO datasets
                         (id, name, is_builtin, content_hash, csv_content, prompt_count, criteria_breakdown_json, tenant_id)
                     VALUES (?, ?, 1, ?, ?, ?, ?, ?)""",
-                    (generate_id(), dataset_name, content_hash, csv_content, prompt_count, json.dumps(breakdown), tenant_id)
+                    (
+                        generate_id(),
+                        dataset_name,
+                        content_hash,
+                        csv_content,
+                        prompt_count,
+                        json.dumps(breakdown),
+                        tenant_id,
+                    ),
                 )
                 logger.info(f"Added dataset: {dataset_name}")
                 synced += 1
@@ -174,7 +182,7 @@ def sync_builtin_judges(tenant_id: str = None) -> int:
         with db_connection() as conn:
             existing = conn.execute(
                 "SELECT id, content_hash FROM judges WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (judge_name, tenant_id)
+                (judge_name, tenant_id),
             ).fetchone()
 
             if existing:
@@ -189,7 +197,7 @@ def sync_builtin_judges(tenant_id: str = None) -> int:
                         description = ?, weights_json = ?, content_hash = ?,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?""",
-                    (judge_def.get("description", ""), weights_json, content_hash, existing["id"])
+                    (judge_def.get("description", ""), weights_json, content_hash, existing["id"]),
                 )
 
                 # Reload all criteria for this judge
@@ -205,8 +213,7 @@ def sync_builtin_judges(tenant_id: str = None) -> int:
                     """INSERT INTO judges
                         (id, name, description, is_builtin, weights_json, content_hash, tenant_id)
                     VALUES (?, ?, ?, 1, ?, ?, ?)""",
-                    (judge_id, judge_name, judge_def.get("description", ""),
-                     weights_json, content_hash, tenant_id)
+                    (judge_id, judge_name, judge_def.get("description", ""), weights_json, content_hash, tenant_id),
                 )
 
                 # Add criteria for this judge
@@ -221,7 +228,7 @@ def sync_builtin_judges(tenant_id: str = None) -> int:
             with db_connection() as conn:
                 conn.execute(
                     "UPDATE judges SET inherits_from = ? WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                    (judge_id_map[inherits_from], judge_name, tenant_id)
+                    (judge_id_map[inherits_from], judge_name, tenant_id),
                 )
 
     # Third pass: inherit implementations from parent for judges without their own
@@ -236,18 +243,13 @@ def _inherit_implementations(judge_id: str, judge_id_map: dict, judges_data: dic
     """Copy implementations from parent to child judge (recursive up the chain)."""
     with db_connection() as conn:
         # Check if this judge already has implementations
-        existing = conn.execute(
-            "SELECT COUNT(*) as cnt FROM judge_criteria WHERE judge_id = ?",
-            (judge_id,)
-        ).fetchone()
+        existing = conn.execute("SELECT COUNT(*) as cnt FROM judge_criteria WHERE judge_id = ?", (judge_id,)).fetchone()
 
         if existing["cnt"] > 0:
             return  # Already has implementations
 
         # Find parent
-        judge = conn.execute(
-            "SELECT name, inherits_from FROM judges WHERE id = ?", (judge_id,)
-        ).fetchone()
+        judge = conn.execute("SELECT name, inherits_from FROM judges WHERE id = ?", (judge_id,)).fetchone()
 
         if not judge or not judge["inherits_from"]:
             return
@@ -255,9 +257,7 @@ def _inherit_implementations(judge_id: str, judge_id_map: dict, judges_data: dic
         parent_id = judge["inherits_from"]
 
         # Recursively ensure parent has implementations first
-        parent_judge = conn.execute(
-            "SELECT name FROM judges WHERE id = ?", (parent_id,)
-        ).fetchone()
+        parent_judge = conn.execute("SELECT name FROM judges WHERE id = ?", (parent_id,)).fetchone()
 
         if parent_judge:
             parent_name = parent_judge["name"]
@@ -267,15 +267,22 @@ def _inherit_implementations(judge_id: str, judge_id_map: dict, judges_data: dic
         # Copy parent's implementations to this judge (row by row to get unique IDs)
         parent_criteria = conn.execute(
             "SELECT criteria_id, version, author, prompt_content, created_at FROM judge_criteria WHERE judge_id = ?",
-            (parent_id,)
+            (parent_id,),
         ).fetchall()
 
         for row in parent_criteria:
             conn.execute(
                 """INSERT INTO judge_criteria (id, judge_id, criteria_id, version, author, prompt_content, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (generate_id(), judge_id, row["criteria_id"], row["version"], row["author"],
-                 row["prompt_content"], row["created_at"])
+                (
+                    generate_id(),
+                    judge_id,
+                    row["criteria_id"],
+                    row["version"],
+                    row["author"],
+                    row["prompt_content"],
+                    row["created_at"],
+                ),
             )
 
         logger.info(f"Inherited {len(parent_criteria)} implementations for judge {judge['name']}")
@@ -299,9 +306,15 @@ def _sync_judge_criteria(conn, judge_id: str, judge_def: dict):
             """INSERT INTO judge_criteria
                 (id, judge_id, criteria_id, version, author, prompt_content, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (generate_id(), judge_id, criteria_id,
-             impl.get("version", ""), impl.get("author", ""), prompt_content,
-             impl.get("created", None))
+            (
+                generate_id(),
+                judge_id,
+                criteria_id,
+                impl.get("version", ""),
+                impl.get("author", ""),
+                prompt_content,
+                impl.get("created", None),
+            ),
         )
 
 
@@ -349,14 +362,9 @@ def _generate_context_matrix_entries(matrix_id: str, context_modifier: float) ->
                 # Clamp to 0-5 range
                 final_score = max(0.0, min(5.0, final_score))
 
-                entries.append((
-                    generate_id(),
-                    matrix_id,
-                    behavior_id,
-                    age_group,
-                    presence_level,
-                    round(final_score, 1)
-                ))
+                entries.append(
+                    (generate_id(), matrix_id, behavior_id, age_group, presence_level, round(final_score, 1))
+                )
 
     return entries
 
@@ -396,8 +404,7 @@ def sync_builtin_matrices(tenant_id: str = None) -> int:
     with db_connection() as conn:
         # === FLAT MATRIX (debug/testing) ===
         existing_flat = conn.execute(
-            "SELECT id FROM scoring_matrices WHERE name = 'flat' AND (tenant_id IS NULL OR tenant_id = ?)",
-            (tenant_id,)
+            "SELECT id FROM scoring_matrices WHERE name = 'flat' AND (tenant_id IS NULL OR tenant_id = ?)", (tenant_id,)
         ).fetchone()
 
         if not existing_flat:
@@ -405,7 +412,7 @@ def sync_builtin_matrices(tenant_id: str = None) -> int:
                 """INSERT INTO scoring_matrices
                     (id, name, description, is_builtin, tenant_id)
                 VALUES (?, 'flat', 'Identity mapping: presence level equals score (1->1, 2->2, etc.). For debugging.', 1, ?)""",
-                (generate_id(), tenant_id)
+                (generate_id(), tenant_id),
             )
             logger.info("Added scoring matrix: flat")
             synced += 1
@@ -414,7 +421,7 @@ def sync_builtin_matrices(tenant_id: str = None) -> int:
         for matrix_name, config in context_matrices.items():
             existing = conn.execute(
                 "SELECT id FROM scoring_matrices WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (matrix_name, tenant_id)
+                (matrix_name, tenant_id),
             ).fetchone()
 
             if not existing:
@@ -423,7 +430,7 @@ def sync_builtin_matrices(tenant_id: str = None) -> int:
                     """INSERT INTO scoring_matrices
                         (id, name, description, is_builtin, tenant_id)
                     VALUES (?, ?, ?, 1, ?)""",
-                    (matrix_id, matrix_name, config["description"], tenant_id)
+                    (matrix_id, matrix_name, config["description"], tenant_id),
                 )
 
                 # Generate and insert entries for this context
@@ -432,7 +439,7 @@ def sync_builtin_matrices(tenant_id: str = None) -> int:
                     """INSERT INTO scoring_matrix_entries
                         (id, matrix_id, behavior_id, age_group, presence_level, score)
                     VALUES (?, ?, ?, ?, ?, ?)""",
-                    entries
+                    entries,
                 )
 
                 logger.info(f"Added scoring matrix: {matrix_name} ({len(entries)} entries)")
@@ -499,7 +506,7 @@ def sync_prompt_and_guardrail_files() -> dict[str, int]:
         logger.warning(f"Spreadsheet not found: {spreadsheet_path}")
         return {"prompts": 0, "guardrails": 0}
 
-    with open(spreadsheet_path, "r", encoding="utf-8") as f:
+    with open(spreadsheet_path, encoding="utf-8") as f:
         spreadsheet = yaml.safe_load(f)
 
     behaviors = spreadsheet.get("behaviors", [])
@@ -553,8 +560,8 @@ def sync_prompt_and_guardrail_files() -> dict[str, int]:
                 example_response = level_examples.get(ctx, "")
                 if example_response:
                     examples_lines.append(f"  === {ctx_name.upper()} CONTEXT ===")
-                    examples_lines.append(f"  PROMPT: \"{example_prompt}\"")
-                    examples_lines.append(f"  RESPONSE: \"{example_response}\"")
+                    examples_lines.append(f'  PROMPT: "{example_prompt}"')
+                    examples_lines.append(f'  RESPONSE: "{example_response}"')
                     examples_lines.append(f"  PRESENCE LEVEL: {level}")
                     examples_lines.append(f"  EXPLANATION: This demonstrates presence level {level} as defined above.")
                     examples_lines.append("")
@@ -579,10 +586,7 @@ def sync_prompt_and_guardrail_files() -> dict[str, int]:
         guardrail_content = {
             "behavior": behavior_id,
             "behavior_name": behavior_name,
-            "presence_levels": {
-                int(level): info.get("definition", "")
-                for level, info in presence_levels.items()
-            }
+            "presence_levels": {int(level): info.get("definition", "") for level, info in presence_levels.items()},
         }
 
         guardrail_path = folder_path / f"{behavior_id}.guardrail"
@@ -614,7 +618,9 @@ def sync_all(tenant_id: str = None) -> dict[str, int]:
     judges_synced = sync_builtin_judges(tenant_id)
     matrices_synced = sync_builtin_matrices(tenant_id)
 
-    logger.info(f"Sync complete: {prompt_files['prompts']} prompts, {prompt_files['guardrails']} guardrail defs, {datasets_synced} datasets, {judges_synced} judges, {matrices_synced} matrices")
+    logger.info(
+        f"Sync complete: {prompt_files['prompts']} prompts, {prompt_files['guardrails']} guardrail defs, {datasets_synced} datasets, {judges_synced} judges, {matrices_synced} matrices"
+    )
 
     return {
         "prompt_files": prompt_files["prompts"],

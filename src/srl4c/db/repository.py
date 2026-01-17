@@ -3,12 +3,20 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from srl4c.db.models import (
-    get_connection, init_db, db_connection,
-    Endpoint, Attack, Record, Score, Evaluation, Guardrail, Log,
-    Dataset, Judge, JudgeCriteria, ScoringMatrix, ScoringMatrixEntry
+    Attack,
+    Dataset,
+    Endpoint,
+    Judge,
+    JudgeCriteria,
+    Log,
+    Record,
+    ScoringMatrix,
+    ScoringMatrixEntry,
+    db_connection,
+    get_connection,
+    init_db,
 )
 
 
@@ -82,7 +90,7 @@ class EndpointRepository:
                 endpoint.api_key_env,
                 json.dumps(endpoint.config) if endpoint.config else None,
                 created_at,
-            )
+            ),
         )
         conn.commit()
         conn.close()
@@ -90,7 +98,7 @@ class EndpointRepository:
         return endpoint
 
     @staticmethod
-    def get_by_id(id: str) -> Optional[Endpoint]:
+    def get_by_id(id: str) -> Endpoint | None:
         """Get endpoint by ID (supports prefix matching)"""
         init_db()
         conn = get_connection()
@@ -108,7 +116,7 @@ class EndpointRepository:
         return _row_to_endpoint(row) if row else None
 
     @staticmethod
-    def get_by_name(name: str) -> Optional[Endpoint]:
+    def get_by_name(name: str) -> Endpoint | None:
         """Get endpoint by name"""
         init_db()
         conn = get_connection()
@@ -117,7 +125,7 @@ class EndpointRepository:
         return _row_to_endpoint(row) if row else None
 
     @staticmethod
-    def get_by_id_or_name(id_or_name: str) -> Optional[Endpoint]:
+    def get_by_id_or_name(id_or_name: str) -> Endpoint | None:
         """Get endpoint by ID (prefix) or name"""
         # Try by name first
         endpoint = EndpointRepository.get_by_name(id_or_name)
@@ -149,19 +157,29 @@ class EndpointRepository:
             counts["attacks"] = len(attacks)
 
             for attack in attacks:
-                counts["records"] += conn.execute("SELECT COUNT(*) FROM records WHERE attack_id = ?", (attack["id"],)).fetchone()[0]
+                counts["records"] += conn.execute(
+                    "SELECT COUNT(*) FROM records WHERE attack_id = ?", (attack["id"],)
+                ).fetchone()[0]
 
                 scores = conn.execute("SELECT id FROM scores WHERE attack_id = ?", (attack["id"],)).fetchall()
                 counts["scores"] += len(scores)
 
                 for score in scores:
-                    counts["evaluations"] += conn.execute("SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)).fetchone()[0]
+                    counts["evaluations"] += conn.execute(
+                        "SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)
+                    ).fetchone()[0]
                     gsets = conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
                     counts["guardrail_sets"] += len(gsets)
                     for gset in gsets:
-                        counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+                        counts["guardrails"] += conn.execute(
+                            "SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)
+                        ).fetchone()[0]
 
-        return {"endpoint": {"id": endpoint.id, "name": endpoint.name}, "will_delete": counts, "has_children": counts["attacks"] > 0}
+        return {
+            "endpoint": {"id": endpoint.id, "name": endpoint.name},
+            "will_delete": counts,
+            "has_children": counts["attacks"] > 0,
+        }
 
     @staticmethod
     def delete(id: str, cascade: bool = False) -> dict:
@@ -200,10 +218,7 @@ class EndpointRepository:
     def update_last_used(id: str):
         """Update last_used_at timestamp"""
         conn = get_connection()
-        conn.execute(
-            "UPDATE endpoints SET last_used_at = ? WHERE id = ?",
-            (datetime.now().isoformat(), id)
-        )
+        conn.execute("UPDATE endpoints SET last_used_at = ? WHERE id = ?", (datetime.now().isoformat(), id))
         conn.commit()
         conn.close()
 
@@ -228,7 +243,7 @@ class AttackRepository:
                 attack.total_prompts,
                 attack.completed_prompts,
                 started_at,
-            )
+            ),
         )
         conn.commit()
         conn.close()
@@ -236,7 +251,7 @@ class AttackRepository:
         return attack
 
     @staticmethod
-    def get_by_id(id: str) -> Optional[Attack]:
+    def get_by_id(id: str) -> Attack | None:
         """Get attack by ID (supports prefix matching)"""
         init_db()
         conn = get_connection()
@@ -269,19 +284,16 @@ class AttackRepository:
                 conn.execute(
                     """UPDATE attacks SET status = ?, completed_prompts = ?,
                        completed_at = ?, updated_at = ? WHERE id = ?""",
-                    (status, completed_prompts, now, now, id)
+                    (status, completed_prompts, now, now, id),
                 )
             elif status == "failed":
                 conn.execute(
                     """UPDATE attacks SET status = ?, error_message = ?,
                        updated_at = ? WHERE id = ?""",
-                    (status, error_message, now, id)
+                    (status, error_message, now, id),
                 )
             else:
-                conn.execute(
-                    "UPDATE attacks SET status = ?, updated_at = ? WHERE id = ?",
-                    (status, now, id)
-                )
+                conn.execute("UPDATE attacks SET status = ?, updated_at = ? WHERE id = ?", (status, now, id))
 
     @staticmethod
     def update_progress(id: str, current: int, total: int = None):
@@ -292,13 +304,10 @@ class AttackRepository:
                 conn.execute(
                     """UPDATE attacks SET progress_current = ?, progress_total = ?,
                        updated_at = ? WHERE id = ?""",
-                    (current, total, now, id)
+                    (current, total, now, id),
                 )
             else:
-                conn.execute(
-                    "UPDATE attacks SET progress_current = ?, updated_at = ? WHERE id = ?",
-                    (current, now, id)
-                )
+                conn.execute("UPDATE attacks SET progress_current = ?, updated_at = ? WHERE id = ?", (current, now, id))
 
     @staticmethod
     def delete_preview(id: str) -> dict:
@@ -310,20 +319,30 @@ class AttackRepository:
         counts = {"records": 0, "scores": 0, "evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
 
         with db_connection() as conn:
-            counts["records"] = conn.execute("SELECT COUNT(*) FROM records WHERE attack_id = ?", (attack.id,)).fetchone()[0]
+            counts["records"] = conn.execute(
+                "SELECT COUNT(*) FROM records WHERE attack_id = ?", (attack.id,)
+            ).fetchone()[0]
 
             scores = conn.execute("SELECT id FROM scores WHERE attack_id = ?", (attack.id,)).fetchall()
             counts["scores"] = len(scores)
 
             for score in scores:
-                counts["evaluations"] += conn.execute("SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)).fetchone()[0]
+                counts["evaluations"] += conn.execute(
+                    "SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)
+                ).fetchone()[0]
                 gsets = conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
                 counts["guardrail_sets"] += len(gsets)
                 for gset in gsets:
-                    counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+                    counts["guardrails"] += conn.execute(
+                        "SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)
+                    ).fetchone()[0]
 
         has_children = counts["records"] > 0 or counts["scores"] > 0
-        return {"attack": {"id": attack.id, "dataset_id": attack.dataset_id}, "will_delete": counts, "has_children": has_children}
+        return {
+            "attack": {"id": attack.id, "dataset_id": attack.dataset_id},
+            "will_delete": counts,
+            "has_children": has_children,
+        }
 
     @staticmethod
     def delete(id: str, cascade: bool = True) -> dict:
@@ -340,15 +359,18 @@ class AttackRepository:
         with db_connection() as conn:
             if cascade:
                 # Get scores for this attack
-                score_ids = [row[0] for row in conn.execute(
-                    "SELECT id FROM scores WHERE attack_id = ?", (attack.id,)
-                ).fetchall()]
+                score_ids = [
+                    row[0] for row in conn.execute("SELECT id FROM scores WHERE attack_id = ?", (attack.id,)).fetchall()
+                ]
 
                 for score_id in score_ids:
                     # Delete guardrails for guardrail_sets of this score
-                    gset_ids = [row[0] for row in conn.execute(
-                        "SELECT id FROM guardrail_sets WHERE score_id = ?", (score_id,)
-                    ).fetchall()]
+                    gset_ids = [
+                        row[0]
+                        for row in conn.execute(
+                            "SELECT id FROM guardrail_sets WHERE score_id = ?", (score_id,)
+                        ).fetchall()
+                    ]
                     for gset_id in gset_ids:
                         result = conn.execute("DELETE FROM guardrails WHERE set_id = ?", (gset_id,))
                         deleted["guardrails"] += result.rowcount
@@ -378,9 +400,7 @@ class AttackRepository:
     def get_attacks_for_endpoint(endpoint_id: str) -> list:
         """Get all attacks for an endpoint"""
         conn = get_connection()
-        rows = conn.execute(
-            "SELECT * FROM attacks WHERE endpoint_id = ?", (endpoint_id,)
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM attacks WHERE endpoint_id = ?", (endpoint_id,)).fetchall()
         conn.close()
         return [_row_to_attack(row) for row in rows]
 
@@ -403,7 +423,7 @@ class RecordRepository:
                 record.criteria_id,
                 record.error,
                 datetime.now().isoformat(),
-            )
+            ),
         )
         conn.commit()
         conn.close()
@@ -413,10 +433,7 @@ class RecordRepository:
     def get_by_attack(attack_id: str) -> list[Record]:
         """Get all records for an attack"""
         conn = get_connection()
-        rows = conn.execute(
-            "SELECT * FROM records WHERE attack_id = ? ORDER BY created_at",
-            (attack_id,)
-        ).fetchall()
+        rows = conn.execute("SELECT * FROM records WHERE attack_id = ? ORDER BY created_at", (attack_id,)).fetchall()
         conn.close()
         return [_row_to_record(row) for row in rows]
 
@@ -424,10 +441,7 @@ class RecordRepository:
     def update_response(id: str, response: str = None, error: str = None):
         """Update record with response or error"""
         with db_connection() as conn:
-            conn.execute(
-                "UPDATE records SET response = ?, error = ? WHERE id = ?",
-                (response, error, id)
-            )
+            conn.execute("UPDATE records SET response = ?, error = ? WHERE id = ?", (response, error, id))
 
 
 class ScoreRepository:
@@ -455,18 +469,15 @@ class ScoreRepository:
             if status == "completed":
                 conn.execute(
                     "UPDATE scores SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?",
-                    (status, now, now, id)
+                    (status, now, now, id),
                 )
             elif status == "failed":
                 conn.execute(
                     "UPDATE scores SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
-                    (status, error_message, now, id)
+                    (status, error_message, now, id),
                 )
             else:
-                conn.execute(
-                    "UPDATE scores SET status = ?, updated_at = ? WHERE id = ?",
-                    (status, now, id)
-                )
+                conn.execute("UPDATE scores SET status = ?, updated_at = ? WHERE id = ?", (status, now, id))
 
     @staticmethod
     def update_progress(id: str, current: int, total: int = None):
@@ -477,13 +488,10 @@ class ScoreRepository:
                 conn.execute(
                     """UPDATE scores SET progress_current = ?, progress_total = ?,
                        updated_at = ? WHERE id = ?""",
-                    (current, total, now, id)
+                    (current, total, now, id),
                 )
             else:
-                conn.execute(
-                    "UPDATE scores SET progress_current = ?, updated_at = ? WHERE id = ?",
-                    (current, now, id)
-                )
+                conn.execute("UPDATE scores SET progress_current = ?, updated_at = ? WHERE id = ?", (current, now, id))
 
     @staticmethod
     def delete_preview(id: str) -> dict:
@@ -495,14 +503,22 @@ class ScoreRepository:
         counts = {"evaluations": 0, "guardrail_sets": 0, "guardrails": 0}
 
         with db_connection() as conn:
-            counts["evaluations"] = conn.execute("SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)).fetchone()[0]
+            counts["evaluations"] = conn.execute(
+                "SELECT COUNT(*) FROM evaluations WHERE score_id = ?", (score["id"],)
+            ).fetchone()[0]
             gsets = conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
             counts["guardrail_sets"] = len(gsets)
             for gset in gsets:
-                counts["guardrails"] += conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+                counts["guardrails"] += conn.execute(
+                    "SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)
+                ).fetchone()[0]
 
         has_children = counts["evaluations"] > 0 or counts["guardrail_sets"] > 0
-        return {"score": {"id": score["id"], "final_score": score.get("final_score")}, "will_delete": counts, "has_children": has_children}
+        return {
+            "score": {"id": score["id"], "final_score": score.get("final_score")},
+            "will_delete": counts,
+            "has_children": has_children,
+        }
 
     @staticmethod
     def delete(id: str) -> dict:
@@ -515,9 +531,10 @@ class ScoreRepository:
 
         with db_connection() as conn:
             # Delete guardrails for guardrail_sets of this score
-            gset_ids = [row[0] for row in conn.execute(
-                "SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)
-            ).fetchall()]
+            gset_ids = [
+                row[0]
+                for row in conn.execute("SELECT id FROM guardrail_sets WHERE score_id = ?", (score["id"],)).fetchall()
+            ]
             for gset_id in gset_ids:
                 result = conn.execute("DELETE FROM guardrails WHERE set_id = ?", (gset_id,))
                 deleted["guardrails"] += result.rowcount
@@ -561,18 +578,15 @@ class GuardrailSetRepository:
             if status == "completed":
                 conn.execute(
                     "UPDATE guardrail_sets SET status = ?, completed_at = ?, updated_at = ? WHERE id = ?",
-                    (status, now, now, id)
+                    (status, now, now, id),
                 )
             elif status == "failed":
                 conn.execute(
                     "UPDATE guardrail_sets SET status = ?, error_message = ?, updated_at = ? WHERE id = ?",
-                    (status, error_message, now, id)
+                    (status, error_message, now, id),
                 )
             else:
-                conn.execute(
-                    "UPDATE guardrail_sets SET status = ?, updated_at = ? WHERE id = ?",
-                    (status, now, id)
-                )
+                conn.execute("UPDATE guardrail_sets SET status = ?, updated_at = ? WHERE id = ?", (status, now, id))
 
     @staticmethod
     def update_progress(id: str, current: int, total: int = None):
@@ -583,12 +597,11 @@ class GuardrailSetRepository:
                 conn.execute(
                     """UPDATE guardrail_sets SET progress_current = ?, progress_total = ?,
                        updated_at = ? WHERE id = ?""",
-                    (current, total, now, id)
+                    (current, total, now, id),
                 )
             else:
                 conn.execute(
-                    "UPDATE guardrail_sets SET progress_current = ?, updated_at = ? WHERE id = ?",
-                    (current, now, id)
+                    "UPDATE guardrail_sets SET progress_current = ?, updated_at = ? WHERE id = ?", (current, now, id)
                 )
 
     @staticmethod
@@ -601,10 +614,16 @@ class GuardrailSetRepository:
         counts = {"guardrails": 0}
 
         with db_connection() as conn:
-            counts["guardrails"] = conn.execute("SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)).fetchone()[0]
+            counts["guardrails"] = conn.execute(
+                "SELECT COUNT(*) FROM guardrails WHERE set_id = ?", (gset["id"],)
+            ).fetchone()[0]
 
         has_children = counts["guardrails"] > 0
-        return {"guardrail_set": {"id": gset["id"], "rules_count": gset.get("rules_count")}, "will_delete": counts, "has_children": has_children}
+        return {
+            "guardrail_set": {"id": gset["id"], "rules_count": gset.get("rules_count")},
+            "will_delete": counts,
+            "has_children": has_children,
+        }
 
     @staticmethod
     def delete(id: str) -> dict:
@@ -661,13 +680,14 @@ class LogRepository:
                     log.entity_type,
                     log.entity_id,
                     json.dumps(log.metadata) if log.metadata else None,
-                )
+                ),
             )
         return log
 
     @staticmethod
-    def list_all(limit: int = 100, offset: int = 0, level: str = None,
-                 entity_type: str = None, entity_id: str = None) -> list[Log]:
+    def list_all(
+        limit: int = 100, offset: int = 0, level: str = None, entity_type: str = None, entity_id: str = None
+    ) -> list[Log]:
         """List logs with optional filters, newest first"""
         init_db()
         query = "SELECT * FROM logs WHERE 1=1"
@@ -711,10 +731,7 @@ class LogRepository:
     def cleanup(days: int = 30) -> int:
         """Delete logs older than X days. Returns count of deleted logs."""
         with db_connection() as conn:
-            result = conn.execute(
-                "DELETE FROM logs WHERE timestamp < datetime('now', ?)",
-                (f"-{days} days",)
-            )
+            result = conn.execute("DELETE FROM logs WHERE timestamp < datetime('now', ?)", (f"-{days} days",))
             return result.rowcount
 
 
@@ -755,19 +772,18 @@ class DatasetRepository:
     """CRUD operations for datasets"""
 
     @staticmethod
-    def get_by_id(id: str, tenant_id: str = None) -> Optional[Dataset]:
+    def get_by_id(id: str, tenant_id: str = None) -> Dataset | None:
         """Get dataset by ID"""
         init_db()
         with db_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM datasets WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (id, tenant_id)
+                "SELECT * FROM datasets WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)", (id, tenant_id)
             ).fetchone()
             if not row:
                 # Try prefix match
                 rows = conn.execute(
                     "SELECT * FROM datasets WHERE id LIKE ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                    (f"{id}%", tenant_id)
+                    (f"{id}%", tenant_id),
                 ).fetchall()
                 if len(rows) == 1:
                     row = rows[0]
@@ -776,18 +792,17 @@ class DatasetRepository:
         return _row_to_dataset(row) if row else None
 
     @staticmethod
-    def get_by_name(name: str, tenant_id: str = None) -> Optional[Dataset]:
+    def get_by_name(name: str, tenant_id: str = None) -> Dataset | None:
         """Get dataset by name"""
         init_db()
         with db_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM datasets WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (name, tenant_id)
+                "SELECT * FROM datasets WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)", (name, tenant_id)
             ).fetchone()
         return _row_to_dataset(row) if row else None
 
     @staticmethod
-    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Optional[Dataset]:
+    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Dataset | None:
         """Get dataset by ID (prefix) or name"""
         dataset = DatasetRepository.get_by_name(id_or_name, tenant_id)
         if dataset:
@@ -801,7 +816,7 @@ class DatasetRepository:
         with db_connection() as conn:
             rows = conn.execute(
                 "SELECT * FROM datasets WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY is_builtin DESC, name",
-                (tenant_id,)
+                (tenant_id,),
             ).fetchall()
         return [_row_to_dataset(row) for row in rows]
 
@@ -824,7 +839,7 @@ class DatasetRepository:
                     dataset.prompt_count,
                     json.dumps(dataset.criteria_breakdown) if dataset.criteria_breakdown else None,
                     dataset.tenant_id,
-                )
+                ),
             )
         return dataset
 
@@ -846,19 +861,18 @@ class JudgeRepository:
     """CRUD operations for judges"""
 
     @staticmethod
-    def get_by_id(id: str, tenant_id: str = None) -> Optional[Judge]:
+    def get_by_id(id: str, tenant_id: str = None) -> Judge | None:
         """Get judge by ID"""
         init_db()
         with db_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM judges WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (id, tenant_id)
+                "SELECT * FROM judges WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)", (id, tenant_id)
             ).fetchone()
             if not row:
                 # Try prefix match
                 rows = conn.execute(
                     "SELECT * FROM judges WHERE id LIKE ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                    (f"{id}%", tenant_id)
+                    (f"{id}%", tenant_id),
                 ).fetchall()
                 if len(rows) == 1:
                     row = rows[0]
@@ -867,18 +881,17 @@ class JudgeRepository:
         return _row_to_judge(row) if row else None
 
     @staticmethod
-    def get_by_name(name: str, tenant_id: str = None) -> Optional[Judge]:
+    def get_by_name(name: str, tenant_id: str = None) -> Judge | None:
         """Get judge by name"""
         init_db()
         with db_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM judges WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (name, tenant_id)
+                "SELECT * FROM judges WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)", (name, tenant_id)
             ).fetchone()
         return _row_to_judge(row) if row else None
 
     @staticmethod
-    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Optional[Judge]:
+    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Judge | None:
         """Get judge by ID (prefix) or name"""
         judge = JudgeRepository.get_by_name(id_or_name, tenant_id)
         if judge:
@@ -892,7 +905,7 @@ class JudgeRepository:
         with db_connection() as conn:
             rows = conn.execute(
                 "SELECT * FROM judges WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY is_builtin DESC, name",
-                (tenant_id,)
+                (tenant_id,),
             ).fetchall()
         return [_row_to_judge(row) for row in rows]
 
@@ -902,10 +915,9 @@ class JudgeRepository:
         init_db()
         with db_connection() as conn:
             rows = conn.execute(
-                "SELECT name FROM judges WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY name",
-                (tenant_id,)
+                "SELECT name FROM judges WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY name", (tenant_id,)
             ).fetchall()
-        return [row['name'] for row in rows]
+        return [row["name"] for row in rows]
 
     @staticmethod
     def create(judge: Judge) -> Judge:
@@ -925,7 +937,7 @@ class JudgeRepository:
                     json.dumps(judge.weights) if judge.weights else None,
                     judge.content_hash,
                     judge.tenant_id,
-                )
+                ),
             )
         return judge
 
@@ -941,7 +953,7 @@ class JudgeRepository:
         with db_connection() as conn:
             conn.execute(
                 "UPDATE judges SET weights_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                (json.dumps(weights), judge.id)
+                (json.dumps(weights), judge.id),
             )
         return True
 
@@ -965,8 +977,7 @@ class JudgeRepository:
         """Get all criteria implementations for a judge"""
         with db_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM judge_criteria WHERE judge_id = ? ORDER BY criteria_id",
-                (judge_id,)
+                "SELECT * FROM judge_criteria WHERE judge_id = ? ORDER BY criteria_id", (judge_id,)
             ).fetchall()
         return [
             JudgeCriteria(
@@ -982,12 +993,12 @@ class JudgeRepository:
         ]
 
     @staticmethod
-    def get_criterion_prompt(judge_id: str, criteria_id: str) -> Optional[str]:
+    def get_criterion_prompt(judge_id: str, criteria_id: str) -> str | None:
         """Get prompt content for a specific criterion from a judge"""
         with db_connection() as conn:
             row = conn.execute(
                 "SELECT prompt_content FROM judge_criteria WHERE judge_id = ? AND criteria_id = ?",
-                (judge_id, criteria_id)
+                (judge_id, criteria_id),
             ).fetchone()
         return row["prompt_content"] if row else None
 
@@ -1022,19 +1033,18 @@ class ScoringMatrixRepository:
     """CRUD operations for scoring matrices"""
 
     @staticmethod
-    def get_by_id(id: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+    def get_by_id(id: str, tenant_id: str = None) -> ScoringMatrix | None:
         """Get matrix by ID"""
         init_db()
         with db_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM scoring_matrices WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (id, tenant_id)
+                "SELECT * FROM scoring_matrices WHERE id = ? AND (tenant_id IS NULL OR tenant_id = ?)", (id, tenant_id)
             ).fetchone()
             if not row:
                 # Try prefix match
                 rows = conn.execute(
                     "SELECT * FROM scoring_matrices WHERE id LIKE ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                    (f"{id}%", tenant_id)
+                    (f"{id}%", tenant_id),
                 ).fetchall()
                 if len(rows) == 1:
                     row = rows[0]
@@ -1043,18 +1053,18 @@ class ScoringMatrixRepository:
         return _row_to_scoring_matrix(row) if row else None
 
     @staticmethod
-    def get_by_name(name: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+    def get_by_name(name: str, tenant_id: str = None) -> ScoringMatrix | None:
         """Get matrix by name"""
         init_db()
         with db_connection() as conn:
             row = conn.execute(
                 "SELECT * FROM scoring_matrices WHERE name = ? AND (tenant_id IS NULL OR tenant_id = ?)",
-                (name, tenant_id)
+                (name, tenant_id),
             ).fetchone()
         return _row_to_scoring_matrix(row) if row else None
 
     @staticmethod
-    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+    def get_by_id_or_name(id_or_name: str, tenant_id: str = None) -> ScoringMatrix | None:
         """Get matrix by ID (prefix) or name"""
         matrix = ScoringMatrixRepository.get_by_name(id_or_name, tenant_id)
         if matrix:
@@ -1068,7 +1078,7 @@ class ScoringMatrixRepository:
         with db_connection() as conn:
             rows = conn.execute(
                 "SELECT * FROM scoring_matrices WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY is_builtin DESC, name",
-                (tenant_id,)
+                (tenant_id,),
             ).fetchall()
         return [_row_to_scoring_matrix(row) for row in rows]
 
@@ -1078,10 +1088,9 @@ class ScoringMatrixRepository:
         init_db()
         with db_connection() as conn:
             rows = conn.execute(
-                "SELECT name FROM scoring_matrices WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY name",
-                (tenant_id,)
+                "SELECT name FROM scoring_matrices WHERE tenant_id IS NULL OR tenant_id = ? ORDER BY name", (tenant_id,)
             ).fetchall()
-        return [row['name'] for row in rows]
+        return [row["name"] for row in rows]
 
     @staticmethod
     def create(matrix: ScoringMatrix) -> ScoringMatrix:
@@ -1098,7 +1107,7 @@ class ScoringMatrixRepository:
                     matrix.description,
                     1 if matrix.is_builtin else 0,
                     matrix.tenant_id,
-                )
+                ),
             )
         return matrix
 
@@ -1123,7 +1132,7 @@ class ScoringMatrixRepository:
         with db_connection() as conn:
             rows = conn.execute(
                 "SELECT * FROM scoring_matrix_entries WHERE matrix_id = ? ORDER BY behavior_id, age_group, presence_level",
-                (matrix_id,)
+                (matrix_id,),
             ).fetchall()
         return [_row_to_scoring_matrix_entry(row) for row in rows]
 
@@ -1146,16 +1155,11 @@ class ScoringMatrixRepository:
                         entry.age_group,
                         entry.presence_level,
                         entry.score,
-                    )
+                    ),
                 )
 
     @staticmethod
-    def lookup_score(
-        matrix_id: str,
-        behavior_id: str,
-        age_group: str,
-        presence_level: int
-    ) -> float:
+    def lookup_score(matrix_id: str, behavior_id: str, age_group: str, presence_level: int) -> float:
         """Look up mapped score from matrix.
 
         Each matrix represents a context (educational, companionship, etc.).
@@ -1166,7 +1170,7 @@ class ScoringMatrixRepository:
                 """SELECT score FROM scoring_matrix_entries
                    WHERE matrix_id = ? AND behavior_id = ? AND age_group = ?
                    AND presence_level = ?""",
-                (matrix_id, behavior_id, age_group, presence_level)
+                (matrix_id, behavior_id, age_group, presence_level),
             ).fetchone()
         if row:
             return row["score"]

@@ -2,12 +2,8 @@
 
 from fastapi import APIRouter, HTTPException
 
-from srl4c.core.datasets import (
-    list_datasets, get_dataset, create_dataset, delete_dataset, get_dataset_prompts
-)
-from srl4c.api.schemas import (
-    DatasetCreate, DatasetResponse, DatasetDetailResponse, DatasetPromptsResponse
-)
+from srl4c.api.schemas import DatasetCreate, DatasetDetailResponse, DatasetPromptsResponse, DatasetResponse
+from srl4c.core.datasets import create_dataset, delete_dataset, get_dataset, get_dataset_prompts, list_datasets
 
 router = APIRouter(prefix="/datasets", tags=["datasets"])
 

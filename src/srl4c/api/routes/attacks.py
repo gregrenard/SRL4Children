@@ -2,12 +2,15 @@
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from srl4c.core.attack import create_attack, run_attack, get_attack_records
-from srl4c.db.repository import AttackRepository, DatasetRepository
 from srl4c.api.schemas import (
-    AttackCreate, AttackResponse, AttackCreateResponse,
-    AttackRecordsResponse, AttackRecordItem
+    AttackCreate,
+    AttackCreateResponse,
+    AttackRecordItem,
+    AttackRecordsResponse,
+    AttackResponse,
 )
+from srl4c.core.attack import create_attack, get_attack_records, run_attack
+from srl4c.db.repository import AttackRepository, DatasetRepository
 
 router = APIRouter(prefix="/attacks", tags=["attacks"])
 

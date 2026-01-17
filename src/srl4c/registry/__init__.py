@@ -6,12 +6,12 @@ Datasets are handled by core.datasets (database-backed).
 """
 
 from srl4c.registry.loader import (
-    RegistryLoader,
-    get_registry_loader,
     CriteriaConfig,
     CriterionConfig,  # Alias for evaluator compatibility
     JudgeConfig,
     JudgeImplementation,
+    RegistryLoader,
+    get_registry_loader,
 )
 
 # Alias for backward compatibility

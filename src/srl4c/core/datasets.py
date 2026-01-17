@@ -6,7 +6,6 @@ Datasets are first-class objects stored in the database.
 
 import csv
 import hashlib
-from typing import Optional
 
 from srl4c.db.models import Dataset
 from srl4c.db.repository import DatasetRepository, generate_id
@@ -18,7 +17,7 @@ def list_datasets(tenant_id: str = None) -> list[Dataset]:
     return DatasetRepository.list_all(tenant_id)
 
 
-def get_dataset(dataset_id_or_name: str, tenant_id: str = None) -> Optional[Dataset]:
+def get_dataset(dataset_id_or_name: str, tenant_id: str = None) -> Dataset | None:
     """Get a dataset by ID or name."""
     return DatasetRepository.get_by_id_or_name(dataset_id_or_name, tenant_id)
 
@@ -140,11 +139,13 @@ def get_dataset_prompts(
                 if "__" in criteria_id:
                     criteria_id = criteria_id.split("__")[0]
 
-                prompts.append({
-                    "id": prompt_id,
-                    "criteria_id": criteria_id,
-                    "prompt": prompt_text,
-                })
+                prompts.append(
+                    {
+                        "id": prompt_id,
+                        "criteria_id": criteria_id,
+                        "prompt": prompt_text,
+                    }
+                )
 
     total = len(prompts)
 

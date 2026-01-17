@@ -8,7 +8,6 @@ Handles:
 - Presets: Named criteria selections
 """
 
-import csv
 import logging
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -18,12 +17,7 @@ from typing import Any
 import yaml
 
 from srl4c.paths import (
-    CRITERIA_DIR,
-    CRITERIA_FILE,
     DATA_DIR,
-    DATASETS_DIR,
-    JUDGES_REGISTRY_DIR,
-    PRESETS_FILE,
     REGISTRY_FILE,
 )
 
@@ -134,9 +128,7 @@ class RegistryLoader:
                                 judge_data = data["judge"]
                                 judge_name = judge_data.get("name", judge_file.stem)
                                 # Store without the outer "judge" wrapper
-                                registry["judges"][judge_name] = {
-                                    k: v for k, v in judge_data.items() if k != "name"
-                                }
+                                registry["judges"][judge_name] = {k: v for k, v in judge_data.items() if k != "name"}
 
                 logger.info(f"Loaded registry from split files: {self.criteria_dir}")
 
@@ -157,9 +149,7 @@ class RegistryLoader:
             criteria_count = len(self._registry_cache.get("criteria", {}))
             judges_count = len(self._registry_cache.get("judges", {}))
             presets_count = len(self._registry_cache.get("presets", {}))
-            logger.info(
-                f"Loaded registry: {criteria_count} criteria, {judges_count} judges, {presets_count} presets"
-            )
+            logger.info(f"Loaded registry: {criteria_count} criteria, {judges_count} judges, {presets_count} presets")
 
         return self._registry_cache
 
@@ -203,11 +193,7 @@ class RegistryLoader:
 
     def get_criteria_by_subcategory(self, category: str, subcategory: str) -> list[CriteriaConfig]:
         """Get all criteria in a subcategory."""
-        return [
-            c
-            for c in self.list_criteria()
-            if c.category == category and c.subcategory == subcategory
-        ]
+        return [c for c in self.list_criteria() if c.category == category and c.subcategory == subcategory]
 
     def get_available_categories(self) -> list[str]:
         """Get list of unique categories."""
@@ -236,9 +222,7 @@ class RegistryLoader:
         self._judge_cache[judge_name] = judge_config
         return judge_config
 
-    def _resolve_judge_inheritance(
-        self, judge_name: str, judges_data: dict, visited: set | None = None
-    ) -> JudgeConfig:
+    def _resolve_judge_inheritance(self, judge_name: str, judges_data: dict, visited: set | None = None) -> JudgeConfig:
         """Resolve judge inheritance chain."""
         if visited is None:
             visited = set()
@@ -317,9 +301,7 @@ class RegistryLoader:
         judge = self.get_judge(judge_name)
         return judge.weights
 
-    def get_weight(
-        self, judge_name: str, level: str, key: str, default: float = 1.0
-    ) -> float:
+    def get_weight(self, judge_name: str, level: str, key: str, default: float = 1.0) -> float:
         """Get a specific weight value, defaulting to 1.0 if not set."""
         weights = self.get_judge_weights(judge_name)
         return weights.get(level, {}).get(key, default)
@@ -347,9 +329,7 @@ class RegistryLoader:
             prompt_content=prompt_content,
         )
 
-    def load_multiple_criteria(
-        self, criteria_ids: list[str], judge_name: str = "default"
-    ) -> list[CriteriaConfig]:
+    def load_multiple_criteria(self, criteria_ids: list[str], judge_name: str = "default") -> list[CriteriaConfig]:
         """Load multiple criteria with prompt content."""
         loaded = []
         for cid in criteria_ids:
@@ -376,10 +356,7 @@ class RegistryLoader:
     def list_presets(self) -> dict[str, str]:
         """List presets with their descriptions."""
         registry = self.load_registry()
-        return {
-            name: preset.get("description", "")
-            for name, preset in registry.get("presets", {}).items()
-        }
+        return {name: preset.get("description", "") for name, preset in registry.get("presets", {}).items()}
 
     # -------------------------------------------------------------------------
     # Resolution (Criteria Selection)

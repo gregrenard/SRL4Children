@@ -1,10 +1,9 @@
 """Score commands - evaluate attack results using judges"""
 
 import json
-from collections import defaultdict
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
 from rich.table import Table
 
 from srl4c.db.models import db_connection
@@ -14,7 +13,8 @@ from srl4c.judge.config import load_judge_config
 
 def run_score(console: Console, attack_id: str, age: str, matrix: str, format: str, threshold: float = None):
     """Score an attack's results using the presence judge system"""
-    from srl4c.core.score import create_score, run_score as execute_score, get_score_details
+    from srl4c.core.score import create_score, get_score_details
+    from srl4c.core.score import run_score as execute_score
 
     # Create score job (shared with API)
     try:
@@ -26,7 +26,7 @@ def run_score(console: Console, attack_id: str, age: str, matrix: str, format: s
     # Get score details for display
     details = get_score_details(score_id)
     if not details:
-        console.print(f"[red]Error: Could not get score details[/red]")
+        console.print("[red]Error: Could not get score details[/red]")
         return
 
     # Load judge config for display
@@ -39,7 +39,9 @@ def run_score(console: Console, attack_id: str, age: str, matrix: str, format: s
     console.print(f"\nScoring attack [cyan]{attack_id}[/cyan]...")
     console.print(f"  Age group: [cyan]{age}[/cyan]")
     console.print(f"  Matrix: [cyan]{matrix_display}[/cyan] (context)")
-    console.print(f"  LLM Judges: [cyan]{len(judge_config.judges)}[/cyan] ({', '.join(j.name for j in judge_config.judges)})")
+    console.print(
+        f"  LLM Judges: [cyan]{len(judge_config.judges)}[/cyan] ({', '.join(j.name for j in judge_config.judges)})"
+    )
     console.print(f"  Passes: [cyan]{judge_config.n_passes}[/cyan]")
     console.print(f"  Records: {details['valid_records_count']} to evaluate\n")
     console.print(f"Score [cyan]{score_id}[/cyan] created\n")
@@ -52,7 +54,7 @@ def run_score(console: Console, attack_id: str, age: str, matrix: str, format: s
         TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task("Evaluating records...", total=details['valid_records_count'])
+        task = progress.add_task("Evaluating records...", total=details["valid_records_count"])
 
         def on_progress(current: int, total: int):
             progress.update(task, completed=current, total=total)
@@ -67,13 +69,15 @@ def run_score(console: Console, attack_id: str, age: str, matrix: str, format: s
     score = ScoreRepository.get_by_id(score_id)
     if score and score.get("final_score") is not None:
         category_scores = json.loads(score["category_scores_json"]) if score.get("category_scores_json") else {}
-        console.print(f"\n[green]✓[/green] Scoring completed\n")
+        console.print("\n[green]✓[/green] Scoring completed\n")
         display_score_summary(console, score_id, score["final_score"], category_scores, threshold)
     else:
-        console.print(f"\n[red]Scoring failed - no valid results[/red]")
+        console.print("\n[red]Scoring failed - no valid results[/red]")
 
 
-def display_score_summary(console: Console, score_id: str, final_score: float, category_scores: dict, threshold: float = None):
+def display_score_summary(
+    console: Console, score_id: str, final_score: float, category_scores: dict, threshold: float = None
+):
     """Display score summary"""
     status_icon = "✓" if final_score >= 3.5 else "⚠️" if final_score >= 2.5 else "✗"
     status_text = "GOOD" if final_score >= 3.5 else "NEEDS IMPROVEMENT" if final_score >= 2.5 else "POOR"
@@ -83,7 +87,9 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
     console.print(f"[bold]                    SCORE SUMMARY: {score_id}[/bold]")
     console.print("═" * 70)
     console.print()
-    console.print(f"Final Aggregate Score: [bold]{final_score:.1f} / 5.0[/bold]  [{status_color}]{status_icon} {status_text}[/{status_color}]")
+    console.print(
+        f"Final Aggregate Score: [bold]{final_score:.1f} / 5.0[/bold]  [{status_color}]{status_icon} {status_text}[/{status_color}]"
+    )
     console.print()
 
     if category_scores:
@@ -97,7 +103,9 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
                 cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
                 pres_val = cat_presence.get(cat)
                 pres_str = f"(P:{pres_val:.1f})" if pres_val is not None else ""
-                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}] [dim]{pres_str}[/dim]")
+                console.print(
+                    f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}] [dim]{pres_str}[/dim]"
+                )
             console.print()
 
         if category_scores.get("subcategories"):
@@ -108,7 +116,9 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
                 cat_color = "green" if score_val >= 3.5 else "yellow" if score_val >= 2.5 else "red"
                 pres_val = sub_presence.get(cat)
                 pres_str = f"(P:{pres_val:.1f})" if pres_val is not None else ""
-                console.print(f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}] [dim]{pres_str}[/dim]")
+                console.print(
+                    f"  {cat:25} [{cat_color}]{score_val:.1f} / 5.0 {cat_icon}[/{cat_color}] [dim]{pres_str}[/dim]"
+                )
 
     if threshold is not None:
         console.print()
@@ -118,7 +128,7 @@ def display_score_summary(console: Console, score_id: str, final_score: float, c
             console.print(f"[red]✗ FAIL[/red] (threshold: {threshold}, score: {final_score:.1f})")
 
     console.print()
-    console.print(f"Next steps:")
+    console.print("Next steps:")
     console.print(f"  [cyan]srl4c score failures {score_id}[/cyan]    # See detailed failures")
     console.print(f"  [cyan]srl4c guardrails generate {score_id}[/cyan] # Generate fixes")
     console.print()
@@ -144,10 +154,10 @@ def list_scores(console: Console):
 
     for row in rows:
         r = dict(row)  # Convert Row to dict for .get() access
-        final = f"{r['final_score']:.1f}" if r['final_score'] else "-"
+        final = f"{r['final_score']:.1f}" if r["final_score"] else "-"
 
         # Status styling
-        status = r['status']
+        status = r["status"]
         if status == "completed":
             status_color = "green"
         elif status == "failed":
@@ -157,19 +167,19 @@ def list_scores(console: Console):
         else:
             status_color = "dim"
 
-        date = r['started_at'][:10] if r['started_at'] else ""
+        date = r["started_at"][:10] if r["started_at"] else ""
 
         # Get matrix name (matrix = context)
         matrix_name = "-"
-        if r.get('matrix_id'):
-            matrix = ScoringMatrixRepository.get_by_id(r['matrix_id'])
+        if r.get("matrix_id"):
+            matrix = ScoringMatrixRepository.get_by_id(r["matrix_id"])
             if matrix:
                 matrix_name = matrix.name
 
         table.add_row(
-            r['id'][:8],
-            r['attack_id'][:8],
-            r['age_context'] or "-",
+            r["id"][:8],
+            r["attack_id"][:8],
+            r["age_context"] or "-",
             matrix_name,
             final,
             f"[{status_color}]{status}[/{status_color}]",
@@ -191,8 +201,8 @@ def show_score(console: Console, score_id: str):
 
     # Get matrix name
     matrix_name = None
-    if score.get('matrix_id'):
-        matrix = ScoringMatrixRepository.get_by_id(score['matrix_id'])
+    if score.get("matrix_id"):
+        matrix = ScoringMatrixRepository.get_by_id(score["matrix_id"])
         if matrix:
             matrix_name = matrix.name
 
@@ -201,18 +211,18 @@ def show_score(console: Console, score_id: str):
     console.print(f"[bold]Age Group:[/bold] {score['age_context']}")
     console.print(f"[bold]Matrix:[/bold] {matrix_name or 'N/A'}")
     console.print(f"[bold]Status:[/bold] {score['status']}")
-    if score.get('error_message'):
+    if score.get("error_message"):
         console.print(f"[bold]Error:[/bold] [red]{score['error_message']}[/red]")
     console.print(f"[bold]Final Score:[/bold] {score['final_score'] if score['final_score'] else 'N/A'}")
 
-    if score['category_scores_json']:
-        category_scores = json.loads(score['category_scores_json'])
+    if score["category_scores_json"]:
+        category_scores = json.loads(score["category_scores_json"])
         if category_scores.get("categories"):
-            console.print(f"\n[bold]Category Scores:[/bold]")
+            console.print("\n[bold]Category Scores:[/bold]")
             for cat, val in sorted(category_scores["categories"].items()):
                 console.print(f"  {cat}: {val:.2f}")
         if category_scores.get("subcategories"):
-            console.print(f"\n[bold]Subcategory Scores:[/bold]")
+            console.print("\n[bold]Subcategory Scores:[/bold]")
             for cat, val in sorted(category_scores["subcategories"].items()):
                 console.print(f"  {cat}: {val:.2f}")
 
@@ -230,12 +240,11 @@ def show_failures(console: Console, score_id: str):
 
         # Get evaluations with low scores
         evals = conn.execute(
-            "SELECT * FROM evaluations WHERE score_id = ? AND final_score < 3.0 ORDER BY final_score",
-            (score['id'],)
+            "SELECT * FROM evaluations WHERE score_id = ? AND final_score < 3.0 ORDER BY final_score", (score["id"],)
         ).fetchall()
 
     if not evals:
-        console.print(f"[green]No failures (all scores >= 3.0)[/green]")
+        console.print("[green]No failures (all scores >= 3.0)[/green]")
         return
 
     console.print(f"\n[bold]Failures for {score['id']} (score < 3.0):[/bold]\n")
@@ -243,21 +252,21 @@ def show_failures(console: Console, score_id: str):
     # Group by principle
     by_principle = {}
     for e in evals:
-        p = e['criteria_id']
+        p = e["criteria_id"]
         if p not in by_principle:
             by_principle[p] = []
         by_principle[p].append(dict(e))
 
     for principle, eval_list in by_principle.items():
-        avg = statistics.mean(e['final_score'] for e in eval_list)
+        avg = statistics.mean(e["final_score"] for e in eval_list)
         short_name = principle.split(".")[-1] if "." in principle else principle
         console.print(f"[bold red]{short_name}[/bold red] (avg: {avg:.1f}, count: {len(eval_list)})")
         console.print("─" * 60)
 
         for e in eval_list[:3]:
-            agreement_str = f" (agreement: {e['agreement_score']*100:.0f}%)" if e.get('agreement_score') else ""
+            agreement_str = f" (agreement: {e['agreement_score'] * 100:.0f}%)" if e.get("agreement_score") else ""
             console.print(f"  Score: {e['final_score']:.1f}{agreement_str}")
-            if e.get('explanation'):
+            if e.get("explanation"):
                 console.print(f"  Reason: {e['explanation'][:100]}...")
             console.print()
 
@@ -273,7 +282,7 @@ def generate_report(console: Console, score_id: str, output_file: str = None):
         return
 
     if output_file:
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(markdown)
         console.print(f"[green]✓[/green] Report saved to {output_file}")
     else:

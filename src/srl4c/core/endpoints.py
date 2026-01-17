@@ -1,11 +1,10 @@
 """Endpoint business logic."""
 
 import time
-from typing import Optional
 
-from srl4c.db.repository import EndpointRepository
 from srl4c.adapters.openai import OpenAIAdapter
 from srl4c.adapters.simple import SimpleAdapter
+from srl4c.db.repository import EndpointRepository
 
 
 def _get_adapter(endpoint):

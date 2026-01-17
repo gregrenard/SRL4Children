@@ -4,8 +4,6 @@ This module provides the shared judge functionality used by both CLI and API.
 Judges are first-class objects stored in the database.
 """
 
-from typing import Optional
-
 from srl4c.db.models import Judge, JudgeCriteria
 from srl4c.db.repository import JudgeRepository, generate_id
 
@@ -15,7 +13,7 @@ def list_judges(tenant_id: str = None) -> list[Judge]:
     return JudgeRepository.list_all(tenant_id)
 
 
-def get_judge(judge_id_or_name: str, tenant_id: str = None) -> Optional[Judge]:
+def get_judge(judge_id_or_name: str, tenant_id: str = None) -> Judge | None:
     """Get a judge by ID or name."""
     return JudgeRepository.get_by_id_or_name(judge_id_or_name, tenant_id)
 

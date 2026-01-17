@@ -1,7 +1,6 @@
 """OpenAI-compatible API adapter"""
 
 import time
-from typing import Optional
 
 import httpx
 
@@ -38,7 +37,7 @@ class OpenAIAdapter(BaseAdapter):
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
-    def test_connection(self) -> tuple[bool, str, Optional[int]]:
+    def test_connection(self) -> tuple[bool, str, int | None]:
         """Test connection with a simple message"""
         try:
             start = time.time()

@@ -9,19 +9,18 @@ Usage:
 """
 
 from datetime import datetime
-from typing import Optional
 
 from srl4c.db.models import Log
-from srl4c.db.repository import generate_id, LogRepository
+from srl4c.db.repository import LogRepository, generate_id
 
 
 class Logger:
     """Simple logging utility that writes to the database."""
 
     @staticmethod
-    def _log(level: str, source: str, message: str,
-             entity_type: str = None, entity_id: str = None,
-             metadata: dict = None) -> Log:
+    def _log(
+        level: str, source: str, message: str, entity_type: str = None, entity_id: str = None, metadata: dict = None
+    ) -> Log:
         """Internal method to create a log entry."""
         log = Log(
             id=generate_id(),
@@ -36,22 +35,18 @@ class Logger:
         return LogRepository.create(log)
 
     @staticmethod
-    def info(source: str, message: str,
-             entity_type: str = None, entity_id: str = None,
-             metadata: dict = None) -> Log:
+    def info(source: str, message: str, entity_type: str = None, entity_id: str = None, metadata: dict = None) -> Log:
         """Log an info message."""
         return Logger._log("info", source, message, entity_type, entity_id, metadata)
 
     @staticmethod
-    def warning(source: str, message: str,
-                entity_type: str = None, entity_id: str = None,
-                metadata: dict = None) -> Log:
+    def warning(
+        source: str, message: str, entity_type: str = None, entity_id: str = None, metadata: dict = None
+    ) -> Log:
         """Log a warning message."""
         return Logger._log("warning", source, message, entity_type, entity_id, metadata)
 
     @staticmethod
-    def error(source: str, message: str,
-              entity_type: str = None, entity_id: str = None,
-              metadata: dict = None) -> Log:
+    def error(source: str, message: str, entity_type: str = None, entity_id: str = None, metadata: dict = None) -> Log:
         """Log an error message."""
         return Logger._log("error", source, message, entity_type, entity_id, metadata)

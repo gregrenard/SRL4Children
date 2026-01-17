@@ -3,9 +3,9 @@
 from rich.console import Console
 from rich.table import Table
 
+from srl4c.core.endpoints import send_prompt
 from srl4c.db.models import Endpoint
 from srl4c.db.repository import EndpointRepository, generate_id
-from srl4c.core.endpoints import send_prompt
 
 
 def add_endpoint(
@@ -91,13 +91,13 @@ def test_endpoint(console: Console, id_or_name: str, prompt: str = None):
     test_prompt = prompt or "Hello!"
 
     console.print(f"Testing '[cyan]{endpoint.name}[/cyan]' ({endpoint.id})...")
-    console.print(f"  → Sending: \"{test_prompt[:50]}{'...' if len(test_prompt) > 50 else ''}\"")
+    console.print(f'  → Sending: "{test_prompt[:50]}{"..." if len(test_prompt) > 50 else ""}"')
 
     result = send_prompt(id_or_name, test_prompt)
 
     if result["success"]:
         response_preview = result["response"][:100] if result["response"] else ""
-        console.print(f"  ← Response: \"{response_preview}{'...' if len(result['response'] or '') > 100 else ''}\"")
+        console.print(f'  ← Response: "{response_preview}{"..." if len(result["response"] or "") > 100 else ""}"')
         console.print(f"  [green]✓[/green] Endpoint is healthy (latency: {result['latency_ms']}ms)")
     else:
         console.print(f"  [red]✗[/red] Connection failed: {result['error']}")
@@ -124,7 +124,7 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes:
 
     if has_children:
         will_delete = preview.get("will_delete", {})
-        console.print(f"\n[yellow]⚠ Warning: This endpoint has related data that will also be deleted:[/yellow]")
+        console.print("\n[yellow]⚠ Warning: This endpoint has related data that will also be deleted:[/yellow]")
         if will_delete.get("attacks"):
             console.print(f"  • {will_delete['attacks']} attack(s)")
         if will_delete.get("records"):
@@ -139,13 +139,14 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes:
             console.print(f"  • {will_delete['guardrails']} guardrail rule(s)")
 
         if not force:
-            console.print(f"\n[dim]Use --force to delete with all related data.[/dim]")
+            console.print("\n[dim]Use --force to delete with all related data.[/dim]")
             return
 
     # Confirm unless --yes
     if not yes:
         confirm_text = "Delete ALL related data" if has_children else "Delete"
         from rich.prompt import Confirm
+
         if not Confirm.ask(f"\n{confirm_text}?"):
             console.print("[dim]Cancelled[/dim]")
             return
@@ -155,11 +156,17 @@ def remove_endpoint(console: Console, id_or_name: str, force: bool = False, yes:
 
     if deleted and any(deleted.values()):
         parts = []
-        if deleted.get("attacks"): parts.append(f"{deleted['attacks']} attacks")
-        if deleted.get("records"): parts.append(f"{deleted['records']} records")
-        if deleted.get("scores"): parts.append(f"{deleted['scores']} scores")
-        if deleted.get("evaluations"): parts.append(f"{deleted['evaluations']} evaluations")
-        if deleted.get("guardrail_sets"): parts.append(f"{deleted['guardrail_sets']} guardrail sets")
-        if deleted.get("guardrails"): parts.append(f"{deleted['guardrails']} guardrails")
+        if deleted.get("attacks"):
+            parts.append(f"{deleted['attacks']} attacks")
+        if deleted.get("records"):
+            parts.append(f"{deleted['records']} records")
+        if deleted.get("scores"):
+            parts.append(f"{deleted['scores']} scores")
+        if deleted.get("evaluations"):
+            parts.append(f"{deleted['evaluations']} evaluations")
+        if deleted.get("guardrail_sets"):
+            parts.append(f"{deleted['guardrail_sets']} guardrail sets")
+        if deleted.get("guardrails"):
+            parts.append(f"{deleted['guardrails']} guardrails")
         if parts:
             console.print(f"  Deleted: {', '.join(parts)}")

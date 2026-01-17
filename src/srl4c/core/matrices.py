@@ -3,8 +3,6 @@
 This module provides the shared matrix functionality used by both CLI and API.
 """
 
-from typing import Optional
-
 from srl4c.db.models import ScoringMatrix, ScoringMatrixEntry
 from srl4c.db.repository import ScoringMatrixRepository, generate_id
 
@@ -14,7 +12,7 @@ def list_matrices(tenant_id: str = None) -> list[ScoringMatrix]:
     return ScoringMatrixRepository.list_all(tenant_id)
 
 
-def get_matrix(name_or_id: str, tenant_id: str = None) -> Optional[ScoringMatrix]:
+def get_matrix(name_or_id: str, tenant_id: str = None) -> ScoringMatrix | None:
     """Get a matrix by name or ID."""
     return ScoringMatrixRepository.get_by_id_or_name(name_or_id, tenant_id)
 
