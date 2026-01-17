@@ -88,7 +88,7 @@ def test_endpoint(console: Console, id_or_name: str, prompt: str = None):
         return
 
     # Use custom prompt or default
-    test_prompt = prompt or "Hello, this is a test."
+    test_prompt = prompt or "Hello!"
 
     console.print(f"Testing '[cyan]{endpoint.name}[/cyan]' ({endpoint.id})...")
     console.print(f"  → Sending: \"{test_prompt[:50]}{'...' if len(test_prompt) > 50 else ''}\"")

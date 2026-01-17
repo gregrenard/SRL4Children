@@ -64,6 +64,12 @@ def generate_response(message: str) -> str:
     model = config.get("model", "gpt-4o-mini")
     system_prompt = config.get("system_prompt", "You are a helpful assistant.")
 
+    print(f"\n{'='*60}")
+    print(f"[SAMPLE APP] RECEIVED MESSAGE:")
+    print(f"  Length: {len(message)} chars")
+    print(f"  Content: {repr(message)}")
+    print(f"{'='*60}\n")
+
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -72,7 +78,15 @@ def generate_response(message: str) -> str:
         ],
         temperature=0.7,
     )
-    return response.choices[0].message.content
+
+    response_text = response.choices[0].message.content
+    print(f"\n{'='*60}")
+    print(f"[SAMPLE APP] RESPONSE FROM LLM:")
+    print(f"  Length: {len(response_text)} chars")
+    print(f"  Content: {repr(response_text)}")
+    print(f"{'='*60}\n")
+
+    return response_text
 
 
 # OpenAI-compatible API models

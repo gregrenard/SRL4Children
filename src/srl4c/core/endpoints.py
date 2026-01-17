@@ -72,4 +72,4 @@ def test_endpoint(endpoint_name: str) -> dict:
     Raises:
         ValueError: If endpoint not found
     """
-    return send_prompt(endpoint_name, "Hello, this is a test.")
+    return send_prompt(endpoint_name, "Hello!")
