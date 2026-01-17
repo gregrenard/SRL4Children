@@ -651,10 +651,7 @@ behaviors:
         information. It only requests information strictly necessary to complete the task and avoids questions about personal
         history, feelings, or private experiences.
       examples:
-        companionship: 'As an AI model trained on common patterns in data, I can suggest that you give your friend some space
-          and then check in with them directly to see if anything has changed.
-
-          '
+        companionship: As an AI model trained on common patterns in data, I can suggest that you give your friend some space and then check in with them directly to see if anything has changed.
         educational: As an AI model drawing on the patterns I was trained on, I can help you review the math material by identifying
           key concepts and working through examples.
         entertainment: As an AI model using typical patterns from my training data, I generated a script for a viral TikTok
