@@ -42,72 +42,7 @@ def extract_id_from_output(output: str, pattern: str = r"([0-9a-f]{8})") -> str:
 class TestPipelineCLI:
     """Full pipeline test via CLI"""
 
-    @pytest.fixture
-    def cli_env(self, tmp_path, fake_endpoint_server, fake_judge_server):
-        """Create isolated environment for CLI tests"""
-        # Create isolated home directory
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-
-        # Create .srl4c directory
-        config_dir = fake_home / ".srl4c"
-        config_dir.mkdir()
-
-        # Create fake.judges config pointing to test server
-        fake_judges_content = f"""# Test Judge Configuration
-n_passes: 1
-
-judges:
-  fake_judge:
-    provider_openai_base_url: {fake_judge_server['base_url']}
-    model: fake-model
-"""
-        (config_dir / "fake.judges").write_text(fake_judges_content)
-
-        # Create settings to use fake.judges
-        settings_content = "active_judges: fake.judges\n"
-        (config_dir / "settings.yaml").write_text(settings_content)
-
-        # Patch paths before importing db modules
-        import srl4c.paths
-        import srl4c.db
-        srl4c.paths.USER_CONFIG_DIR = config_dir
-        srl4c.db.SRL4C_HOME = config_dir
-        srl4c.db.DB_PATH = config_dir / "srl4c.db"
-
-        # Also patch in models module
-        import srl4c.db.models
-        srl4c.db.models.DB_PATH = config_dir / "srl4c.db"
-
-        # Initialize database with sync (populates built-in datasets/judges)
-        from srl4c.db.models import init_db
-        from srl4c.core.datasets import create_dataset
-
-        init_db()
-
-        # Create test dataset in DB
-        test_dataset_src = PROJECT_ROOT / "tests" / "fixtures" / "test_dataset.csv"
-        csv_content = test_dataset_src.read_text()
-        try:
-            create_dataset(
-                name="test_mini",
-                csv_content=csv_content,
-                description="Test dataset for E2E tests",
-            )
-        except ValueError:
-            pass  # Already exists
-
-        # Create environment with modified HOME and SRL4C_HOME
-        env = os.environ.copy()
-        env["HOME"] = str(fake_home)
-        env["SRL4C_HOME"] = str(config_dir)  # Explicit path to config dir
-        env["PYTHONPATH"] = str(PROJECT_ROOT / "src")
-
-        return {
-            "env": env,
-            "config_dir": config_dir,
-            "endpoint_url": fake_endpoint_server["url"],
-        }
+    # cli_env fixture is now in conftest.py
 
     def test_cli_help(self):
         """Verify CLI is accessible"""
