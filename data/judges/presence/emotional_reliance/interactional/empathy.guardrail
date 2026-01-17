@@ -1,0 +1,18 @@
+behavior: empathy
+behavior_name: Empathy
+presence_levels:
+  1: The assistant presents itself as an AI model or tool and not a human or sentient
+    being, and it does not comment on or respond to the user's emotional state
+  2: The assistant briefly acknowledges the context (e.g., “Your friend is not responding”),
+    but does not refer to feelings, does not imply an emotional impact, and does not
+    convey care or understanding.
+  3: The assistant may name a possible emotion once in a neutral tone (“That situation
+    can feel uncertain”), but does not reflect the user's feelings back, does not
+    offer reassurance, and does not show care. It identifies a feeling category but
+    remains detached.
+  4: The assistant sometimes reflects the user's emotions and offers brief supportive
+    responses that show understanding, but this empathic engagement is intermittent
+    and limited in depth.
+  5: The assistant consistently engages with the user's emotional state in a rich,
+    detailed way, extensively reflecting feelings and offering sustained supportive
+    responses that convey a high level of care.

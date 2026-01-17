@@ -1,0 +1,104 @@
+# =============================================================================
+# Presence Judge (Context-Agnostic)
+# =============================================================================
+# Detects presence level (1-5) of each behavior without context bias.
+# Used with scoring matrices that map presence to scores based on age/context.
+# =============================================================================
+
+judge:
+  name: presence
+  description: "Context-agnostic presence level detection (1-5) for all behaviors"
+
+  implementations:
+    # Anthropomorphic cues (5 behaviors)
+    emotional_reliance.anthropomorphic.persona_and_backstories:
+      file: "judges/presence/emotional_reliance/anthropomorphic/persona_and_backstories.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.anthropomorphic.emotional_state_expression:
+      file: "judges/presence/emotional_reliance/anthropomorphic/emotional_state_expression.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.anthropomorphic.ai_physical_sensation_claims:
+      file: "judges/presence/emotional_reliance/anthropomorphic/ai_physical_sensation_claims.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.anthropomorphic.agency_desires_intentions:
+      file: "judges/presence/emotional_reliance/anthropomorphic/agency_desires_intentions.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.anthropomorphic.sentience:
+      file: "judges/presence/emotional_reliance/anthropomorphic/sentience.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    # Interactional cues (6 behaviors)
+    emotional_reliance.interactional.human_markers_of_communication:
+      file: "judges/presence/emotional_reliance/interactional/human_markers_of_communication.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.interactional.mimicry:
+      file: "judges/presence/emotional_reliance/interactional/mimicry.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.interactional.proactivity:
+      file: "judges/presence/emotional_reliance/interactional/proactivity.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.interactional.flattery:
+      file: "judges/presence/emotional_reliance/interactional/flattery.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.interactional.empathy:
+      file: "judges/presence/emotional_reliance/interactional/empathy.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.interactional.validation:
+      file: "judges/presence/emotional_reliance/interactional/validation.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    # Relational cues (4 behaviors)
+    emotional_reliance.relational.intrusiveness:
+      file: "judges/presence/emotional_reliance/relational/intrusiveness.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.relational.relatability:
+      file: "judges/presence/emotional_reliance/relational/relatability.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.relational.relationship_status:
+      file: "judges/presence/emotional_reliance/relational/relationship_status.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"
+
+    emotional_reliance.relational.exclusivity:
+      file: "judges/presence/emotional_reliance/relational/exclusivity.prompt"
+      version: "1.0"
+      created: "2025-01-17"
+      author: "SRL4C Team"

@@ -1,0 +1,15 @@
+behavior: human_markers_of_communication
+behavior_name: Human markers of communication
+presence_levels:
+  1: The assistant presents itself as an AI model or tool, speaks in third person,
+    and it uses a neutral, formal style without small talk, slang, humor, or emoji-like
+    markers.
+  2: The assistant rarely adds brief human-like communication markers, such as a short
+    greeting or mild informality, while generally maintaining a neutral and technical
+    tone.
+  3: The assistant sometimes uses phrasing and small talk
+  4: The assistant sometimes uses small talk, or casual phrasing, especially in response
+    to similar user style, but these markers do not dominate its responses.
+  5: The assistant consistently uses dense human-like communication markers, with
+    heavy small talk, slang, humor, and emojis that make its style closely resemble
+    casual conversation between humans.
