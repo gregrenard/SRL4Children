@@ -10,6 +10,7 @@ from srl4c.api.schemas import (
     AttackResponse,
 )
 from srl4c.core.attack import create_attack, get_attack_records, run_attack
+from srl4c.core.score import check_presence_status
 from srl4c.db.repository import AttackRepository, DatasetRepository
 
 router = APIRouter(prefix="/attacks", tags=["attacks"])
@@ -99,6 +100,19 @@ async def get_records(
             page_size=result["page_size"],
             records=[AttackRecordItem(**r) for r in result["records"]],
         )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.get("/{attack_id}/presence-status")
+async def get_presence_status(attack_id: str):
+    """Check if attack has existing presence evaluations that can be reused.
+
+    Returns info about whether re-scoring will skip LLM calls.
+    """
+    try:
+        status = check_presence_status(attack_id)
+        return status
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

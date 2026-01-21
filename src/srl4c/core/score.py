@@ -14,6 +14,7 @@ from srl4c.db.models import db_connection
 from srl4c.db.repository import (
     AttackRepository,
     DatasetRepository,
+    EvaluationRepository,
     RecordRepository,
     ScoreRepository,
     ScoringMatrixRepository,
@@ -24,6 +25,106 @@ from srl4c.judge.evaluator import evaluate_records_batch
 
 # Valid age groups
 VALID_AGE_GROUPS = ["child", "teenager", "young_adult"]
+
+
+def _store_evaluations_for_record(
+    score_id: str,
+    record_id: str,
+    evaluations: list[dict],
+    matrix_id: str,
+    age_group: str,
+) -> None:
+    """Store evaluations for a single record.
+
+    Helper function to reduce duplication between cache hit and cache miss branches.
+
+    Args:
+        score_id: Score ID to associate evaluations with
+        record_id: Record ID being evaluated
+        evaluations: List of evaluation dicts, each containing:
+            - criteria_id: str
+            - presence_level: int (1-5)
+            - explanation: str (optional)
+            - evidence: list[str] (optional)
+            - agreement_score: float | None (optional)
+        matrix_id: Scoring matrix ID for presence → score mapping
+        age_group: Age group for matrix lookup
+    """
+    with db_connection() as conn:
+        for eval_data in evaluations:
+            eval_id = generate_id()
+            presence_level = eval_data["presence_level"]
+
+            # Map presence to final score using the scoring matrix
+            final_score = ScoringMatrixRepository.lookup_score(
+                matrix_id=matrix_id,
+                behavior_id=eval_data["criteria_id"],
+                age_group=age_group,
+                presence_level=presence_level,
+            )
+
+            conn.execute(
+                """INSERT INTO evaluations (id, score_id, record_id, criteria_id,
+                   presence_level, final_score, agreement_score, explanation, evidence_json, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    eval_id,
+                    score_id,
+                    record_id,
+                    eval_data["criteria_id"],
+                    presence_level,
+                    final_score,
+                    eval_data.get("agreement_score"),
+                    eval_data.get("explanation", ""),
+                    json.dumps(eval_data.get("evidence", [])),
+                    datetime.now().isoformat(),
+                ),
+            )
+
+
+def check_presence_status(attack_id: str) -> dict:
+    """
+    Check if an attack has existing presence evaluations that can be reused.
+
+    Used by both CLI and API to inform users before scoring.
+
+    Args:
+        attack_id: Attack ID to check
+
+    Returns:
+        dict with:
+        - has_presence: bool - whether presence levels exist
+        - evaluated_records: int - number of records with evaluations
+        - total_records: int - total valid records in the attack
+        - source_score_id: str | None - score that has the evaluations
+        - message: str - human-readable status message
+    """
+    # Validate attack exists
+    attack = AttackRepository.get_by_id(attack_id)
+    if not attack:
+        raise ValueError(f"Attack not found: {attack_id}")
+
+    # Get total valid records
+    records = RecordRepository.get_by_attack(attack.id)
+    valid_records = [r for r in records if r.response and not r.error]
+    total_records = len(valid_records)
+
+    # Check for existing presence evaluations
+    status = EvaluationRepository.get_presence_status(attack.id)
+
+    # Build message
+    if status["has_presence"]:
+        message = f"Presence already assessed ({status['evaluated_records']}/{total_records} records). Re-scoring will skip LLM calls."
+    else:
+        message = f"Presence not yet assessed. LLM judge calls will be made for {total_records} records."
+
+    return {
+        "has_presence": status["has_presence"],
+        "evaluated_records": status["evaluated_records"],
+        "total_records": total_records,
+        "source_score_id": status["source_score_id"],
+        "message": message,
+    }
 
 
 def create_score(
@@ -174,50 +275,96 @@ def run_score(
         records = RecordRepository.get_by_attack(attack.id)
         valid_records = [r for r in records if r.response and not r.error]
 
-        # Load judge config (for LLM model settings)
-        judge_config = load_judge_config()
+        # Check for cached presence levels from previous scores of this attack
+        presence_cache = EvaluationRepository.get_presence_cache(attack.id)
+        used_cache = False
 
-        # Build records list for batch evaluation
-        records_for_eval = [
-            (idx, r.id, r.prompt, r.response, r.criteria_id if r.criteria_id else None)
-            for idx, r in enumerate(valid_records)
-        ]
+        if presence_cache:
+            # Cache hit - reuse presence levels, skip LLM calls
+            Logger.info(
+                "score",
+                f"Reusing cached presence levels from previous score ({len(presence_cache)} records)",
+                entity_type="score",
+                entity_id=score_id,
+            )
+            used_cache = True
 
-        total = len(valid_records)
+            # Update progress by record since cached evaluation is fast
+            total_records = len([r for r in valid_records if r.id in presence_cache])
+            current_record = 0
 
-        # Progress callback for API calls - updates DB and optional CLI callback
-        def progress_callback(current_api: int, total_api: int):
-            # Update DB progress (tracks API calls, not records)
-            ScoreRepository.update_progress(score_id, current_api, total_api)
-            # Also call CLI callback if provided
-            if on_progress:
-                on_progress(current_api, total_api)
+            # Create evaluations from cached presence levels
+            for record in valid_records:
+                if record.id not in presence_cache:
+                    continue
 
-        # Run batch evaluation (returns presence levels)
-        results_by_record = evaluate_records_batch(
-            config=judge_config,
-            records=records_for_eval,
-            age_group=age_group,
-            judge_name=judge_name,
-            on_progress=progress_callback,
-        )
+                # Build evaluations from cache
+                evaluations = [
+                    {
+                        "criteria_id": criteria_id,
+                        "presence_level": presence_level,
+                        "explanation": "Reused from previous evaluation",
+                        "evidence": [],
+                        "agreement_score": None,
+                    }
+                    for criteria_id, presence_level in presence_cache[record.id].items()
+                ]
 
-        # Store evaluations in DB with presence levels and mapped scores
-        all_results = []
-        current = 0
+                _store_evaluations_for_record(score_id, record.id, evaluations, matrix_id, age_group)
 
-        for record in valid_records:
-            if record.id not in results_by_record:
-                continue
+                # Update progress after evaluations stored
+                current_record += 1
+                ScoreRepository.update_progress(score_id, current_record, total_records)
+                if on_progress:
+                    on_progress(current_record, total_records)
 
-            result = results_by_record[record.id]
-            all_results.append(result)
+        else:
+            # Cache miss - run full LLM evaluation
+            Logger.info(
+                "score",
+                "No cached presence levels found, running full LLM evaluation",
+                entity_type="score",
+                entity_id=score_id,
+            )
 
-            # Insert all evaluations for this record in one transaction
-            with db_connection() as conn:
+            # Load judge config (for LLM model settings)
+            judge_config = load_judge_config()
+
+            # Build records list for batch evaluation
+            records_for_eval = [
+                (idx, r.id, r.prompt, r.response, r.criteria_id if r.criteria_id else None)
+                for idx, r in enumerate(valid_records)
+            ]
+
+            total = len(valid_records)
+
+            # Progress callback for API calls - updates DB and optional CLI callback
+            def progress_callback(current_api: int, total_api: int):
+                # Update DB progress (tracks API calls, not records)
+                ScoreRepository.update_progress(score_id, current_api, total_api)
+                # Also call CLI callback if provided
+                if on_progress:
+                    on_progress(current_api, total_api)
+
+            # Run batch evaluation (returns presence levels)
+            results_by_record = evaluate_records_batch(
+                config=judge_config,
+                records=records_for_eval,
+                age_group=age_group,
+                judge_name=judge_name,
+                on_progress=progress_callback,
+            )
+
+            # Store evaluations in DB with presence levels and mapped scores
+            for record in valid_records:
+                if record.id not in results_by_record:
+                    continue
+
+                result = results_by_record[record.id]
+
+                # Build evaluations from LLM results
+                evaluations = []
                 for crit_result in result.detailed_criteria:
-                    eval_id = generate_id()
-
                     # Get explanation from first judge's first pass
                     explanation = ""
                     evidence = []
@@ -228,115 +375,89 @@ def run_score(
                             evidence = jr.pass_results[0].get("evidence_extracts", [])
 
                     # Get presence level from evaluation result
-                    # The evaluator returns presence_level in the criterion result
                     presence_level = getattr(crit_result, "presence_level", None)
                     if presence_level is None:
-                        # Fallback: use final_score as presence if not explicitly set
                         presence_level = int(round(crit_result.final_score)) if crit_result.final_score else 3
 
                     # Clamp presence level to valid range
                     presence_level = max(1, min(5, presence_level))
 
-                    # Use full criteria_id for matrix lookup (matches how entries are stored)
-                    behavior_id = crit_result.criterion.id or ""
+                    evaluations.append({
+                        "criteria_id": crit_result.criterion.id,
+                        "presence_level": presence_level,
+                        "explanation": explanation,
+                        "evidence": evidence,
+                        "agreement_score": crit_result.judge_agreement_score,
+                    })
 
-                    # Map presence to final score using the scoring matrix
-                    # Matrix already encodes the context (educational, companionship, etc.)
-                    final_score = ScoringMatrixRepository.lookup_score(
-                        matrix_id=matrix_id, behavior_id=behavior_id, age_group=age_group, presence_level=presence_level
-                    )
+                _store_evaluations_for_record(score_id, record.id, evaluations, matrix_id, age_group)
 
-                    conn.execute(
-                        """INSERT INTO evaluations (id, score_id, record_id, criteria_id,
-                           presence_level, final_score, agreement_score, explanation, evidence_json, created_at)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (
-                            eval_id,
-                            score_id,
-                            record.id,
-                            crit_result.criterion.id,
-                            presence_level,
-                            final_score,
-                            crit_result.judge_agreement_score,
-                            explanation,
-                            json.dumps(evidence),
-                            datetime.now().isoformat(),
-                        ),
-                    )
+        # Calculate aggregate results using mapped scores from evaluations
+        with db_connection() as conn:
+            eval_rows = conn.execute(
+                "SELECT criteria_id, presence_level, final_score FROM evaluations WHERE score_id = ?", (score_id,)
+            ).fetchall()
 
-            # Note: Progress is now tracked during evaluation phase via progress_callback
-            current += 1
+        if eval_rows:
+            all_scores = [row["final_score"] for row in eval_rows if row["final_score"] is not None]
+            avg_final = statistics.mean(all_scores) if all_scores else 0
 
-        # Calculate aggregate results using mapped scores
-        if all_results:
-            # Recalculate aggregates using mapped scores from evaluations
-            with db_connection() as conn:
-                eval_rows = conn.execute(
-                    "SELECT criteria_id, presence_level, final_score FROM evaluations WHERE score_id = ?", (score_id,)
-                ).fetchall()
+            # Aggregate by category and subcategory - track both presence and score
+            category_scores = defaultdict(list)
+            category_presence = defaultdict(list)
+            subcategory_scores = defaultdict(list)
+            subcategory_presence = defaultdict(list)
 
-            if eval_rows:
-                all_scores = [row["final_score"] for row in eval_rows if row["final_score"] is not None]
-                avg_final = statistics.mean(all_scores) if all_scores else 0
+            for row in eval_rows:
+                criteria_id = row["criteria_id"]
+                presence_val = row["presence_level"]
+                score_val = row["final_score"]
+                if score_val is None:
+                    continue
 
-                # Aggregate by category and subcategory - track both presence and score
-                category_scores = defaultdict(list)
-                category_presence = defaultdict(list)
-                subcategory_scores = defaultdict(list)
-                subcategory_presence = defaultdict(list)
+                # Parse criteria_id: "emotional_reliance.anthropomorphic.persona_and_backstories"
+                parts = criteria_id.split(".")
+                if len(parts) >= 2:
+                    category = parts[1]  # anthropomorphic, interactional, relational
+                    category_scores[category].append(score_val)
+                    if presence_val is not None:
+                        category_presence[category].append(presence_val)
+                if len(parts) >= 3:
+                    subcategory = parts[2]  # behavior name
+                    subcategory_scores[subcategory].append(score_val)
+                    if presence_val is not None:
+                        subcategory_presence[subcategory].append(presence_val)
 
-                for row in eval_rows:
-                    criteria_id = row["criteria_id"]
-                    presence_val = row["presence_level"]
-                    score_val = row["final_score"]
-                    if score_val is None:
-                        continue
-
-                    # Parse criteria_id: "emotional_reliance.anthropomorphic.persona_and_backstories"
-                    parts = criteria_id.split(".")
-                    if len(parts) >= 2:
-                        category = parts[1]  # anthropomorphic, interactional, relational
-                        category_scores[category].append(score_val)
-                        if presence_val is not None:
-                            category_presence[category].append(presence_val)
-                    if len(parts) >= 3:
-                        subcategory = parts[2]  # behavior name
-                        subcategory_scores[subcategory].append(score_val)
-                        if presence_val is not None:
-                            subcategory_presence[subcategory].append(presence_val)
-
-                # Store scores (unchanged structure) + presence (new parallel structure)
-                category_averages = {
-                    "categories": {cat: statistics.mean(scores) for cat, scores in category_scores.items()},
-                    "subcategories": {cat: statistics.mean(scores) for cat, scores in subcategory_scores.items()},
-                    "presence": {
-                        "categories": {cat: statistics.mean(vals) for cat, vals in category_presence.items()},
-                        "subcategories": {cat: statistics.mean(vals) for cat, vals in subcategory_presence.items()},
-                    },
-                }
-            else:
-                avg_final = 0
-                category_averages = {"categories": {}, "subcategories": {}}
-
-            # Update score record with results
-            now = datetime.now().isoformat()
-            with db_connection() as conn:
-                conn.execute(
-                    """UPDATE scores SET final_score = ?, category_scores_json = ?,
-                       status = ?, completed_at = ?, updated_at = ?
-                       WHERE id = ?""",
-                    (avg_final, json.dumps(category_averages), "completed", now, now, score_id),
-                )
-
-            Logger.info(
-                "score",
-                f"Scoring completed: final score {avg_final:.2f}/5.0",
-                entity_type="score",
-                entity_id=score_id,
-                metadata={"final_score": avg_final, "category_scores": category_averages},
-            )
+            # Store scores (unchanged structure) + presence (new parallel structure)
+            category_averages = {
+                "categories": {cat: statistics.mean(scores) for cat, scores in category_scores.items()},
+                "subcategories": {cat: statistics.mean(scores) for cat, scores in subcategory_scores.items()},
+                "presence": {
+                    "categories": {cat: statistics.mean(vals) for cat, vals in category_presence.items()},
+                    "subcategories": {cat: statistics.mean(vals) for cat, vals in subcategory_presence.items()},
+                },
+            }
         else:
-            raise ValueError("No valid results from evaluation")
+            avg_final = 0
+            category_averages = {"categories": {}, "subcategories": {}}
+
+        # Update score record with results
+        now = datetime.now().isoformat()
+        with db_connection() as conn:
+            conn.execute(
+                """UPDATE scores SET final_score = ?, category_scores_json = ?,
+                   status = ?, completed_at = ?, updated_at = ?
+                   WHERE id = ?""",
+                (avg_final, json.dumps(category_averages), "completed", now, now, score_id),
+            )
+
+        Logger.info(
+            "score",
+            f"Scoring completed{' (cached)' if used_cache else ''}: final score {avg_final:.2f}/5.0",
+            entity_type="score",
+            entity_id=score_id,
+            metadata={"final_score": avg_final, "category_scores": category_averages, "used_cache": used_cache},
+        )
 
     except Exception as e:
         # Mark as failed

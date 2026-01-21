@@ -553,6 +553,89 @@ class ScoreRepository:
         return deleted
 
 
+class EvaluationRepository:
+    """Query operations for evaluations"""
+
+    @staticmethod
+    def get_presence_cache(attack_id: str) -> dict[str, dict[str, int]] | None:
+        """
+        Get cached presence levels for an attack from any completed score.
+
+        Returns dict: {record_id: {criteria_id: presence_level}} or None if no cache.
+        """
+        init_db()
+        with db_connection() as conn:
+            # Get evaluations from any completed score of this attack
+            rows = conn.execute(
+                """
+                SELECT e.record_id, e.criteria_id, e.presence_level
+                FROM evaluations e
+                JOIN scores s ON e.score_id = s.id
+                WHERE s.attack_id = ? AND s.status = 'completed' AND e.presence_level IS NOT NULL
+                """,
+                (attack_id,),
+            ).fetchall()
+
+            if not rows:
+                return None
+
+            # Build cache: {record_id: {criteria_id: presence_level}}
+            cache: dict[str, dict[str, int]] = {}
+            for row in rows:
+                record_id = row["record_id"]
+                if record_id not in cache:
+                    cache[record_id] = {}
+                cache[record_id][row["criteria_id"]] = row["presence_level"]
+
+            return cache
+
+    @staticmethod
+    def get_presence_status(attack_id: str) -> dict:
+        """
+        Check if an attack has existing presence evaluations.
+
+        Returns dict with:
+        - has_presence: bool
+        - evaluated_records: int (unique records with evaluations)
+        - source_score_id: str | None (score that has the evaluations)
+        """
+        init_db()
+        with db_connection() as conn:
+            # Find a completed score for this attack
+            score_row = conn.execute(
+                """
+                SELECT id FROM scores
+                WHERE attack_id = ? AND status = 'completed'
+                ORDER BY completed_at DESC
+                LIMIT 1
+                """,
+                (attack_id,),
+            ).fetchone()
+
+            if not score_row:
+                return {
+                    "has_presence": False,
+                    "evaluated_records": 0,
+                    "source_score_id": None,
+                }
+
+            # Count unique records with evaluations
+            count_row = conn.execute(
+                """
+                SELECT COUNT(DISTINCT record_id) as count
+                FROM evaluations
+                WHERE score_id = ? AND presence_level IS NOT NULL
+                """,
+                (score_row["id"],),
+            ).fetchone()
+
+            return {
+                "has_presence": True,
+                "evaluated_records": count_row["count"] if count_row else 0,
+                "source_score_id": score_row["id"],
+            }
+
+
 class GuardrailSetRepository:
     """CRUD operations for guardrail sets"""
 

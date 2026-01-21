@@ -37,6 +37,7 @@ export const Dashboard = () => {
   const [showJudgesModal, setShowJudgesModal] = useState(false);
   const [showGeneratorsModal, setShowGeneratorsModal] = useState(false);
   const [showMatricesModal, setShowMatricesModal] = useState(false);
+  const [presenceStatus, setPresenceStatus] = useState(null);
 
   // Check if any jobs are running (for polling)
   const hasRunningJobs = [...attacks, ...scores, ...guardrails].some(isJobRunning);
@@ -199,6 +200,29 @@ export const Dashboard = () => {
   const openReport = (score) => setReportModal(score);
   const openAttackRecords = (attack) => setAttackRecordsModal(attack);
   const openGuardrails = (guardrail) => setGuardrailsModal(guardrail);
+
+  // Handle form value changes to fetch presence status for score form
+  const handleFormValuesChange = useCallback((values) => {
+    if (formModal?.type === 'score' && values.attack_id) {
+      api.getPresenceStatus(values.attack_id)
+        .then(setPresenceStatus)
+        .catch(() => setPresenceStatus(null));
+    } else {
+      setPresenceStatus(null);
+    }
+  }, [formModal?.type]);
+
+  // Extra content for score form showing presence status
+  const scoreFormExtraContent = formModal?.type === 'score' && presenceStatus ? (
+    <div className={`p-3 rounded-xl text-sm ${presenceStatus.has_presence ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+      <div className={`font-medium ${presenceStatus.has_presence ? 'text-green-700' : 'text-amber-700'}`}>
+        {presenceStatus.has_presence ? '✓ Presence already assessed' : '⚡ Presence not yet assessed'}
+      </div>
+      <div className={`text-xs mt-1 ${presenceStatus.has_presence ? 'text-green-600' : 'text-amber-600'}`}>
+        {presenceStatus.message}
+      </div>
+    </div>
+  ) : null;
 
   const refreshAll = () => {
     fetchEndpoints();
@@ -437,9 +461,11 @@ export const Dashboard = () => {
           title={formConfigs[formModal.type].title}
           fields={formConfigs[formModal.type].fields}
           onSubmit={handleFormSubmit}
-          onClose={() => setFormModal(null)}
+          onClose={() => { setFormModal(null); setPresenceStatus(null); }}
           loading={formLoading}
           initialValues={formModal.initialValues || {}}
+          onValuesChange={handleFormValuesChange}
+          extraContent={scoreFormExtraContent}
         />
       )}
     </div>

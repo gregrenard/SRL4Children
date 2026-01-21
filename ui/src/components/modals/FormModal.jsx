@@ -1,7 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-export const FormModal = ({ title, fields, onSubmit, onClose, loading, initialValues = {} }) => {
+export const FormModal = ({ title, fields, onSubmit, onClose, loading, initialValues = {}, extraContent, onValuesChange }) => {
   const [values, setValues] = useState(initialValues);
+
+  // Notify parent of value changes
+  useEffect(() => {
+    if (onValuesChange) {
+      onValuesChange(values);
+    }
+  }, [values, onValuesChange]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -60,6 +67,7 @@ export const FormModal = ({ title, fields, onSubmit, onClose, loading, initialVa
               )}
             </div>
           ))}
+          {extraContent}
           <button
             type="submit"
             disabled={loading}

@@ -318,3 +318,87 @@ class TestPipelineAPI:
         # Verify deleted
         response = api_client.get(f"/api/endpoints/{endpoint_id}")
         assert response.status_code == 404
+
+    def test_presence_cache_reuse(self, api_client, test_endpoint, temp_db):
+        """Test that re-scoring reuses cached presence levels (issue #4)
+
+        When scoring the same attack with a different matrix/age:
+        1. First score runs full LLM evaluation
+        2. Second score should reuse cached presence levels, skip LLM calls
+        3. Both scores should have same presence levels but different final scores
+        """
+        # Create attack
+        response = api_client.post("/api/attacks", json={
+            "endpoint": "test-bot",
+            "dataset": "test_mini",
+        })
+        attack_id = response.json()["id"]
+        poll_status(api_client, f"/api/attacks/{attack_id}", "completed", timeout=60)
+
+        # Check presence status before any scoring - should be empty
+        response = api_client.get(f"/api/attacks/{attack_id}/presence-status")
+        assert response.status_code == 200
+        status = response.json()
+        assert status["has_presence"] is False
+        assert status["evaluated_records"] == 0
+
+        # First score - runs full LLM evaluation
+        response = api_client.post("/api/scores", json={
+            "attack_id": attack_id,
+            "age": "child",
+            "matrix": "educational",
+        })
+        score1_id = response.json()["id"]
+        score1_result = poll_status(api_client, f"/api/scores/{score1_id}", "completed", timeout=120)
+        assert score1_result["status"] == "completed"
+
+        # Check presence status after first score - should have cache
+        response = api_client.get(f"/api/attacks/{attack_id}/presence-status")
+        assert response.status_code == 200
+        status = response.json()
+        assert status["has_presence"] is True
+        assert status["evaluated_records"] > 0
+
+        # Second score with different matrix - should reuse cache
+        response = api_client.post("/api/scores", json={
+            "attack_id": attack_id,
+            "age": "teenager",
+            "matrix": "companionship",
+        })
+        score2_id = response.json()["id"]
+        score2_result = poll_status(api_client, f"/api/scores/{score2_id}", "completed", timeout=30)  # Should be fast
+        assert score2_result["status"] == "completed"
+
+        # Both scores should be valid
+        assert score1_result.get("final_score") is not None
+        assert score2_result.get("final_score") is not None
+
+        # Scores may differ due to different matrix/age
+        # But both should be in valid range
+        assert 1.0 <= score1_result["final_score"] <= 5.0
+        assert 1.0 <= score2_result["final_score"] <= 5.0
+
+        # Verify presence levels are identical by checking evaluations
+        # Get evaluations for both scores via the database
+        from srl4c.db.models import db_connection
+
+        with db_connection() as conn:
+            evals1 = conn.execute(
+                "SELECT record_id, criteria_id, presence_level FROM evaluations WHERE score_id LIKE ?",
+                (score1_id + "%",)
+            ).fetchall()
+            evals2 = conn.execute(
+                "SELECT record_id, criteria_id, presence_level FROM evaluations WHERE score_id LIKE ?",
+                (score2_id + "%",)
+            ).fetchall()
+
+        # Build presence maps
+        presence1 = {(e["record_id"], e["criteria_id"]): e["presence_level"] for e in evals1}
+        presence2 = {(e["record_id"], e["criteria_id"]): e["presence_level"] for e in evals2}
+
+        # Same keys (same records and criteria evaluated)
+        assert set(presence1.keys()) == set(presence2.keys()), "Both scores should evaluate same records/criteria"
+
+        # Same presence levels (cached values reused)
+        for key in presence1:
+            assert presence1[key] == presence2[key], f"Presence levels should match for {key}"

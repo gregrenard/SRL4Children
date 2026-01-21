@@ -40,6 +40,7 @@ export const api = {
   }).then(handleResponse),
   previewDeleteAttack: (id) => fetch(`${API_BASE}/attacks/${id}/delete-preview`).then(handleResponse),
   deleteAttack: (id) => fetch(`${API_BASE}/attacks/${id}`, { method: 'DELETE' }).then(handleResponse),
+  getPresenceStatus: (id) => fetch(`${API_BASE}/attacks/${id}/presence-status`).then(handleResponse),
 
   // Scores
   getScores: () => fetch(`${API_BASE}/scores/`).then(handleResponse),
