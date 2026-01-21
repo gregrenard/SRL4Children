@@ -10,6 +10,9 @@ const handleResponse = async (response) => {
 };
 
 export const api = {
+  // Base URL for direct fetch calls
+  baseUrl: API_BASE,
+
   // Endpoints
   getEndpoints: () => fetch(`${API_BASE}/endpoints`).then(handleResponse),
   createEndpoint: (data) => fetch(`${API_BASE}/endpoints`, {

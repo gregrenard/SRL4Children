@@ -131,8 +131,29 @@ async def get_score_failures(score_id: str):
 
 
 @router.get("/{score_id}/report")
-async def get_score_report(score_id: str):
-    """Generate a detailed Markdown report for a score."""
+async def get_score_report(score_id: str, format: str = "md"):
+    """Generate a report for a score.
+
+    Args:
+        format: Report format - "md" for Markdown (default), "pdf" for PDF
+    """
+    if format == "pdf":
+        from fastapi.responses import Response
+
+        from srl4c.core.report_pdf import generate_pdf_report
+
+        try:
+            pdf_bytes = generate_pdf_report(score_id)
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=srl4c-report-{score_id[:8]}.pdf"},
+        )
+
+    # Default: Markdown
     from srl4c.core.score import generate_report
 
     try:

@@ -20,7 +20,7 @@ export const ReportModal = ({ score, attacks, endpoints, onClose }) => {
       .finally(() => setLoading(false));
   }, [score.id]);
 
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
     if (type === 'download') {
       const blob = new Blob([report || ''], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
@@ -28,6 +28,19 @@ export const ReportModal = ({ score, attacks, endpoints, onClose }) => {
       a.href = url;
       a.download = `srl4c-report-${shortId(score.id)}.md`;
       a.click();
+    } else if (type === 'pdf') {
+      try {
+        const response = await fetch(`${api.baseUrl}/scores/${score.id}/report?format=pdf`);
+        if (!response.ok) throw new Error('Failed to generate PDF');
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `srl4c-report-${shortId(score.id)}.pdf`;
+        a.click();
+      } catch (err) {
+        alert('Failed to generate PDF: ' + err.message);
+      }
     } else {
       navigator.clipboard.writeText(report || '');
       alert('Report copied to clipboard!');
@@ -54,6 +67,7 @@ export const ReportModal = ({ score, attacks, endpoints, onClose }) => {
             </button>
             {exporting && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-10">
+                <button onClick={() => handleExport('pdf')} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors font-medium">Download as PDF</button>
                 <button onClick={() => handleExport('download')} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">Download as .md</button>
                 <button onClick={() => handleExport('copy')} className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors">Copy to clipboard</button>
               </div>
