@@ -103,6 +103,8 @@ class ScoreResponse(BaseModel):
     final_score: float | None = None
     category_scores: dict[str, Any] | None = None  # {"categories": {...}, "subcategories": {...}, "presence": {...}}
     progress: float = Field(0.0, description="Progress 0.0 to 1.0")
+    progress_current: int = Field(0, description="Current API calls completed")
+    progress_total: int = Field(0, description="Total API calls to make")
     error_message: str | None = None
     started_at: str | None = None
     updated_at: str | None = None

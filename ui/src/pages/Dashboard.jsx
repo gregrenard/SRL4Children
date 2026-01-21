@@ -122,6 +122,18 @@ export const Dashboard = () => {
     ? guardrails.filter(g => g.score_id === selectedScore.id)
     : guardrails;
 
+  // Get fresh item for detail panel (avoid stale data during polling)
+  const currentDetailItem = detailPanel.item ? (() => {
+    const id = detailPanel.item.id;
+    switch (detailPanel.type) {
+      case 'endpoint': return endpoints.find(e => e.id === id) || detailPanel.item;
+      case 'attack': return attacks.find(a => a.id === id) || detailPanel.item;
+      case 'score': return scores.find(s => s.id === id) || detailPanel.item;
+      case 'guardrail': return guardrails.find(g => g.id === id) || detailPanel.item;
+      default: return detailPanel.item;
+    }
+  })() : null;
+
   // Handlers
   const handleCardClick = (item, type) => {
     setDetailPanel({ item, type });
@@ -376,7 +388,7 @@ export const Dashboard = () => {
             ) : (
               /* Expanded state - full content */
               <DetailPanel
-                item={detailPanel.item}
+                item={currentDetailItem}
                 type={detailPanel.type}
                 onClose={() => setDetailPanel({ item: null, type: null })}
                 onReport={openReport}

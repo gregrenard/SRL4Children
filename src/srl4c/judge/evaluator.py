@@ -13,6 +13,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Any
 
 from json_repair import repair_json
@@ -587,10 +588,14 @@ def evaluate_records_batch(
     records: list[tuple[int, str, str, str, str]],  # (idx, id, prompt, response, criterion_id)
     age_group: str,
     judge_name: str = None,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> dict[str, BenchmarkResult]:
     """
     Evaluate multiple records in parallel.
     Returns dict mapping record_id -> BenchmarkResult
+
+    Args:
+        on_progress: Optional callback(current, total) called as API calls complete
     """
     loader = get_registry_loader()
 
@@ -636,6 +641,8 @@ def evaluate_records_batch(
         futures = {executor.submit(_run_single_eval, task): task for task in tasks}
         for future in as_completed(futures):
             completed += 1
+            if on_progress:
+                on_progress(completed, total_tasks)
             try:
                 result = future.result()
                 results.append(result)

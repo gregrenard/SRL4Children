@@ -41,6 +41,8 @@ def _score_to_response(score: dict) -> ScoreResponse:
         final_score=score.get("final_score"),
         category_scores=category_scores,
         progress=progress,
+        progress_current=score.get("progress_current") or 0,
+        progress_total=score.get("progress_total") or 0,
         error_message=score.get("error_message"),
         started_at=score.get("started_at"),
         updated_at=score.get("updated_at"),

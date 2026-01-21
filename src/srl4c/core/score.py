@@ -185,12 +185,21 @@ def run_score(
 
         total = len(valid_records)
 
+        # Progress callback for API calls - updates DB and optional CLI callback
+        def progress_callback(current_api: int, total_api: int):
+            # Update DB progress (tracks API calls, not records)
+            ScoreRepository.update_progress(score_id, current_api, total_api)
+            # Also call CLI callback if provided
+            if on_progress:
+                on_progress(current_api, total_api)
+
         # Run batch evaluation (returns presence levels)
         results_by_record = evaluate_records_batch(
             config=judge_config,
             records=records_for_eval,
             age_group=age_group,
             judge_name=judge_name,
+            on_progress=progress_callback,
         )
 
         # Store evaluations in DB with presence levels and mapped scores
@@ -255,11 +264,8 @@ def run_score(
                         ),
                     )
 
-            # Update progress AFTER the connection is closed to avoid nested connections
+            # Note: Progress is now tracked during evaluation phase via progress_callback
             current += 1
-            ScoreRepository.update_progress(score_id, current, total)
-            if on_progress:
-                on_progress(current, total)
 
         # Calculate aggregate results using mapped scores
         if all_results:

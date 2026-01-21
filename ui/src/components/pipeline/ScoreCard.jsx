@@ -31,9 +31,14 @@ export const ScoreCard = ({ score, selected, onClick, onReport, onNewGuardrail }
       </div>
     ) : (
       <div className="mt-2">
-        <div className={`text-xs mb-1 ${getStatusColor(score.status)}`}>
-          <span className={score.status === 'running' ? 'animate-spin-slow inline-block' : ''}>{getStatusIcon(score.status)}</span>
-          <span className="ml-1">{score.status}</span>
+        <div className={`text-xs mb-1 flex justify-between ${getStatusColor(score.status)}`}>
+          <span>
+            <span className={score.status === 'running' ? 'animate-spin-slow inline-block' : ''}>{getStatusIcon(score.status)}</span>
+            <span className="ml-1">{score.status}</span>
+          </span>
+          {score.progress_total > 0 && (
+            <span className="text-gray-400">{score.progress_current}/{score.progress_total}</span>
+          )}
         </div>
         <ProgressBar progress={score.progress} animated={isJobRunning(score)} />
       </div>

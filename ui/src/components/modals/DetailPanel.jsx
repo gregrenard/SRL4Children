@@ -268,9 +268,14 @@ export const DetailPanel = ({ item, type, onClose, onReport, onViewRecords, onVi
               ) : (
                 <div>
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Status</div>
-                  <div className={`flex items-center gap-2 ${getStatusColor(item.status)}`}>
-                    <span className={item.status === 'running' ? 'animate-spin-slow' : ''}>{getStatusIcon(item.status)}</span>
-                    {item.status}
+                  <div className={`flex items-center justify-between ${getStatusColor(item.status)}`}>
+                    <span className="flex items-center gap-2">
+                      <span className={item.status === 'running' ? 'animate-spin-slow' : ''}>{getStatusIcon(item.status)}</span>
+                      {item.status}
+                    </span>
+                    {item.progress_total > 0 && (
+                      <span className="text-gray-400 text-sm">{item.progress_current}/{item.progress_total}</span>
+                    )}
                   </div>
                   <div className="mt-2">
                     <ProgressBar progress={item.progress} animated={isJobRunning(item)} />
