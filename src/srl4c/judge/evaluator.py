@@ -540,6 +540,9 @@ class EvalTaskResult:
     parsed_result: dict[str, Any]
     raw_response: str
     elapsed_ms: int
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float | None = None
 
 
 def _run_single_eval(task: EvalTask) -> EvalTaskResult:
@@ -566,9 +569,20 @@ def _run_single_eval(task: EvalTask) -> EvalTaskResult:
     content = response.choices[0].message.content or ""
     parsed = parse_judge_response(content)
 
+    # Extract token usage if available
+    input_tokens = 0
+    output_tokens = 0
+    cost_usd = None
+    if hasattr(response, "usage") and response.usage:
+        input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+        output_tokens = getattr(response.usage, "completion_tokens", 0) or 0
+        # Calculate cost if pricing is configured
+        cost_usd = task.judge.calculate_cost(input_tokens, output_tokens)
+
     with _print_lock:
+        cost_str = f" ${cost_usd:.4f}" if cost_usd is not None else ""
         print(
-            f"    ✓ R{task.record_idx + 1} {short_model} p{task.pass_idx + 1} → L{parsed['presence_level']} ({elapsed_ms / 1000:.1f}s)"
+            f"    ✓ R{task.record_idx + 1} {short_model} p{task.pass_idx + 1} → L{parsed['presence_level']} ({elapsed_ms / 1000:.1f}s){cost_str}"
         )
 
     return EvalTaskResult(
@@ -580,7 +594,20 @@ def _run_single_eval(task: EvalTask) -> EvalTaskResult:
         parsed_result=parsed,
         raw_response=content,
         elapsed_ms=elapsed_ms,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        cost_usd=cost_usd,
     )
+
+
+@dataclass
+class BatchEvalResult:
+    """Result of batch evaluation including usage totals"""
+
+    results_by_record: dict[str, BenchmarkResult]
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_cost_usd: float | None = None
 
 
 def evaluate_records_batch(
@@ -589,10 +616,10 @@ def evaluate_records_batch(
     age_group: str,
     judge_name: str = None,
     on_progress: Callable[[int, int], None] | None = None,
-) -> dict[str, BenchmarkResult]:
+) -> BatchEvalResult:
     """
     Evaluate multiple records in parallel.
-    Returns dict mapping record_id -> BenchmarkResult
+    Returns BatchEvalResult with results by record and usage totals.
 
     Args:
         on_progress: Optional callback(current, total) called as API calls complete
@@ -653,8 +680,24 @@ def evaluate_records_batch(
 
     print(f"\n    Completed {completed}/{total_tasks} API calls")
 
+    # Aggregate token usage and costs
+    total_input_tokens = sum(r.input_tokens for r in results)
+    total_output_tokens = sum(r.output_tokens for r in results)
+    costs = [r.cost_usd for r in results if r.cost_usd is not None]
+    total_cost_usd = sum(costs) if costs else None
+
+    if total_cost_usd is not None:
+        print(f"    Total: {total_input_tokens:,} in / {total_output_tokens:,} out tokens, ${total_cost_usd:.4f}")
+
     # Group results by record and build BenchmarkResults
-    return _aggregate_results(results, records, config, judge_name)
+    results_by_record = _aggregate_results(results, records, config, judge_name)
+
+    return BatchEvalResult(
+        results_by_record=results_by_record,
+        total_input_tokens=total_input_tokens,
+        total_output_tokens=total_output_tokens,
+        total_cost_usd=total_cost_usd,
+    )
 
 
 def _aggregate_results(

@@ -23,12 +23,22 @@ class JudgeConfig:
     model: str
     api_key_env: str | None = None
     temperature: float = 0.1
+    input_cost_per_1m: float | None = None  # Cost per 1M input tokens (USD)
+    output_cost_per_1m: float | None = None  # Cost per 1M output tokens (USD)
 
     def get_api_key(self) -> str | None:
         """Get API key from environment (loaded from srl4c/.env)"""
         if self.api_key_env:
             return os.environ.get(self.api_key_env)
         return "unused"  # For Ollama
+
+    def calculate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        """Calculate cost for a request. Returns None if pricing not configured."""
+        if self.input_cost_per_1m is None or self.output_cost_per_1m is None:
+            return None
+        input_cost = (input_tokens / 1_000_000) * self.input_cost_per_1m
+        output_cost = (output_tokens / 1_000_000) * self.output_cost_per_1m
+        return input_cost + output_cost
 
 
 @dataclass
@@ -154,6 +164,8 @@ def load_judge_config(config_path: Path = None) -> JudgeSystemConfig:
                 model=jconf["model"],
                 api_key_env=jconf.get("api_key_env"),
                 temperature=jconf.get("temperature", 0.1),
+                input_cost_per_1m=jconf.get("input_cost_per_1m"),
+                output_cost_per_1m=jconf.get("output_cost_per_1m"),
             )
         )
 

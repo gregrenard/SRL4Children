@@ -63,7 +63,7 @@ def get_presence_definitions(behavior_id: str) -> dict[int, str]:
 
 def load_guardrails_config() -> dict[str, Any]:
     """Load guardrails config from .generators file"""
-    from srl4c.generator.config import load_generator_config
+    from srl4c.generator.config import GeneratorConfig, load_generator_config
 
     generator = load_generator_config()
 
@@ -73,6 +73,9 @@ def load_guardrails_config() -> dict[str, Any]:
         "api_key_env": generator.api_key_env,
         "temperature": generator.temperature,
         "max_tokens": generator.max_tokens,
+        "input_cost_per_1m": generator.input_cost_per_1m,
+        "output_cost_per_1m": generator.output_cost_per_1m,
+        "_generator": generator,  # Keep full config for cost calculation
     }
 
 
@@ -379,6 +382,12 @@ def run_guardrails(
         total_principles = len(by_principle)
         current_principle = 0
 
+        # Token and cost tracking
+        total_input_tokens = 0
+        total_output_tokens = 0
+        total_cost_usd = None
+        generator = config.get("_generator")  # Full GeneratorConfig for cost calculation
+
         for principle, failures in by_principle.items():
             # Stop if we've hit max_total
             if total_generated >= max_total:
@@ -433,6 +442,23 @@ def run_guardrails(
                 )
                 content = response.choices[0].message.content or ""
 
+                # Capture token usage
+                call_cost = None
+                if hasattr(response, "usage") and response.usage:
+                    input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+                    output_tokens = getattr(response.usage, "completion_tokens", 0) or 0
+                    total_input_tokens += input_tokens
+                    total_output_tokens += output_tokens
+                    # Calculate cost if pricing configured
+                    if generator:
+                        call_cost = generator.calculate_cost(input_tokens, output_tokens)
+                        if call_cost is not None:
+                            total_cost_usd = (total_cost_usd or 0) + call_cost
+
+                # Print progress
+                cost_str = f" ${call_cost:.4f}" if call_cost is not None else ""
+                print(f"    ✓ Guardrail for {principle.split('.')[-1]}{cost_str}")
+
                 # Parse JSON response
                 json_match = re.search(r"\{[\s\S]*\}", content)
                 if json_match:
@@ -483,12 +509,19 @@ def run_guardrails(
                     (g["id"], g["set_id"], g["criteria_id"], g["rule_text"], g["rationale"], now),
                 )
 
-            # Update set rules_count and status
+            # Update set rules_count, status, and cost tracking
             conn.execute(
                 """UPDATE guardrail_sets SET rules_count = ?, status = ?,
-                   completed_at = ?, updated_at = ? WHERE id = ?""",
-                (len(all_guardrails), "completed", now, now, set_id),
+                   completed_at = ?, updated_at = ?,
+                   total_input_tokens = ?, total_output_tokens = ?, total_cost_usd = ?
+                   WHERE id = ?""",
+                (len(all_guardrails), "completed", now, now,
+                 total_input_tokens, total_output_tokens, total_cost_usd, set_id),
             )
+
+        # Print total cost to stdout
+        if total_cost_usd is not None:
+            print(f"    Total: {total_input_tokens:,} in / {total_output_tokens:,} out tokens, ${total_cost_usd:.4f}")
 
         Logger.info(
             "guardrails",

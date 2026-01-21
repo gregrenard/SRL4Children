@@ -24,12 +24,22 @@ class GeneratorConfig:
     api_key_env: str | None = None
     temperature: float = 0.7
     max_tokens: int = 1000
+    input_cost_per_1m: float | None = None  # Cost per 1M input tokens (USD)
+    output_cost_per_1m: float | None = None  # Cost per 1M output tokens (USD)
 
     def get_api_key(self) -> str | None:
         """Get API key from environment"""
         if self.api_key_env:
             return os.environ.get(self.api_key_env)
         return "unused"  # For local models
+
+    def calculate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        """Calculate cost for a request. Returns None if pricing not configured."""
+        if self.input_cost_per_1m is None or self.output_cost_per_1m is None:
+            return None
+        input_cost = (input_tokens / 1_000_000) * self.input_cost_per_1m
+        output_cost = (output_tokens / 1_000_000) * self.output_cost_per_1m
+        return input_cost + output_cost
 
 
 def get_settings() -> dict[str, Any]:
@@ -126,6 +136,8 @@ def load_generator_config(config_path: Path = None) -> GeneratorConfig:
         api_key_env=data.get("api_key_env"),
         temperature=data.get("temperature", 0.7),
         max_tokens=data.get("max_tokens", 1000),
+        input_cost_per_1m=data.get("input_cost_per_1m"),
+        output_cost_per_1m=data.get("output_cost_per_1m"),
     )
 
 

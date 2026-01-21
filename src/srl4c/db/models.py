@@ -62,6 +62,9 @@ CREATE TABLE IF NOT EXISTS scores (
     progress_current INTEGER DEFAULT 0,
     progress_total INTEGER DEFAULT 0,
     error_message TEXT,
+    total_input_tokens INTEGER DEFAULT 0,
+    total_output_tokens INTEGER DEFAULT 0,
+    total_cost_usd REAL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
@@ -94,6 +97,9 @@ CREATE TABLE IF NOT EXISTS guardrail_sets (
     progress_current INTEGER DEFAULT 0,
     progress_total INTEGER DEFAULT 0,
     error_message TEXT,
+    total_input_tokens INTEGER DEFAULT 0,
+    total_output_tokens INTEGER DEFAULT 0,
+    total_cost_usd REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
@@ -258,6 +264,9 @@ class Score:
     progress_current: int = 0
     progress_total: int = 0
     error_message: str | None = None
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_cost_usd: float | None = None
     started_at: datetime | None = None
     updated_at: datetime | None = None
     completed_at: datetime | None = None
@@ -288,6 +297,9 @@ class GuardrailSet:
     progress_current: int = 0
     progress_total: int = 0
     error_message: str | None = None
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    total_cost_usd: float | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     completed_at: datetime | None = None
@@ -391,12 +403,41 @@ def init_db(sync_builtins: bool = True):
     conn = get_connection()
     conn.executescript(SCHEMA)
     conn.commit()
+
+    # Run migrations for existing databases
+    _run_migrations(conn)
+    conn.commit()
     conn.close()
 
     if sync_builtins:
         from srl4c.db.sync import sync_all
 
         sync_all()
+
+
+def _run_migrations(conn: sqlite3.Connection):
+    """Run database migrations for existing databases.
+
+    Uses ALTER TABLE to add new columns, ignoring errors if columns already exist.
+    """
+    migrations = [
+        # Cost tracking columns for scores (issue #16)
+        "ALTER TABLE scores ADD COLUMN total_input_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE scores ADD COLUMN total_output_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE scores ADD COLUMN total_cost_usd REAL",
+        # Cost tracking columns for guardrail_sets (issue #16)
+        "ALTER TABLE guardrail_sets ADD COLUMN total_input_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE guardrail_sets ADD COLUMN total_output_tokens INTEGER DEFAULT 0",
+        "ALTER TABLE guardrail_sets ADD COLUMN total_cost_usd REAL",
+    ]
+
+    for migration in migrations:
+        try:
+            conn.execute(migration)
+        except sqlite3.OperationalError as e:
+            # Ignore "duplicate column name" errors
+            if "duplicate column" not in str(e).lower():
+                raise
 
 
 @contextmanager

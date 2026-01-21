@@ -279,6 +279,11 @@ def run_score(
         presence_cache = EvaluationRepository.get_presence_cache(attack.id)
         used_cache = False
 
+        # Initialize usage tracking (0 for cache hit, populated for cache miss)
+        total_input_tokens = 0
+        total_output_tokens = 0
+        total_cost_usd = None
+
         if presence_cache:
             # Cache hit - reuse presence levels, skip LLM calls
             Logger.info(
@@ -346,8 +351,8 @@ def run_score(
                 if on_progress:
                     on_progress(current_api, total_api)
 
-            # Run batch evaluation (returns presence levels)
-            results_by_record = evaluate_records_batch(
+            # Run batch evaluation (returns presence levels and usage totals)
+            batch_result = evaluate_records_batch(
                 config=judge_config,
                 records=records_for_eval,
                 age_group=age_group,
@@ -355,12 +360,17 @@ def run_score(
                 on_progress=progress_callback,
             )
 
+            # Extract usage totals for storing later
+            total_input_tokens = batch_result.total_input_tokens
+            total_output_tokens = batch_result.total_output_tokens
+            total_cost_usd = batch_result.total_cost_usd
+
             # Store evaluations in DB with presence levels and mapped scores
             for record in valid_records:
-                if record.id not in results_by_record:
+                if record.id not in batch_result.results_by_record:
                     continue
 
-                result = results_by_record[record.id]
+                result = batch_result.results_by_record[record.id]
 
                 # Build evaluations from LLM results
                 evaluations = []
@@ -446,9 +456,11 @@ def run_score(
         with db_connection() as conn:
             conn.execute(
                 """UPDATE scores SET final_score = ?, category_scores_json = ?,
-                   status = ?, completed_at = ?, updated_at = ?
+                   status = ?, completed_at = ?, updated_at = ?,
+                   total_input_tokens = ?, total_output_tokens = ?, total_cost_usd = ?
                    WHERE id = ?""",
-                (avg_final, json.dumps(category_averages), "completed", now, now, score_id),
+                (avg_final, json.dumps(category_averages), "completed", now, now,
+                 total_input_tokens, total_output_tokens, total_cost_usd, score_id),
             )
 
         Logger.info(
@@ -456,7 +468,11 @@ def run_score(
             f"Scoring completed{' (cached)' if used_cache else ''}: final score {avg_final:.2f}/5.0",
             entity_type="score",
             entity_id=score_id,
-            metadata={"final_score": avg_final, "category_scores": category_averages, "used_cache": used_cache},
+            metadata={
+                "final_score": avg_final,
+                "category_scores": category_averages,
+                "used_cache": used_cache,
+            },
         )
 
     except Exception as e:

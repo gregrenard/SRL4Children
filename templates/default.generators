@@ -7,3 +7,9 @@ model: openai/gpt-oss-120b
 api_key_env: DEEPINFRA_API_KEY
 temperature: 0.15
 max_tokens: 16384
+
+# Cost tracking (optional): set input_cost_per_1m and output_cost_per_1m
+# to track LLM costs. Prices are in USD per 1M tokens.
+# Check your provider's pricing page for current rates.
+input_cost_per_1m: 0.039
+output_cost_per_1m: 0.19
